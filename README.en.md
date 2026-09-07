@@ -1,10 +1,12 @@
 # Protheus Engineering Agent
 
-An open engineering runtime for ADVPL/TLPP, with VS Code as the primary interface, evidence-backed analysis, and optional integration with engines such as Hermes over ACP/MCP.
+A standalone VS Code extension for ADVPL/TLPP engineering, backed by an open reusable runtime, evidence-based analysis, and MCP interoperability.
 
 > Independent community project in alpha stage. It is not affiliated with, sponsored by, or maintained by TOTVS, the Protheus brand, or the Hermes Agent project. All trademarks belong to their respective owners.
 
-[Português](README.md) · [Positioning](docs/brand-positioning.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
+[Português](README.md) · [Positioning](docs/brand-positioning.md) · [Architecture](docs/architecture.md) · [Effectiveness research](docs/research/product-effectiveness-review.md) · [Roadmap](docs/roadmap.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
+
+The primary path requires only the VSIX. It does not require Hermes, an AI account, a model, Python, Oracle, TDN, or AppServer. The deterministic runtime ships inside the extension.
 
 ## What runs today
 
@@ -15,24 +17,31 @@ An open engineering runtime for ADVPL/TLPP, with VS Code as the primary interfac
 - build supervisor with an injected runner and capability gate;
 - stdio MCP server for doctor, index, review, and engineering context;
 - live, bounded project Skills and Rules treated as untrusted data;
-- isolated Hermes ACP/MCP session descriptors;
+- an experimental, optional Hermes adapter outside the critical path and release gate;
 - a thin VS Code extension with four orchestration commands.
 
-The in-extension ACP chat, a real Protheus compiler integration, TDN/Dictionary, Oracle, and parallel subagents are planned and not available yet.
+VS Code-native tools/chat, a real Protheus compiler integration, TDN/Dictionary, Oracle, and subagents are planned and not available yet.
 
-## Run without installing dependencies
+## Local development
 
-Requires Node.js 22 or newer.
+Requires Node.js 22 or newer. Tests and packaging use development dependencies locked in `package-lock.json`.
 
 ```sh
-node --test
-node scripts/check.mjs
+npm ci
+npm run validate
+```
+
+The runtime itself has no mandatory npm runtime dependencies and can also be called directly:
+
+```sh
 node packages/runtime/src/cli.mjs doctor .
 node packages/runtime/src/cli.mjs index /path/to/workspace
 node packages/runtime/src/cli.mjs session /path/to/workspace
 ```
 
-Hermes is not probed by default. Use `--probe-hermes` explicitly and set `PEA_HERMES_COMMAND` when the executable is not on `PATH`. The default Hermes home is isolated under `<workspace>/.pea/hermes`.
+### Optional Hermes compatibility
+
+Hermes is not part of normal commands or publication criteria. To test the experimental adapter voluntarily, use `doctor . --probe-hermes`. Set `PEA_HERMES_COMMAND` when the executable is not on `PATH`; its isolated home defaults to `<workspace>/.pea/hermes`. This is optional compatibility evidence, not a core gate.
 
 ## MCP server
 
@@ -48,7 +57,7 @@ Run `npm ci`, open this repository in VS Code, and start `Run Protheus Engineeri
 
 Open an ADVPL/TLPP workspace and run the four `Protheus Agent` commands from the command palette. `npm run test:vscode:host` installs the VSIX and exercises all four commands in an isolated current VS Code instance; `npm run test:vscode:minimum` repeats it on the supported 1.95.3 baseline.
 
-The extension delegates to the runtime. It does not replace VS Code's editor, terminal, explorer, Git, diff, or chat surfaces.
+The extension delegates to its bundled runtime. It complements TDS-VSCode and does not replace VS Code language, compiler, debugger, editor, terminal, explorer, Git, diff, or chat surfaces.
 
 ## Quality and release status
 

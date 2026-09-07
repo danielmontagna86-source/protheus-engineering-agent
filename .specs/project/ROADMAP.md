@@ -17,11 +17,11 @@
 - Runtime/CLI, MCP, CodeGraph, review, contexto e permissões.
 - 21 testes P0 aprovados antes do início do P1.
 
-**Hermes Session Context** - IN PROGRESS
+**Standalone VS Code Product** - IN PROGRESS
 
-- Perfil ACP isolado por workspace.
+- VSIX com runtime empacotado e comandos offline.
 - Skills/Rules relidos por snapshot.
-- MCP do produto descrito para sessões ACP.
+- MCP portável e adapters de orquestrador opcionais.
 
 **Public Repository Readiness** - IN PROGRESS
 
@@ -61,6 +61,6 @@
 
 ## Future Considerations
 
-- Publicação opcional da extensão no VS Code Marketplace.
+- Publicação da extensão no Visual Studio Marketplace após estabilizar o alpha e validar o publisher.
 - Pacotes npm separados apenas se houver benefício de consumo externo.
-- Compatibilidade com outras engines ACP além de Hermes.
+- Compatibilidade opcional com hosts MCP/ACP sem engine obrigatória.

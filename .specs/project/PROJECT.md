@@ -1,6 +1,6 @@
 # Protheus Engineering Agent
 
-**Vision:** Criar um agente de engenharia aberto e extensível para equipes que desenvolvem em ADVPL/TLPP, usando o VS Code como interface e engines como Hermes por contratos ACP/MCP.
+**Vision:** Criar uma extensão de engenharia aberta para equipes que desenvolvem em ADVPL/TLPP, instalável diretamente no VS Code e sustentada por um runtime reutilizável e interoperável por MCP.
 **For:** Desenvolvedores, consultores, mantenedores e equipes de qualidade do ecossistema Protheus.
 **Solves:** Reúne contexto de projeto, análise de código, revisão, conhecimento especialista e execução supervisionada sem exigir uma IDE proprietária paralela.
 
@@ -8,7 +8,7 @@
 
 - Permitir que uma pessoa clone o repositório e execute doctor, CodeGraph, review e MCP apenas com Node.js suportado.
 - Manter 100% dos testes bloqueantes aprovados em Windows e Linux antes de cada merge.
-- Integrar Hermes sem alterar o perfil cotidiano e sem torná-lo dependência obrigatória.
+- Manter Hermes e outros orquestradores como compatibilidade opcional, sem torná-los dependência ou gate de release.
 - Exigir evidência e proveniência para findings, builds e integrações especialistas.
 - Publicar releases reproduzíveis com licença, checksums e notas de mudança.
 
@@ -19,7 +19,7 @@
 - Runtime: Node.js 22 ou 24, módulos da biblioteca padrão.
 - Language: JavaScript ESM; CommonJS somente na borda da extensão VS Code.
 - Interface: VS Code Extension fina.
-- Agent transport: ACP para engine; MCP stdio para capacidades especialistas.
+- Agent transport: tools nativas do VS Code no caminho principal futuro; MCP stdio para capacidades portáveis; ACP apenas em adapters opcionais.
 - Persistence P0/P1: arquivos locais limitados em `.pea/`; sem banco obrigatório.
 
 **Key dependencies:** nenhuma dependência npm em runtime no estágio atual.
@@ -30,7 +30,7 @@
 
 - CodeGraph e review ADVPL/TLPP com evidências.
 - Project Memory, Journal, Skills e Rules por projeto.
-- Hermes opcional e isolado por ACP/MCP.
+- Adaptadores opcionais e isolados para Hermes e outros hosts ACP/MCP.
 - Build supervisionado, TDN/Dictionary e Oracle por adapters fail-closed.
 - CI, segurança, documentação, contribuição e releases no GitHub.
 

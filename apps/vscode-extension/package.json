@@ -1,19 +1,24 @@
 {
   "name": "protheus-engineering-agent",
   "displayName": "Protheus Engineering Agent",
-  "description": "Thin VS Code interface for an open engineering runtime for ADVPL/TLPP projects.",
+  "description": "Standalone, evidence-backed engineering tools for ADVPL/TLPP projects in VS Code.",
   "version": "0.2.0-alpha.1",
   "publisher": "danielmontagna86-source",
   "private": true,
+  "preview": true,
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/danielmontagna86-source/protheus-engineering-agent.git"
   },
+  "bugs": {
+    "url": "https://github.com/danielmontagna86-source/protheus-engineering-agent/issues"
+  },
+  "homepage": "https://github.com/danielmontagna86-source/protheus-engineering-agent#readme",
   "engines": {
     "vscode": "^1.95.0"
   },
-  "categories": ["Other"],
+  "categories": ["Linters", "Testing"],
   "keywords": ["advpl", "tlpp", "protheus", "mcp", "engineering"],
   "extensionKind": ["workspace"],
   "capabilities": {

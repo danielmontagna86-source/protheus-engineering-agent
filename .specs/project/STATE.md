@@ -62,6 +62,13 @@
 **Reason:** O modo de desenvolvimento não comprova que o arquivo distribuído pode ser instalado e carregado.
 **Impact:** VS Code 1.95.3 e 1.133.0 passaram localmente; a primeira tentativa encontrou permissões ZIP não graváveis e virou regressão automatizada.
 
+### AD-009: VS Code is the standalone product; Hermes is non-gating compatibility (2026-09-07)
+
+**Decision:** Distribuir um único VSIX com runtime empacotado. Priorizar tools/chat nativos do VS Code e MCP; manter Hermes como adapter experimental opcional.
+**Reason:** O público ADVPL/TLPP já trabalha no VS Code/TDS, enquanto exigir outra engine adiciona instalação e configuração antes do primeiro valor.
+**Trade-off:** Recursos exclusivos do Hermes não estarão disponíveis no fluxo padrão; compatibilidade continuará sendo testada separadamente.
+**Impact:** O release checker não exige probe Hermes e a documentação não o apresenta como engine do produto.
+
 ## Active Blockers
 
 ### B-003: External release evidence is incomplete
@@ -69,7 +76,7 @@
 **Discovered:** 2026-09-07
 **Impact:** Blocker para release e visibilidade pública.
 **Workaround:** Manter o remoto privado e o gate de release em `NO-GO`.
-**Progress:** Repositório privado criado; PR #1 e `main` final passaram a matriz Windows/Linux, Node.js 22/24, smoke, auditoria de dependências e mutação; probe Hermes isolado passou com `Hermes ACP check OK`.
+**Progress:** Repositório privado criado; `main` e o candidato anterior passaram a matriz Windows/Linux, Node.js 22/24, smoke, auditoria de dependências e mutação. O VSIX autônomo passou localmente no VS Code mínimo e atual; o probe Hermes isolado permanece somente como evidência opcional.
 **Resolution:** Candidate CI/OSV, reconciliação do commit, artefatos/manifesto limpos, reprodução após download e aprovação nomeada registrados.
 
 ## Resolved Blockers

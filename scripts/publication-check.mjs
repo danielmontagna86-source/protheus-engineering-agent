@@ -12,6 +12,8 @@ const requiredFiles = [
   'SECURITY.md',
   'CONTRIBUTING.md',
   'CODE_OF_CONDUCT.md',
+  'GOVERNANCE.md',
+  'SUPPORT.md',
   'CHANGELOG.md',
   'NOTICE',
   'THIRD_PARTY_NOTICES.md',
@@ -23,9 +25,15 @@ const requiredFiles = [
   '.github/workflows/ci.yml',
   '.github/workflows/security.yml',
   '.github/dependabot.yml',
+  '.github/CODEOWNERS',
+  '.github/PULL_REQUEST_TEMPLATE.md',
+  '.github/ISSUE_TEMPLATE/bug_report.yml',
+  '.github/ISSUE_TEMPLATE/feature_request.yml',
+  '.github/ISSUE_TEMPLATE/config.yml',
   '.specs/project/PROJECT.md',
   '.specs/features/public-github-release/spec.md',
   '.specs/features/production-readiness/spec.md',
+  '.specs/features/vscode-first-product/spec.md',
 ];
 
 const ignoredDirectories = new Set(['.git', '.vscode-test', 'coverage', 'dist', 'node_modules', 'release-artifacts']);
@@ -142,8 +150,6 @@ function completeReleaseEvidence(evidence, targetVersion) {
     && evidence.freshInstall.versions.includes('1.95.3')
     && evidence.freshInstall.versions.length >= 2
     && evidence.freshInstall?.vsixSha256 === vsix?.sha256
-    && evidence.hermesProbe?.passed === true
-    && evidence.hermesProbe?.isolated === true
     && completeArtifacts
     && evidence.releaseManifest?.path === `release-artifacts/release-manifest-v${targetVersion}.json`
     && /^[0-9a-f]{64}$/i.test(evidence.releaseManifest?.sha256 ?? '')

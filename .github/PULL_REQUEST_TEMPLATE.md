@@ -1,19 +1,17 @@
-## Specification
-
-Requirement or issue:
-
 ## Change
 
-What changed and why?
+Describe the user-visible outcome and link the applicable specification or issue.
 
-## Risk and security boundary
+## Risk and permissions
 
-What could break or gain access?
+- What can fail?
+- Does this add file, process, network, credential, build or database access?
+- What remains fail-closed?
 
-## Evidence
+## Validation
 
-- [ ] Tests added or updated
-- [ ] `npm run validate` passes
-- [ ] No credentials, private source, `.pea`, `.env`, or personal paths included
-- [ ] Documentation/specs updated
-- [ ] Unverified checks are listed below
+- [ ] Tests were added or updated first.
+- [ ] `npm ci` and `npm run validate` pass.
+- [ ] Relevant smoke, mutation, security or VS Code host tests pass.
+- [ ] Documentation and release evidence are truthful.
+- [ ] No credentials, customer code, personal paths or local `.pea` state are included.

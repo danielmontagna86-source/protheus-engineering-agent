@@ -24,6 +24,9 @@ No unresolved blocker or high-severity code/security finding remains in the loca
 | Medium | The VSIX verifier claimed an allow-list but accepted arbitrary non-sensitive extra entries. | Enforce exactly nine case-insensitive paths and reject extras or case-colliding duplicates. |
 | Medium | An explicit version and executable override could produce misleading smoke evidence. | Exact `--version` takes precedence, the actual CLI version is queried and compared, and the report includes the tested VSIX SHA-256. |
 | Low | Mutation testing copied the large VS Code cache into its sandbox. | Exclude generated VS Code/build/release caches; the final mutation run cleans its sandbox and retains the same score. |
+| High | The core release checker required Hermes even though the product was documented as standalone. | Remove Hermes from required evidence and add a regression proving complete core evidence passes without that field. |
+| Medium | CodeGraph resolved every canonical name to the first declaration, so duplicate statics could point into the wrong source file. | Add a dedicated resolver: same-file static wins, cross-file static is inaccessible, and duplicate global targets stay unresolved as ambiguous. |
+| Low | Feature branches triggered both push and pull-request copies of the full CI. | Apply GitHub Flow triggers to pull requests into `main` and direct pushes to `main`. |
 
 ## Accepted alpha boundaries
 
@@ -35,10 +38,9 @@ No unresolved blocker or high-severity code/security finding remains in the loca
 
 ## Evidence
 
-- 84/84 Node tests pass, with no skips or retries.
-- Three consecutive full-suite executions pass.
+- 90/90 Node tests pass, with no skips or retries.
 - Critical CLI/MCP smoke passes in under one second.
-- Mutation score is 82.79% overall (98.48% policy, 79.33% review) against a 60% breaking threshold.
+- Mutation score is 83.83% overall (98.48% policy, 79.26% review, 94.59% CodeGraph resolver) against a 60% breaking threshold.
 - `npm audit --audit-level=high` reports zero vulnerabilities.
 - The same packaged VSIX hash installs and passes all four commands on VS Code 1.95.3 and 1.133.0.
 - Development publication audit passes; release mode remains blocked by missing candidate CI/OSV, clean-commit artifacts, downloaded-asset proof, and named approval.

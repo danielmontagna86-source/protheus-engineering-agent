@@ -1,0 +1,7 @@
+* @danielmontagna86-source
+
+/.github/ @danielmontagna86-source
+/.specs/ @danielmontagna86-source
+/packages/policy/ @danielmontagna86-source
+/scripts/publication-check.mjs @danielmontagna86-source
+/SECURITY.md @danielmontagna86-source

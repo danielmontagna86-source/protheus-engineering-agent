@@ -32,9 +32,12 @@
     "isolated": true,
     "vsixSha256": null
   },
-  "hermesProbe": {
-    "passed": true,
-    "isolated": true
+  "optionalCompatibility": {
+    "hermes": {
+      "status": "PASS",
+      "isolated": true,
+      "releaseGate": false
+    }
   },
   "artifacts": [],
   "releaseManifest": null,

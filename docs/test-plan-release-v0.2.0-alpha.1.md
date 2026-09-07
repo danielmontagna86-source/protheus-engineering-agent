@@ -12,7 +12,7 @@
 | Environment permissions and containment | HIGH | Unit, integration, negative, symlink/junction | Passed locally |
 | Project Memory, Journal, Skills, Rules | HIGH | Unit, concurrency, limits, filesystem | Passed locally |
 | ADVPL/TLPP CodeGraph and review | HIGH | Unit, encoding, contract, mutation | Passed locally; lexical scope documented |
-| MCP stdio and Hermes descriptors | HIGH | Protocol, process, isolated capability probe | Passed locally; real Hermes probe already recorded |
+| MCP stdio and optional host descriptors | HIGH | Protocol, process, contract tests | Passed locally; optional Hermes compatibility is recorded separately and non-gating |
 | Thin VS Code extension | HIGH | Unit, packaged VSIX install, real Extension Host | Passed locally on VS Code 1.95.3 and 1.133.0 |
 | Public source and VSIX supply chain | HIGH | Secret/path scan, package contents, audit, OSV, checksums | Local checks passed; live OSV/candidate CI pending |
 | TDN, Dictionary, Oracle, compiler/AppServer/RPO | HIGH | Fail-closed contract only | Passed as unavailable; live integration explicitly deferred |
@@ -32,7 +32,7 @@
 
 - [x] Product spec and production-readiness spec are approved.
 - [x] Baseline unit/integration suite passes.
-- [x] Node.js 22, local VS Code, private GitHub repository, and isolated Hermes probe are available.
+- [x] Node.js 22, local VS Code and the private GitHub repository are available; Hermes is not required.
 - [x] Locked development dependencies install with zero reported npm vulnerabilities.
 
 ## Exit criteria

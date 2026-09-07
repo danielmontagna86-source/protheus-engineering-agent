@@ -5,7 +5,7 @@
 
 ## Architecture Overview
 
-The public repository remains a dependency-free Node.js monorepo. Runtime modules own domain behavior; VS Code and Hermes are adapters. Repository policy and CI are a separate release boundary and do not gain access to Protheus environments, credentials or source repositories.
+The public repository remains a Node.js monorepo with a third-party-dependency-free runtime. Runtime modules own domain behavior; VS Code is the primary product adapter and Hermes is optional compatibility. Repository policy and CI are a separate release boundary and do not gain access to Protheus environments, credentials or source repositories.
 
 ```text
 GitHub visitor / contributor
@@ -14,9 +14,9 @@ GitHub visitor / contributor
        -> unit/integration tests + critical-path smoke
        -> structural/publication checks
 
-VS Code -> runtime/CLI -> domain modules
-Hermes ACP -> per-session MCP descriptor -> MCP stdio -> runtime
-                                       -> .pea project data (untrusted)
+VS Code -> bundled runtime/CLI -> domain modules
+Other hosts -> MCP stdio ------> runtime -> .pea project data (untrusted)
+Hermes ACP (optional) -> per-session MCP descriptor
 ```
 
 ## Components
@@ -27,13 +27,13 @@ Hermes ACP -> per-session MCP descriptor -> MCP stdio -> runtime
 - Inputs: repository root and release intent.
 - Outputs: structured PASS/FAIL/BLOCKED report.
 - Checks: full license consistency, required public files, sensitive paths/material, symlinks/local state, target version consistency and versioned release evidence.
-- Release evidence is machine-readable JSON and includes commit, live CI, reviews, VS Code/Hermes smokes, approver and an artifact SHA-256 that the auditor recalculates.
+- Release evidence is machine-readable JSON and includes commit, live CI, reviews, installed-VSIX smokes, approver and artifact SHA-256 values that the auditor recalculates. Optional adapter probes are non-gating.
 - No network access and no file mutation.
 
 ### GitHub CI
 
 - Location: `.github/workflows/ci.yml`.
-- Triggers: push and pull request.
+- Triggers: pull requests into `main` and direct pushes to `main`, avoiding duplicate feature-branch runs.
 - Matrix: Ubuntu/Windows × Node 22/24.
 - Permissions: `contents: read`; no secrets; no `pull_request_target`.
 - Commands: `node --test`, `node scripts/smoke.mjs`, `node scripts/check.mjs` and the development publication audit on the OS/runtime matrix; a focused mutation and dependency-audit job runs once on Ubuntu/Node 22.
@@ -45,7 +45,7 @@ Hermes ACP -> per-session MCP descriptor -> MCP stdio -> runtime
 - Product disclaimer distinguishes independent compatibility tooling from official vendor software.
 - Third-party notices preserve evidence without redistributing third-party source.
 
-### Hermes session adapter
+### Optional Hermes compatibility adapter
 
 - Default `HERMES_HOME`: `<workspace>/.pea/hermes`.
 - Executable override: `PEA_HERMES_COMMAND`.
@@ -53,6 +53,7 @@ Hermes ACP -> per-session MCP descriptor -> MCP stdio -> runtime
 - Skills and Rules are read live for every session snapshot and treated as untrusted project data.
 - `.pea` and the Hermes home are rejected when a symlink/junction could escape the workspace.
 - VS Code carries its Electron-as-Node executable contract through the generated MCP descriptor.
+- The installed VSIX and release gate never require this adapter or a Hermes installation.
 
 ## Error Handling
 

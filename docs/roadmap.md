@@ -11,7 +11,7 @@ Entrega atual:
 - review determinístico e bug sheet;
 - política por ambiente;
 - MCP stdio;
-- adaptador Hermes por contrato;
+- adaptador Hermes experimental por contrato, sem dependência no caminho principal;
 - portas externas fail-closed;
 - supervisor de build injetável;
 - testes e documentação.
@@ -29,14 +29,17 @@ Critérios de aceite:
 
 Em andamento. Já entregue na preparação pública:
 
-- perfil Hermes isolado, capability probe opt-in e descriptors ACP/MCP;
+- VSIX autônomo, com runtime empacotado e quatro comandos sem engine/modelo;
+- compatibilidade Hermes isolada, opt-in e fora do gate de release;
 - Skills/Rules live, limitadas e tratadas como dados não confiáveis;
 - contexto unificado exposto no runtime, CLI, MCP e comando fino do VS Code;
 - specs persistentes, governança, auditor de publicação e CI localmente validada.
 
 Próximos itens:
 
-- cliente ACP ou integração com extensão ACP existente;
+- tools nativas do VS Code para index, contexto e review, com testes determinísticos sem chamada de modelo;
+- chat participant opcional que respeite o modelo escolhido pelo usuário e degrade com clareza quando indisponível;
+- descoberta/configuração MCP para reutilizar as mesmas capacidades fora do VS Code;
 - SDK MCP oficial após licença/SBOM/audit;
 - parser incremental com gramática validada para ADVPL/TLPP;
 - fixtures mínimas e evals derivados de exemplos ADVPL/TLPP validados, com checagem de assinaturas e sem copiar fontes GPL para o produto Apache-2.0;
@@ -48,7 +51,7 @@ Próximos itens:
 
 Critérios de aceite:
 
-- conversa no VS Code usa Hermes e as tools do produto numa sessão isolada;
+- fluxo especialista no VS Code usa as tools do produto sem exigir um orquestrador específico;
 - mudança de skill/rule vale no próximo turno sem quebrar cache da conversa;
 - cada finding especialista cita fonte e versão;
 - compilação só roda após decisão explícita e registra comando/resultado sanitizado;
@@ -81,6 +84,6 @@ Critérios de aceite:
 | Agente executar no ambiente errado | Crítico | capability gate, workspace containment, grants e confirmação humana |
 | Memory/prompt injection | Alto | dados delimitados, limites, proveniência e prioridade do turno atual |
 | Oracle/TDN expor dado ou credencial | Crítico | adapters isolados, read-only, redaction, no fallback |
-| Hermes local defasado | Alto | capability probe, perfil isolado, sem patch no core |
+| Adapter externo incompatível | Médio | contrato versionado, capability probe opt-in e nenhuma dependência no core |
 | Licença/supply chain | Alto | Apache-2.0 explícita, no-copy P0, Actions por SHA e SBOM antes de novas dependências/publicação |
 | Falsa confiança do review | Alto | disclaimer, compilação/testes separados, revisão humana |

@@ -1,32 +1,34 @@
 name: Bug report
-description: Report a reproducible non-security defect
+description: Report a reproducible product defect without sensitive data.
 title: "[Bug]: "
-labels: [bug]
+labels: ["bug", "triage"]
 body:
   - type: markdown
     attributes:
-      value: Do not include credentials, customer source, logs with private data, or security vulnerabilities.
+      value: "Do not include credentials, customer sources, database data, RPO contents or unsanitized production logs."
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: Provide the smallest safe sample and exact steps.
+    validations:
+      required: true
   - type: input
-    id: version
+    id: versions
     attributes:
-      label: Version
+      label: Versions
+      description: Extension, VS Code, Node.js and operating-system versions.
     validations:
       required: true
   - type: textarea
-    id: behavior
+    id: evidence
     attributes:
-      label: Observed behavior
-    validations:
-      required: true
-  - type: textarea
-    id: reproduction
-    attributes:
-      label: Minimal safe reproduction
-    validations:
-      required: true
-  - type: textarea
-    id: expected
-    attributes:
-      label: Expected behavior
-    validations:
-      required: true
+      label: Sanitized evidence
+      description: Add sanitized output or screenshots if they help.

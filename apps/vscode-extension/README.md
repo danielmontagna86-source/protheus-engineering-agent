@@ -1,6 +1,6 @@
 # Protheus Engineering Agent for VS Code
 
-Thin VS Code interface for the Protheus Engineering Agent runtime.
+Standalone VS Code interface for evidence-backed ADVPL/TLPP engineering. The reusable deterministic runtime is bundled into the VSIX.
 
 The alpha provides four commands: Doctor, Index Workspace, Show Engineering Context, and Review Active ADVPL/TLPP File. Domain analysis runs in the bundled reusable runtime; the extension does not replace VS Code's editor, explorer, terminal, Git, diff, or chat interfaces.
 
@@ -9,7 +9,8 @@ This is an independent community project. It is not affiliated with, sponsored b
 ## Safety defaults
 
 - The extension is disabled for untrusted workspaces.
-- Hermes is optional and uses an isolated profile under the workspace.
+- Normal commands require no Hermes, model account, Python, network, Oracle, TDN or AppServer.
+- Experimental Hermes compatibility is optional and uses an isolated profile under the workspace.
 - External integrations are unavailable until explicitly configured and granted.
 - Source, Skills, Rules, logs, and integration results are treated as untrusted project data.
 

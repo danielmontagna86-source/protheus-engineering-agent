@@ -2,13 +2,13 @@
 
 ## Decisão
 
-Adotar um **hexágono local**: o domínio Protheus Engineering vive em módulos sem UI e sem dependência do Hermes; VS Code, Hermes ACP/MCP, TDN, Dictionary, Oracle e compilador são adaptadores nas bordas.
+Adotar um **hexágono local distribuído como um único VSIX**: o domínio Protheus Engineering vive em módulos sem UI e sem dependência de engine; VS Code é a interface primária, MCP é a porta portável e Hermes, TDN, Dictionary, Oracle e compilador são adaptadores opcionais nas bordas.
 
 ```text
-VS Code commands/output
+VS Code commands/output (produto primário)
         |
         v
-Runtime API / CLI -------------------- MCP stdio <---- Hermes ACP session
+Runtime empacotado / CLI ------------- MCP stdio <---- hosts compatíveis
         |
         +-- Project Context (memory + journal)
         +-- ADVPL/TLPP CodeGraph
@@ -23,7 +23,7 @@ Runtime API / CLI -------------------- MCP stdio <---- Hermes ACP session
 ## Invariantes
 
 1. VS Code apresenta e encaminha; não contém regra de negócio.
-2. Hermes orquestra, mas não é o dono do estado especializado do projeto.
+2. Nenhum orquestrador externo é necessário ou dono do estado especializado do projeto.
 3. Memória e resultados externos entram no prompt como dados não confiáveis, delimitados e limitados.
 4. Toda capacidade mutável ou externa passa pela política do ambiente.
 5. `production` exige grant explícito para escrita, build e Oracle.
@@ -31,7 +31,7 @@ Runtime API / CLI -------------------- MCP stdio <---- Hermes ACP session
 7. CodeGraph e review são read-only no P0.
 8. Nenhum módulo assume que compilação, AppServer, RPO, Oracle ou TDN estão disponíveis.
 9. Erros retornam contratos estruturados; stdout MCP permanece exclusivo de JSON-RPC.
-10. O runtime é executável sem extensão, Hermes ou dependências npm.
+10. O VSIX executa sem Hermes, modelo ou instalação separada do runtime; o runtime também é executável fora da extensão sem dependências npm obrigatórias.
 
 ## Data flow de review
 
@@ -41,7 +41,7 @@ Runtime API / CLI -------------------- MCP stdio <---- Hermes ACP session
 4. O reviewer produz findings determinísticos com arquivo, linha, regra e severidade.
 5. O CodeGraph opcional resolve símbolo-alvo e callers/callees.
 6. A bug sheet reconcilia evidência de fonte e impacto do grafo.
-7. Hermes poderá consumir o mesmo resultado via MCP, sem nova implementação.
+7. VS Code tools, Hermes ou qualquer host MCP poderão consumir o mesmo resultado sem nova implementação do domínio.
 
 ## Project Memory e Journal
 
@@ -54,9 +54,15 @@ Runtime API / CLI -------------------- MCP stdio <---- Hermes ACP session
 - colisão ou symlink falha fechada.
 - P1 adicionará locking entre processos e proveniência de commits/builds.
 
-## Hermes integration
+## AI and optional orchestrators
 
-O runtime já entrega o launch descriptor de `hermes acp` e o descriptor MCP da sessão. O `HERMES_HOME` padrão fica em `<workspace>/.pea/hermes`, e `PEA_HERMES_COMMAND` permite localizar o executável sem fixar caminho pessoal. Quando o CLI nasce no Extension Host, o contrato Electron-as-Node é preservado também no MCP iniciado pelo Hermes. O cliente ACP visual no VS Code ainda é P1; o produto não duplica o cliente nem altera o perfil Hermes cotidiano.
+O caminho P1 prioriza tools nativas do VS Code para capacidades que precisam do editor e MCP para capacidades portáveis. O usuário poderá empregar o modelo/orquestrador aceito pelo seu ambiente; o núcleo determinístico continua disponível sem IA.
+
+O adaptador experimental Hermes entrega o launch descriptor de `hermes acp` e o descriptor MCP da sessão. O `HERMES_HOME` padrão fica em `<workspace>/.pea/hermes`, e `PEA_HERMES_COMMAND` permite localizar o executável sem fixar caminho pessoal. O probe é opt-in, não faz parte do gate do núcleo e nunca altera o perfil cotidiano.
+
+## Coexistence with TDS-VSCode
+
+TDS-VSCode permanece responsável por linguagem, LSP/DAP, compilação, depuração, RPO e servidores. Este produto se limita a contexto de engenharia, CodeGraph complementar, revisão baseada em evidência, memória/regras do projeto e integrações supervisionadas.
 
 ## Environment permissions
 

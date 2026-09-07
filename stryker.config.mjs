@@ -2,12 +2,13 @@
 const config = {
   testRunner: 'command',
   commandRunner: {
-    command: 'node --test test/policy.test.mjs test/review.test.mjs',
+    command: 'node --test test/codegraph.test.mjs test/policy.test.mjs test/review.test.mjs',
   },
   coverageAnalysis: 'off',
   mutate: [
     'packages/policy/src/index.mjs',
     'packages/review/src/index.mjs',
+    'packages/codegraph-advpl/src/resolve.mjs',
   ],
   ignorePatterns: ['.vscode-test', 'dist', 'release-artifacts'],
   reporters: ['clear-text', 'progress'],

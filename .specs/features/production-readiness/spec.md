@@ -49,7 +49,8 @@ As a release approver, I can reproduce and roll back a published alpha.
 
 - WHEN release artifacts are built from the final candidate commit THEN every artifact has a SHA-256 entry and the source commit is recorded.
 - WHEN the candidate changes after artifact creation THEN prior artifact evidence is invalidated and must be regenerated.
-- WHEN the release is approved THEN a named approver, final CI URL, code/security review result, VS Code smoke result, Hermes probe result, three artifact checksums, manifest checksum, and fresh-install result are recorded outside the tracked tree and attached to the release.
+- WHEN the release is approved THEN a named approver, final CI URL, code/security review result, VS Code smoke result, three artifact checksums, manifest checksum, and fresh-install result are recorded outside the tracked tree and attached to the release.
+- WHEN optional Hermes compatibility evidence is recorded THEN it is isolated and labelled non-gating.
 - WHEN final evidence is checked THEN it must match the exact commit and artifact set in the checksummed release manifest.
 - WHEN any required proof is missing THEN the release checker returns `BLOCKED` and no tag, release, visibility change, or Marketplace publication is performed.
 

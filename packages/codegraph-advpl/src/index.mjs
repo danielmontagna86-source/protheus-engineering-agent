@@ -1,6 +1,8 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { extname, join, relative, resolve } from 'node:path';
 
+import { resolveCallTarget } from './resolve.mjs';
+
 export const ADVPL_EXTENSIONS = Object.freeze(new Set([
   '.prw', '.prg', '.prx', '.tlpp', '.ppx', '.ppp', '.apw', '.aph',
 ]));
@@ -184,10 +186,13 @@ export async function indexWorkspace(workspacePath) {
 
   const byCanonical = new Map();
   for (const node of nodes) {
-    if (!byCanonical.has(node.canonical)) byCanonical.set(node.canonical, node);
+    const candidates = byCanonical.get(node.canonical) ?? [];
+    candidates.push(node);
+    byCanonical.set(node.canonical, candidates);
   }
   const edges = rawCalls.map((call) => {
-    const target = byCanonical.get(call.calleeCanonical);
+    const candidates = byCanonical.get(call.calleeCanonical) ?? [];
+    const { target, resolution, candidateCount } = resolveCallTarget(call, candidates);
     return {
       from: call.caller,
       to: target?.name ?? call.callee,
@@ -195,6 +200,8 @@ export async function indexWorkspace(workspacePath) {
       line: call.line,
       resolved: Boolean(target),
       targetFile: target?.file ?? null,
+      resolution,
+      candidateCount,
     };
   });
 

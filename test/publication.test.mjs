@@ -13,6 +13,8 @@ const requiredFiles = [
   'SECURITY.md',
   'CONTRIBUTING.md',
   'CODE_OF_CONDUCT.md',
+  'GOVERNANCE.md',
+  'SUPPORT.md',
   'CHANGELOG.md',
   'NOTICE',
   'THIRD_PARTY_NOTICES.md',
@@ -24,9 +26,15 @@ const requiredFiles = [
   '.github/workflows/ci.yml',
   '.github/workflows/security.yml',
   '.github/dependabot.yml',
+  '.github/CODEOWNERS',
+  '.github/PULL_REQUEST_TEMPLATE.md',
+  '.github/ISSUE_TEMPLATE/bug_report.yml',
+  '.github/ISSUE_TEMPLATE/feature_request.yml',
+  '.github/ISSUE_TEMPLATE/config.yml',
   '.specs/project/PROJECT.md',
   '.specs/features/public-github-release/spec.md',
   '.specs/features/production-readiness/spec.md',
+  '.specs/features/vscode-first-product/spec.md',
 ];
 
 async function fixture({ license = 'Apache-2.0', repository = true } = {}) {
@@ -324,6 +332,18 @@ test('release audit accepts final evidence outside the tracked source tree', asy
   assert.equal(report.status, 'PASS');
 });
 
+test('release audit does not require an optional Hermes compatibility probe', async () => {
+  const root = await fixture();
+  const evidencePath = join(root, 'release-evidence', 'v0.2.0-alpha.1.json');
+  const evidence = JSON.parse(await (await import('node:fs/promises')).readFile(evidencePath, 'utf8'));
+  delete evidence.hermesProbe;
+  await writeFile(evidencePath, JSON.stringify(evidence), 'utf8');
+
+  const report = await assessPublication({ root, release: true });
+
+  assert.equal(report.status, 'PASS');
+});
+
 test('audit rejects publishable symbolic links and directory junctions', async () => {
   const root = await fixture();
   const target = join(root, 'link-target');
@@ -380,6 +400,8 @@ test('repository CI has a least-privilege cross-platform matrix', async () => {
   );
 
   assert.match(workflow, /permissions:\s*\n\s+contents: read/);
+  assert.match(workflow, /push:\s*\n\s+branches: \[main\]/);
+  assert.match(workflow, /pull_request:\s*\n\s+branches: \[main\]/);
   assert.match(workflow, /os: \[ubuntu-latest, windows-latest\]/);
   assert.match(workflow, /node: \[22, 24\]/);
   assert.match(workflow, /cancel-in-progress: true/);
@@ -422,7 +444,11 @@ test('public product metadata declares the canonical brand and repository', asyn
   assert.ok(manifest.keywords.includes('vscode'));
   assert.ok(manifest.keywords.includes('mcp'));
   assert.match(readme, /Projeto comunitário independente/);
-  assert.match(readme, /runtime aberto de engenharia para ADVPL\/TLPP/i);
+  assert.match(readme, /Extensão VS Code autônoma para engenharia ADVPL\/TLPP/i);
+  assert.match(readme, /não exige Hermes, conta de IA, modelo, Python/i);
+  assert.deepEqual(extension.categories, ['Linters', 'Testing']);
+  assert.equal(extension.preview, true);
+  assert.match(extension.bugs?.url ?? '', /^https:\/\/github\.com\//);
 });
 
 test('dependency security gate uses pinned actions, fails closed and supports a private repository', async () => {
