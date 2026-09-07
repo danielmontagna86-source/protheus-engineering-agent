@@ -10,7 +10,7 @@
 |---|---|---|
 | Full automated suite | PASS | 90 tests, 90 passed, 0 failed, 0 skipped |
 | Source/manifests | PASS | 40 JavaScript source files and 3 manifests syntax/structure checked |
-| Development publication audit | PASS ON SOURCE | 115 publishable files inspected in the candidate tree; 0 source errors or blockers. Clean-worktree rerun is required after commit because Stryker left an ignored locked sandbox in the active Windows worktree. |
+| Development publication audit | PASS ON CLEAN COMMIT | 115 publishable files inspected in a detached clean worktree from the candidate commit; 0 errors and 0 blockers. Stryker's ignored Windows sandbox residue was excluded by using the committed tree, not by weakening the auditor. |
 | Critical-path smoke | PASS | doctor, index, review and MCP passed in under 1 second |
 | Mutation testing | PASS | 83.83% overall; 98.48% policy; 79.26% review; 94.59% CodeGraph resolver; breaking threshold 60% |
 | Dependency audit | PASS | 0 known vulnerabilities after lockfile resolution |

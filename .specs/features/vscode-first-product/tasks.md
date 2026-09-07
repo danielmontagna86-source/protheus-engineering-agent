@@ -8,5 +8,6 @@
 - [x] Deduplicate pull-request CI runs.
 - [x] Align README, architecture, roadmap, QA and release documentation.
 - [x] Run local unit, integration, mutation, dependency and packaged VSIX gates.
-- [ ] Run the publication audit from the committed clean tree and wait for remote CI/OSV.
+- [x] Run the publication audit from the committed clean tree.
+- [ ] Wait for remote CI/OSV.
 - [ ] Perform final code review and push the reviewed commit to the existing pull request.
