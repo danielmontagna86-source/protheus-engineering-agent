@@ -22,7 +22,8 @@
 | `actionlint` | NOT RUN | executable is not installed in this environment |
 | GitHub Actions live matrix | PASS | final `main` [run 34150665239](https://github.com/danielmontagna86-source/protheus-engineering-agent/actions/runs/34150665239): Windows/Linux, Node.js 22/24, smoke, dependency audit and mutation gate |
 | VS Code Extension Development Host | NOT RUN | interactive smoke remains mandatory before release |
-| External product integrations | NOT RUN BY DESIGN | Hermes live session, compiler, AppServer, RPO, Oracle, TDN and Dictionary remain unconfigured/fail-closed |
+| Hermes ACP probe | PASS | installed Hermes returned `Hermes ACP check OK` from an isolated temporary workspace and profile |
+| External product integrations | NOT RUN BY DESIGN | compiler, AppServer, RPO, Oracle, TDN and Dictionary remain unconfigured/fail-closed |
 
 ## Review corrections now covered by regression tests
 

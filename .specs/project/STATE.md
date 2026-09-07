@@ -56,8 +56,8 @@
 **Discovered:** 2026-09-07
 **Impact:** Blocker para release e visibilidade pública.
 **Workaround:** Manter o remoto privado e o gate de release em `NO-GO`.
-**Progress:** Repositório privado criado; PR #1 e `main` final passaram a matriz Windows/Linux, Node.js 22/24, smoke, auditoria de dependências e mutação.
-**Resolution:** Smokes VS Code/Hermes, reconciliação do commit candidato, checksum e aprovação registrados.
+**Progress:** Repositório privado criado; PR #1 e `main` final passaram a matriz Windows/Linux, Node.js 22/24, smoke, auditoria de dependências e mutação; probe Hermes isolado passou com `Hermes ACP check OK`.
+**Resolution:** Smoke VS Code, reconciliação do commit candidato, checksum e aprovação registrados.
 
 ## Resolved Blockers
 

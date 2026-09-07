@@ -17,7 +17,7 @@
     "passed": false
   },
   "hermesProbe": {
-    "passed": false
+    "passed": true
   },
   "artifact": {
     "path": null,

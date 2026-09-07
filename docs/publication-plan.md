@@ -1,6 +1,6 @@
 # GitHub Publication Plan
 
-**Current decision:** NO-GO for public release. The canonical repository exists privately and its final `main` CI is green, but manual smokes, immutable artifact evidence and final approval are still missing.
+**Current decision:** NO-GO for public release. The canonical repository exists privately, its final `main` CI is green and the isolated Hermes probe passed, but the Extension Development Host smoke, immutable artifact evidence and final approval are still missing.
 
 ## Publication model
 
