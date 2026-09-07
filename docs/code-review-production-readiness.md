@@ -4,7 +4,7 @@
 
 **Scope:** complete `production-readiness` diff against `main`
 
-**Local decision:** PASS; candidate GitHub CI/OSV remains mandatory before merge or release.
+**Local decision:** PASS WITH ACCEPTED ALPHA LIMITS; candidate GitHub CI/OSV remains mandatory before merge or release.
 
 ## Review outcome
 
@@ -27,6 +27,7 @@ No unresolved blocker or high-severity code/security finding remains in the loca
 | High | The core release checker required Hermes even though the product was documented as standalone. | Remove Hermes from required evidence and add a regression proving complete core evidence passes without that field. |
 | Medium | CodeGraph resolved every canonical name to the first declaration, so duplicate statics could point into the wrong source file. | Add a dedicated resolver: same-file static wins, cross-file static is inaccessible, and duplicate global targets stay unresolved as ambiguous. |
 | Low | Feature branches triggered both push and pull-request copies of the full CI. | Apply GitHub Flow triggers to pull requests into `main` and direct pushes to `main`. |
+| Medium | `DbEval` incremented persistent loop depth even though it is a callback function, causing later `GetMV` calls to be reported as inside a loop. | Add a RED regression, restrict `DbEval` CA1003 inspection to its lexical line, document the parser limit, and rerun mutation. |
 
 ## Accepted alpha boundaries
 
@@ -38,9 +39,9 @@ No unresolved blocker or high-severity code/security finding remains in the loca
 
 ## Evidence
 
-- 90/90 Node tests pass, with no skips or retries.
-- Critical CLI/MCP smoke passes in under one second.
-- Mutation score is 83.83% overall (98.48% policy, 79.26% review, 94.59% CodeGraph resolver) against a 60% breaking threshold.
+- 107/107 Node tests pass three consecutive times, with no skips or retries.
+- Critical CLI/MCP smoke passes in 515 ms.
+- Mutation score is 86.67% overall (98.48% policy, 83.93% review, 94.59% CodeGraph resolver) against a 60% breaking threshold; 0 mutation errors.
 - `npm audit --audit-level=high` reports zero vulnerabilities.
-- The same packaged VSIX hash installs and passes all four commands on VS Code 1.95.3 and 1.133.0.
-- Development publication audit passes; release mode remains blocked by missing candidate CI/OSV, clean-commit artifacts, downloaded-asset proof, and named approval.
+- The same packaged VSIX hash `449242b46db502091a567d5d9b80bbff3ebd25a7651609af6dd4b931d9bafe9a` installs and passes all four commands plus native diagnostics on VS Code 1.95.3 and 1.133.0.
+- Active-worktree publication audit intentionally rejects old locked local mutation state. Exact-commit archive audit is the remaining local publication proof; release mode remains blocked by candidate CI/OSV, downloaded-asset proof, visual/TDS UAT, and named approval.

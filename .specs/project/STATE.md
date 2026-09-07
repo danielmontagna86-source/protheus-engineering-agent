@@ -69,6 +69,24 @@
 **Trade-off:** Recursos exclusivos do Hermes não estarão disponíveis no fluxo padrão; compatibilidade continuará sendo testada separadamente.
 **Impact:** O release checker não exige probe Hermes e a documentação não o apresenta como engine do produto.
 
+### AD-010: EngPro is a pinned standards provider, not a bundled oracle (2026-09-07)
+
+**Decision:** Descobrir skills nas raízes `.agents/skills`, `.github/skills` e `.pea/skills`, manter duas skills próprias estreitas e registrar o EngPro oficial por repositório, licença e commit fixado.
+**Reason:** Reaproveitar padrões abertos com proveniência sem copiar cegamente conteúdo externo ou confundir orientação com garantia de correção.
+**Impact:** Skills de projeto são dados não confiáveis, limitados por tamanho/quantidade e deduplicados por precedência documentada.
+
+### AD-011: Marketplace preview uses numeric version 0.3.0 (2026-09-07)
+
+**Decision:** Usar `0.3.0` nos manifests e o sinalizador de pre-release do Marketplace, sem sufixo SemVer no número da extensão.
+**Reason:** O formato de listagem exige versão numérica `major.minor.patch`.
+**Impact:** Metadados, artefatos, specs e evidência usam a mesma versão; o status continua preview/NO-GO até autorização.
+
+### AD-012: Review findings use native VS Code Problems (2026-09-07)
+
+**Decision:** Publicar achados determinísticos como diagnostics nativos, preservando também a saída JSON no canal de evidência.
+**Reason:** Navegação por arquivo/linha entrega valor imediato sem recriar editor, explorer ou interface própria.
+**Impact:** Resultado malformado limpa diagnostics obsoletos e falha de forma visível; o VSIX instalado é o alvo do smoke.
+
 ## Active Blockers
 
 ### B-003: External release evidence is incomplete
@@ -76,7 +94,7 @@
 **Discovered:** 2026-09-07
 **Impact:** Blocker para release e visibilidade pública.
 **Workaround:** Manter o remoto privado e o gate de release em `NO-GO`.
-**Progress:** Repositório privado criado; `main` e o candidato anterior passaram a matriz Windows/Linux, Node.js 22/24, smoke, auditoria de dependências e mutação. O VSIX autônomo passou localmente no VS Code mínimo e atual; o probe Hermes isolado permanece somente como evidência opcional.
+**Progress:** Repositório privado criado; `main` e o candidato anterior passaram a matriz Windows/Linux, Node.js 22/24, smoke, auditoria de dependências e mutação. O candidato `0.3.0` passou localmente no VS Code mínimo e atual; CI/OSV do commit final, screenshots/UAT TDS e evidência externa ainda precisam ser reconciliados.
 **Resolution:** Candidate CI/OSV, reconciliação do commit, artefatos/manifesto limpos, reprodução após download e aprovação nomeada registrados.
 
 ## Resolved Blockers
@@ -118,7 +136,8 @@
 - [x] Escolher licença do produto: Apache-2.0.
 - [x] Escolher owner e slug do GitHub: `danielmontagna86-source/protheus-engineering-agent`.
 - [x] Executar fresh-install smoke local da extensão no VS Code mínimo e atual.
-- [ ] Executar a matriz CI/OSV no PR candidato de production readiness.
+- [ ] Executar e reconciliar a matriz CI/OSV no commit final do PR candidato.
+- [ ] Executar UAT visual/acessível e coexistência com TDS antes da publicação no Marketplace.
 
 ## Preferences
 

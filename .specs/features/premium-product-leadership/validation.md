@@ -38,7 +38,7 @@
 | Dependency audit | `npm audit --audit-level=high` and remote OSV | Local PASS: 0 vulnerabilities; remote OSV pending final commit |
 | Mutation | `npm run test:mutation` | PASS: 86.67%, 428 killed, 1 timeout, 66 survived, 0 errors; no new temp directory |
 | Supply chain | release artifact/SBOM/checksum tests | PASS for exact commit |
-| Code review | evidence review + pre-merge audit | In progress; one `DbEval` scope leak found and fixed test-first |
+| Code review | evidence review + pre-merge audit | PASS WITH ACCEPTED ALPHA LIMITS; one `DbEval` scope leak found and fixed test-first |
 | Remote GitHub | PR CI Windows/Linux Node 22/24 and security | Pending final push |
 | User-facing UAT | clean-profile install, first review, Problems navigation, TDS coexistence | Automated install/review/Problems PASS; visual/accessibility and TDS coexistence pending |
 

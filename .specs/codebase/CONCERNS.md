@@ -15,7 +15,9 @@
 
 - **C-007 MCP implementation:** minimal protocol implementation now enforces exact arguments and a 1 MiB stdio limit; adopt the official SDK after dependency/license/security review.
 - **C-008 Multi-process state:** Project Journal serialization is per process; cross-process locking is not implemented.
-- **C-009 Public CI:** workflow cannot be considered proven until a draft PR run exists in the actual repository.
+- **C-009 Candidate CI:** the workflow passed previously on the repository, but the exact final `0.3.0` commit still requires green PR CI and OSV evidence.
+- **C-013 Local mutation residue:** older ignored `.stryker-tmp` sandboxes are locked by unrelated Windows processes. Publication is verified from the exact committed archive; no broad process termination or unsafe cleanup is performed.
+- **C-014 Skill precedence reservation:** a higher-priority skill directory claims its case-insensitive name even when its `SKILL.md` is invalid, preventing fallback to a lower-priority copy. This fail-closed behavior avoids silent shadow fallback and is documented as intentional.
 
 ## Tooling anomaly
 
@@ -25,6 +27,6 @@
 
 - **C-001 Public license missing:** resolved with Apache-2.0.
 - **C-002 GitHub target missing:** resolved as `danielmontagna86-source/protheus-engineering-agent`.
-- **C-010 Weak mutation resistance:** initial 36.19% score raised to 83.83% with contract and boundary tests.
+- **C-010 Weak mutation resistance:** initial 36.19% score raised to 86.67% with contract and boundary tests.
 - **C-011 Review string/comment false positive:** resolved with lexical code-presence validation for direct metadata access.
 - **C-012 CodeGraph quadratic line lookup:** resolved with a line index, exact-line regression, and sub-second large-source budget.

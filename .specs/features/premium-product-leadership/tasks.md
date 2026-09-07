@@ -160,7 +160,7 @@
 
 ### T-040 — Run complete QA release battery
 
-- **Status:** In progress; local execution is being reconciled in `validation.md`.
+- **Status:** Complete for the local automated candidate; external/visual gates remain explicit NO-GO items in `validation.md`.
 - **Depends on:** All selected milestone tasks complete.
 - **Reuses:** Installed QA skills for bootstrap, unit/API/contract/security/coverage/release readiness plus pre-merge review.
 - **Done when:** `validation.md` contains exact commands, commit, counts, pass/fail/skip, mutation score, audit results, VSIX hash, host versions, and defects.
@@ -168,7 +168,7 @@
 
 ### T-041 — Final code review and exact-tree audit
 
-- **Status:** Planned
+- **Status:** In progress; local diff review passed with accepted alpha limits and exact-commit archive/remote CI remain.
 - **Depends on:** T-040.
 - **Done when:** Diff review has no unresolved blocker/high finding; publication checker passes against an archive of exact HEAD; PR description and evidence match the commit.
 - **Gate:** Clean tracked tree, reviewed commit, remote CI/OSV green.

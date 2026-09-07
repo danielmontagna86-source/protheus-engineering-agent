@@ -8,7 +8,7 @@
 ## Public Alpha Foundation
 
 **Goal:** Disponibilizar um repositório público seguro, reproduzível e útil sem credenciais nem serviços externos.
-**Target:** todos os gates `PUB-001` a `PUB-010` verificados e release `v0.2.0-alpha.1` aprovado.
+**Target:** todos os gates `PUB-001` a `PUB-010` verificados e preview `v0.3.0` aprovado.
 
 ### Features
 
@@ -17,17 +17,19 @@
 - Runtime/CLI, MCP, CodeGraph, review, contexto e permissões.
 - 21 testes P0 aprovados antes do início do P1.
 
-**Standalone VS Code Product** - IN PROGRESS
+**Standalone VS Code Product** - P0 COMPLETE / P1 IN PROGRESS
 
 - VSIX com runtime empacotado e comandos offline.
-- Skills/Rules relidos por snapshot.
+- Skills/Rules relidos por snapshot, raízes padrão e proveniência EngPro fixada.
+- Achados de review publicados no painel Problems nativo.
 - MCP portável e adapters de orquestrador opcionais.
 
-**Public Repository Readiness** - IN PROGRESS
+**Public Repository Readiness** - LOCAL CANDIDATE IN PROGRESS
 
 - Specs, CI, segurança, contribuição e release plan.
 - Remoção de referências privadas e auditoria de publicação.
-- Licença e proprietário do repositório pendentes de decisão.
+- Licença e proprietário do repositório definidos; evidência final e autorização externa permanecem pendentes.
+- Metadados Marketplace `0.3.0`, ícone e walkthrough automatizado concluídos; screenshots, UAT TDS e aprovação externa permanecem pendentes.
 
 ---
 
@@ -61,6 +63,6 @@
 
 ## Future Considerations
 
-- Publicação da extensão no Visual Studio Marketplace após estabilizar o alpha e validar o publisher.
+- Publicação da extensão no Visual Studio Marketplace somente após screenshots/UAT, CI final, validação do publisher e autorização explícita.
 - Pacotes npm separados apenas se houver benefício de consumo externo.
 - Compatibilidade opcional com hosts MCP/ACP sem engine obrigatória.

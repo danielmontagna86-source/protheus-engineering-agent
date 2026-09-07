@@ -30,4 +30,4 @@ Tests create independent temporary directories and are parallel-safe. No test ma
 - Full: `node --test`.
 - Build/publication: full tests, structural check, publication audit, packaged VSIX, real VS Code smoke, npm/OSV security scans, mutation, clean-commit artifacts, and GitHub CI evidence.
 
-Current production-readiness baseline: 84 tests, all passing. Earlier P0 baseline: 21 tests.
+Current pre-final premium-candidate suite: more than 100 unit/integration/contract tests; the exact final count is recorded in `.specs/features/premium-product-leadership/validation.md` after the three-run reliability gate. Earlier P0 baseline: 21 tests.
