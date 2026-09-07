@@ -15,7 +15,7 @@ Machine-readable gate: `release-evidence/v0.2.0-alpha.1.json`. It must remain `N
 - [x] Locked development dependencies report zero known vulnerabilities.
 - [x] Release audit reports explicit blockers instead of silently passing.
 - [x] CLI session and MCP stdio smoke run without external integrations.
-- [ ] GitHub Actions passes on Windows/Linux and Node.js 22/24.
+- [x] GitHub Actions passes on Windows/Linux and Node.js 22/24 for `main` run 34150665239.
 
 ## Product and governance
 
@@ -36,8 +36,7 @@ Machine-readable gate: `release-evidence/v0.2.0-alpha.1.json`. It must remain `N
 
 ## Blocking decisions
 
-1. Create the canonical GitHub repository and obtain a green CI matrix.
-2. Complete live VS Code/Hermes smokes and immutable artifact evidence.
-3. Repeat code/security review on the release commit and record approval.
+1. Complete live VS Code/Hermes smokes and immutable artifact evidence.
+2. Reconcile the release-candidate commit and record final approval.
 
 No tag, GitHub Release, Marketplace package, or public repository visibility change is authorized by this draft.

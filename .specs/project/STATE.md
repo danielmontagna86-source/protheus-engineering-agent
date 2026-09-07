@@ -51,12 +51,13 @@
 
 ## Active Blockers
 
-### B-003: External GitHub release evidence is unavailable
+### B-003: External release evidence is incomplete
 
 **Discovered:** 2026-09-07
 **Impact:** Blocker para release e visibilidade pública.
-**Workaround:** Manter a preparação local e criar o remoto inicialmente privado.
-**Resolution:** CI remoto, smokes VS Code/Hermes, revisão do commit, checksum e aprovação registrados.
+**Workaround:** Manter o remoto privado e o gate de release em `NO-GO`.
+**Progress:** Repositório privado criado; PR #1 e `main` final passaram a matriz Windows/Linux, Node.js 22/24, smoke, auditoria de dependências e mutação.
+**Resolution:** Smokes VS Code/Hermes, reconciliação do commit candidato, checksum e aprovação registrados.
 
 ## Resolved Blockers
 
