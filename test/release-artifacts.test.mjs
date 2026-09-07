@@ -17,9 +17,27 @@ import {
 import { assertNoLinkPath } from '../scripts/path-safety.mjs';
 import { validateReleaseManifest } from '../scripts/verify-release.mjs';
 import { verifyVsix } from '../scripts/verify-vsix.mjs';
+import { npmSbomInvocation } from '../scripts/build-release.mjs';
 
 const version = '0.2.0-alpha.1';
 const prefix = `protheus-engineering-agent-v${version}/`;
+
+test('SBOM invocation uses the active npm CLI for portable Windows execution', () => {
+  const invocation = npmSbomInvocation({
+    platform: 'win32',
+    npmExecPath: 'C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js',
+    nodeExecutable: 'C:\\Program Files\\nodejs\\node.exe',
+  });
+
+  assert.equal(invocation.command, 'C:\\Program Files\\nodejs\\node.exe');
+  assert.deepEqual(invocation.args, [
+    'C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js',
+    'sbom',
+    '--sbom-format',
+    'cyclonedx',
+  ]);
+  assert.equal(invocation.shell, false);
+});
 
 function sourceArchive(path, extraEntries = []) {
   const zip = new AdmZip();

@@ -16,6 +16,26 @@ import { assertNoLinkPath } from './path-safety.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
+export function npmSbomInvocation({
+  platform = process.platform,
+  npmExecPath = process.env.npm_execpath,
+  nodeExecutable = process.execPath,
+} = {}) {
+  const sbomArgs = ['sbom', '--sbom-format', 'cyclonedx'];
+  if (npmExecPath) {
+    return {
+      command: nodeExecutable,
+      args: [npmExecPath, ...sbomArgs],
+      shell: false,
+    };
+  }
+  return {
+    command: platform === 'win32' ? 'npm.cmd' : 'npm',
+    args: sbomArgs,
+    shell: platform === 'win32',
+  };
+}
+
 export async function buildRelease() {
   const dirty = git(root, ['status', '--porcelain=v1', '--untracked-files=all']);
   if (dirty) throw new Error('release artifacts require a clean tracked and untracked source tree');
@@ -45,12 +65,13 @@ export async function buildRelease() {
   if (archive.status !== 0) throw new Error(`git archive failed: ${String(archive.stderr).trim()}`);
 
   const vsix = await packageExtension();
-  const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  const sbomResult = spawnSync(npmCommand, ['sbom', '--sbom-format', 'cyclonedx'], {
+  const npmInvocation = npmSbomInvocation();
+  const sbomResult = spawnSync(npmInvocation.command, npmInvocation.args, {
     cwd: root,
     encoding: 'utf8',
     maxBuffer: 20 * 1024 * 1024,
     windowsHide: true,
+    shell: npmInvocation.shell,
   });
   if (sbomResult.error) throw sbomResult.error;
   if (sbomResult.status !== 0) throw new Error(`npm sbom failed: ${String(sbomResult.stderr).trim()}`);
