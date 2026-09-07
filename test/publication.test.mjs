@@ -425,14 +425,16 @@ test('public product metadata declares the canonical brand and repository', asyn
   assert.match(readme, /runtime aberto de engenharia para ADVPL\/TLPP/i);
 });
 
-test('dependency security gate is pinned, fail-closed and compatible with the private preparation repository', async () => {
+test('dependency security gate uses pinned actions, fails closed and supports a private repository', async () => {
   const workflow = await (await import('node:fs/promises')).readFile(
     new URL('../.github/workflows/security.yml', import.meta.url),
     'utf8',
   );
 
-  assert.match(workflow, /google\/osv-scanner-action\/\.github\/workflows\/osv-scanner-reusable\.yml@8deb546fdb875b9996d27d4950be7312dac076a1/);
-  assert.match(workflow, /fail-on-vuln: true/);
-  assert.match(workflow, /upload-sarif: false/);
+  assert.match(workflow, /actions\/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8/);
+  assert.match(workflow, /google\/osv-scanner-action\/osv-scanner-action@06b2ab4348248b456ee06c9e953637f55e03504f/);
+  assert.match(workflow, /--lockfile=package-lock\.json/);
+  assert.doesNotMatch(workflow, /continue-on-error:\s*true/);
+  assert.doesNotMatch(workflow, /security-events:\s*write/);
   assert.doesNotMatch(workflow, /pull_request_target/);
 });

@@ -60,7 +60,7 @@
 - Modify: `SECURITY.md`, `THIRD_PARTY_NOTICES.md`
 - Modify: `test/publication.test.mjs`
 
-1. Add OSV dependency scanning from the official pinned reusable workflow.
+1. Add OSV dependency scanning from the official action pinned to its release commit; use a least-privilege direct job while the private repository cannot grant the reusable workflow's SARIF permission.
 2. Add Dependabot for npm and GitHub Actions.
 3. Document OWASP 2025 and OWASP LLM/agent coverage, including explicit N/A/deferred rows.
 4. Test that untrusted-data and fail-closed claims remain present in the product contract.
