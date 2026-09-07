@@ -8,7 +8,7 @@
 
 | Gate | Result | Evidence |
 |---|---|---|
-| Full automated suite | PASS | 83 tests, 83 passed, 0 failed, 0 skipped |
+| Full automated suite | PASS | 84 tests, 84 passed, 0 failed, 0 skipped |
 | Source/manifests | PASS | 39 JavaScript source files and 3 manifests syntax/structure checked |
 | Development publication audit | PASS | 105 files inspected; 0 errors, 0 blockers |
 | Critical-path smoke | PASS | doctor, index, review and MCP passed in under 1 second |

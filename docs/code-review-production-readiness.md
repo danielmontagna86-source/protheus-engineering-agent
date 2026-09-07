@@ -33,7 +33,7 @@ No unresolved blocker or high-severity code/security finding remains in the loca
 
 ## Evidence
 
-- 83/83 Node tests pass, with no skips or retries.
+- 84/84 Node tests pass, with no skips or retries.
 - Three consecutive full-suite executions pass.
 - Critical CLI/MCP smoke passes in under one second.
 - Mutation score is 82.79% overall (98.48% policy, 79.33% review) against a 60% breaking threshold.

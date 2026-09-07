@@ -7,7 +7,7 @@ Tracked machine-readable draft: `release-evidence/v0.2.0-alpha.1.json`. It remai
 
 ## Automated evidence
 
-- [x] Local unit and integration suite passes: 83/83.
+- [x] Local unit and integration suite passes: 84/84.
 - [x] Source/manifests structural check passes.
 - [x] Development publication audit passes.
 - [x] Dependency-free CLI/MCP release smoke passes locally in under five minutes.

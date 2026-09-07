@@ -3,7 +3,7 @@
 **Date:** 2026-09-07
 **Decision:** Local development gate PASS; public release NO-GO.
 
-Latest local run: 83/83 tests passed, 39 source files and 3 manifests checked, and 105 publication files were inspected with zero development errors. The CLI/MCP smoke passed in under one second, npm audit reported zero vulnerabilities, and the focused mutation score reached 82.79%. The packaged VSIX was installed into isolated profiles and all four commands passed on VS Code 1.95.3 and 1.133.0. Candidate CI/OSV and clean-commit reconciliation remain pending.
+Latest local run: 84/84 tests passed, 39 source files and 3 manifests checked, and 105 publication files were inspected with zero development errors. The CLI/MCP smoke passed in under one second, npm audit reported zero vulnerabilities, and the focused mutation score reached 82.79%. The packaged VSIX was installed into isolated profiles and all four commands passed on VS Code 1.95.3 and 1.133.0. Candidate CI/OSV and clean-commit reconciliation remain pending.
 
 ## Requirement traceability
 
