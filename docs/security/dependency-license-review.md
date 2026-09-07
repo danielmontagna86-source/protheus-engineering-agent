@@ -1,6 +1,7 @@
 # Dependency and License Review
 
-**Assessment date:** 2026-09-07  
+**Assessment date:** 2026-09-07
+
 **Decision:** PASS for the alpha source release and VSIX; review again whenever `package-lock.json` changes.
 
 ## Distribution boundary

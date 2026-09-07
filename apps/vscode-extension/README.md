@@ -14,4 +14,3 @@ This is an independent community project. It is not affiliated with, sponsored b
 - Source, Skills, Rules, logs, and integration results are treated as untrusted project data.
 
 Project source, documentation, limitations, and security reporting are available at https://github.com/danielmontagna86-source/protheus-engineering-agent.
-

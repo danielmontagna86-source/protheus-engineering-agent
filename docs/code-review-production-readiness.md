@@ -1,7 +1,9 @@
 # Production Readiness Code Review
 
-**Date:** 2026-09-07  
-**Scope:** complete `production-readiness` diff against `main`  
+**Date:** 2026-09-07
+
+**Scope:** complete `production-readiness` diff against `main`
+
 **Local decision:** PASS; candidate GitHub CI/OSV remains mandatory before merge or release.
 
 ## Review outcome
