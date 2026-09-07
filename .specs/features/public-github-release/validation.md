@@ -16,7 +16,7 @@ Latest clean run: 59/59 tests passed, 28 source files and 2 manifests checked, 7
 | PUB-005 | Apache-2.0 manifest/license/full-text checks | owner selected Apache-2.0 | PASS |
 | PUB-006 | versioned JSON evidence and recalculated artifact hash | live CI recorded; protected branch, artifact and approver pending | PARTIAL / BLOCKED |
 | PUB-007 | thin adapter, Electron/Node and multi-root tests | Extension Development Host smoke | AUTOMATED PASS / MANUAL PENDING |
-| PUB-008 | isolated descriptors and `.pea` junction rejection | supported Hermes installation probe | AUTOMATED PASS / MANUAL PENDING |
+| PUB-008 | isolated descriptors and `.pea` junction rejection | installed Hermes returned `Hermes ACP check OK` from an isolated profile | PASS |
 | PUB-009 | Portuguese/English README and limitation checks | editorial review | LOCAL PASS |
 | PUB-010 | `release-evidence/v0.2.0-alpha.1.json` fail-closed schema | CI and reviews recorded; manual smokes, artifact and approval pending | PARTIAL / BLOCKED |
 
@@ -33,7 +33,7 @@ Latest clean run: 59/59 tests passed, 28 source files and 2 manifests checked, 7
 ## Deliberately unavailable evidence
 
 - `actionlint` is not installed locally.
-- Extension Development Host and live Hermes session smokes have not been executed for this candidate.
+- Extension Development Host smoke has not been executed for this candidate.
 - No compiler, AppServer, RPO, Oracle, TDN or Dictionary integration was configured or invoked.
 
 The release audit must remain non-zero until manual smokes, release-candidate reconciliation, artifact checksum and approval evidence are complete.

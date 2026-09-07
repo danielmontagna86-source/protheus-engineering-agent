@@ -30,13 +30,13 @@ Machine-readable gate: `release-evidence/v0.2.0-alpha.1.json`. It must remain `N
 
 - [x] Independent review of the current local tree has no blocking or high-severity finding; repeat on the release commit.
 - [ ] VS Code Extension Development Host executes all four commands.
-- [ ] Hermes session integration is exercised with an isolated profile on a supported installation.
+- [x] Hermes ACP integration probe passes with an isolated profile on the installed supported runtime.
 - [ ] Release archive is audited and its SHA-256 is recorded.
 - [ ] Fresh download reproduces the automated gate.
 
 ## Blocking decisions
 
-1. Complete live VS Code/Hermes smokes and immutable artifact evidence.
+1. Complete the live VS Code smoke and immutable artifact evidence.
 2. Reconcile the release-candidate commit and record final approval.
 
 No tag, GitHub Release, Marketplace package, or public repository visibility change is authorized by this draft.
