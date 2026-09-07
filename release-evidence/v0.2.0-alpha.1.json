@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "version": "0.2.0-alpha.1",
   "status": "NO-GO",
-  "commit": null,
+  "commit": "6ec1518437ef001c51143c6f554ac8d148ecc7b0",
   "ci": {
-    "passed": false,
-    "url": null
+    "passed": true,
+    "url": "https://github.com/danielmontagna86-source/protheus-engineering-agent/actions/runs/34150665239"
   },
   "codeReview": {
-    "passed": false
+    "passed": true
   },
   "securityReview": {
-    "passed": false
+    "passed": true
   },
   "vscodeSmoke": {
     "passed": false

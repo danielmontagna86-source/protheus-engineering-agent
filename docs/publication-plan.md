@@ -1,6 +1,6 @@
 # GitHub Publication Plan
 
-**Current decision:** NO-GO for public release. Apache-2.0 and `danielmontagna86-source/protheus-engineering-agent` are configured, but the remote CI and external release evidence are still missing.
+**Current decision:** NO-GO for public release. The canonical repository exists privately and its final `main` CI is green, but manual smokes, immutable artifact evidence and final approval are still missing.
 
 ## Publication model
 
@@ -10,8 +10,8 @@ The first public channel is a GitHub source release. VS Code Marketplace and npm
 2. Use the canonical GitHub URL `https://github.com/danielmontagna86-source/protheus-engineering-agent`.
 3. Run `npm run validate`, `npm run smoke` and `npm run publication:release-check`.
 4. Initialize a fresh Git repository from this product tree; do not import history, caches, credentials, `.pea`, or the LionCodeLabs/Hermes repositories.
-5. Create the GitHub repository as private, push a preparation branch, and open a draft pull request.
-6. Confirm all four CI matrix jobs on GitHub: Windows/Linux and Node.js 22/24.
+5. Create the GitHub repository as private, push a preparation branch, and open a draft pull request. Completed on 2026-09-07.
+6. Confirm all four CI matrix jobs on GitHub: Windows/Linux and Node.js 22/24. Completed for `main` commit `6ec1518` in [run 34150665239](https://github.com/danielmontagna86-source/protheus-engineering-agent/actions/runs/34150665239).
 7. Run the VS Code Extension Development Host smoke and record evidence in the release checklist.
 8. Resolve code/security review findings, update the changelog, bump all version fields together, and rerun the release audit.
 9. Protect `main` with pull-request review and required CI checks.

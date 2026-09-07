@@ -20,12 +20,13 @@
 | Independent code/security review | PASS | no blocking or high-severity finding remains after three correction passes |
 | Release publication audit | BLOCKED AS DESIGNED | only completed external release evidence is missing |
 | `actionlint` | NOT RUN | executable is not installed in this environment |
-| GitHub Actions live matrix | NOT RUN | no remote/draft pull request exists yet |
+| GitHub Actions live matrix | PASS | final `main` [run 34150665239](https://github.com/danielmontagna86-source/protheus-engineering-agent/actions/runs/34150665239): Windows/Linux, Node.js 22/24, smoke, dependency audit and mutation gate |
 | VS Code Extension Development Host | NOT RUN | interactive smoke remains mandatory before release |
 | External product integrations | NOT RUN BY DESIGN | Hermes live session, compiler, AppServer, RPO, Oracle, TDN and Dictionary remain unconfigured/fail-closed |
 
 ## Review corrections now covered by regression tests
 
+- The first private CI exposed a Windows-only assertion that assumed the environment key was spelled `PATH`; PR [#1](https://github.com/danielmontagna86-source/protheus-engineering-agent/pull/1) made the check case-insensitive and both the PR and merged `main` matrices passed.
 - The thin VS Code extension runs its CLI through Electron-as-Node and carries that executable contract into the MCP descriptor used by Hermes.
 - A multi-root VS Code window selects the folder that owns the active source file.
 - Source review validates the real path before reading.
