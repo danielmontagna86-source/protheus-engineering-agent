@@ -44,7 +44,9 @@ The process defaults to the `production` policy. Project Memory writes require a
 
 ## VS Code extension
 
-Open this repository in VS Code, start `Run Protheus Engineering Agent Extension`, open an ADVPL/TLPP workspace in the Extension Development Host, and run the four `Protheus Agent` commands from the command palette.
+Run `npm ci`, open this repository in VS Code, and start `Run Protheus Engineering Agent Extension`. Its pre-launch task builds the self-contained runtime before opening the Extension Development Host. To produce the audited GitHub Release package, run `npm run package:extension`; the VSIX is written under `release-artifacts/`.
+
+Open an ADVPL/TLPP workspace and run the four `Protheus Agent` commands from the command palette. `npm run test:vscode:host` installs the VSIX and exercises all four commands in an isolated current VS Code instance; `npm run test:vscode:minimum` repeats it on the supported 1.95.3 baseline.
 
 The extension delegates to the runtime. It does not replace VS Code's editor, terminal, explorer, Git, diff, or chat surfaces.
 
@@ -53,6 +55,9 @@ The extension delegates to the runtime. It does not replace VS Code's editor, te
 ```sh
 npm run validate
 npm run smoke
+npm run package:extension
+npm run test:vscode:host
+npm run test:vscode:minimum
 npm run publication:release-check
 ```
 

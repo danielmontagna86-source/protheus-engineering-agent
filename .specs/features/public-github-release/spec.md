@@ -51,8 +51,9 @@ As a user, I know what rights I have.
 As a maintainer, I can cut a traceable release without publishing from an unreviewed branch.
 
 - WHEN `v0.2.0-alpha.1` is proposed THEN CI, code review, security review, smoke tests and changelog are complete.
-- WHEN artifacts are uploaded THEN checksums and source provenance accompany them.
-- WHEN release readiness runs THEN it recalculates the declared artifact SHA-256 and rejects an external, missing or symlinked artifact.
+- WHEN source ZIP, VSIX, and CycloneDX SBOM are uploaded THEN checksums and source provenance accompany them.
+- WHEN release readiness runs THEN it recalculates every declared artifact and manifest SHA-256 and rejects an outside-root, missing or symlinked artifact.
+- WHEN final evidence is completed THEN it lives outside the tracked source tree and matches the exact commit and artifact set recorded by the release manifest.
 - WHEN main is configured THEN required checks and pull-request review protect it.
 
 ### PUB-007: Thin VS Code experience

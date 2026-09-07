@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readFile } from 'node:fs/promises';
 
 const require = createRequire(import.meta.url);
 const productRoot = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -56,7 +57,7 @@ test('extension registers only thin orchestration commands and delegates doctor 
   const context = { subscriptions: [] };
 
   controller.activate(context);
-  await fake.handlers.get('pea.doctor')();
+  const doctorResult = await fake.handlers.get('pea.doctor')();
   await fake.handlers.get('pea.openContext')();
 
   assert.deepEqual([...fake.handlers.keys()].sort(), [
@@ -66,7 +67,26 @@ test('extension registers only thin orchestration commands and delegates doctor 
   assert.deepEqual(calls[1].args.slice(-2), ['session', 'C:\\workspace']);
   assert.equal(calls[0].options.env.ELECTRON_RUN_AS_NODE, '1');
   assert.equal(calls[0].options.env.PEA_NODE_COMMAND, process.execPath);
+  assert.match(calls[0].options.env.PEA_MCP_SERVER_PATH, /dist[\\/]mcp-stdio\.mjs$/);
+  assert.equal(calls[0].options.timeout, 120_000);
+  assert.equal(doctorResult.trim(), '{"ok":true}');
   assert.equal(fake.output.join('\n').includes('"ok":true'), true);
+});
+
+test('extension defaults to the bundled runtime shipped beside its entry point', async () => {
+  const fake = fakeVscode();
+  const calls = [];
+  const controller = extension.createExtension(fake.api, {
+    execFile(command, args, options, callback) {
+      calls.push({ command, args, options });
+      callback(null, '{"ok":true}', '');
+    },
+  });
+  controller.activate({ subscriptions: [] });
+
+  await fake.handlers.get('pea.doctor')();
+
+  assert.match(calls[0].args[0], /apps[\\/]vscode-extension[\\/]dist[\\/]runtime-cli\.mjs$/);
 });
 
 test('review command fails safely when there is no active editor', async () => {
@@ -109,4 +129,17 @@ test('review uses the workspace folder that owns the active file in a multi-root
     'review', 'D:\\protheus-two\\source.prw', 'D:\\protheus-two',
   ]);
   assert.equal(calls[0].options.cwd, 'D:\\protheus-two');
+});
+
+test('real host smoke installs the packaged VSIX before exercising commands', async () => {
+  const runner = await readFile(join(productRoot, 'scripts', 'run-vscode-smoke.mjs'), 'utf8');
+  const host = await readFile(join(productRoot, 'integration', 'vscode-host', 'index.cjs'), 'utf8');
+
+  assert.match(runner, /packageExtension/);
+  assert.match(runner, /--install-extension/);
+  assert.match(runner, /extensionDevelopmentPath:\s*hostRoot/);
+  assert.match(runner, /installedVsix:\s*true/);
+  assert.match(runner, /vsixSha256:\s*await sha256\(packaged\.path\)/);
+  assert.match(runner, /--version requires an exact VS Code version/);
+  assert.match(host, /vscode\.extensions\.getExtension\('danielmontagna86-source\.protheus-engineering-agent'\)/);
 });

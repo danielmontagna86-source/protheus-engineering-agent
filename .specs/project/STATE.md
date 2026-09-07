@@ -1,7 +1,7 @@
 # State
 
 **Last Updated:** 2026-09-07
-**Current Work:** Public GitHub Release - local preparation and review
+**Current Work:** Production-ready public GitHub release candidate
 
 ---
 
@@ -49,6 +49,19 @@
 **Trade-off:** `Protheus` é marca de terceiro e exige disclaimer permanente, identidade visual independente e revisão jurídica antes de exploração comercial relevante.
 **Impact:** Metadados, READMEs e documentação usam uma promessa funcional e não alegam afiliação ou suporte oficial.
 
+### AD-007: Final release evidence lives outside the tracked tree (2026-09-07)
+
+**Decision:** Manter no Git apenas o draft `NO-GO`; gerar o template final em `release-artifacts/` e vinculá-lo por SHA-256 ao manifesto e ao commit exatos.
+**Reason:** Alterar evidência final rastreada mudaria o próprio commit que ela pretende atestar.
+**Trade-off:** A evidência final precisa ser anexada ao GitHub Release junto com os artefatos.
+**Impact:** O auditor aceita `--evidence release-artifacts/<arquivo>.json`, verifica contenção, checksum, commit, conjunto de artefatos e todas as verificações do manifesto.
+
+### AD-008: VS Code smoke validates the installed VSIX (2026-09-07)
+
+**Decision:** Instalar o pacote em diretório de extensões temporário antes de executar os quatro comandos.
+**Reason:** O modo de desenvolvimento não comprova que o arquivo distribuído pode ser instalado e carregado.
+**Impact:** VS Code 1.95.3 e 1.133.0 passaram localmente; a primeira tentativa encontrou permissões ZIP não graváveis e virou regressão automatizada.
+
 ## Active Blockers
 
 ### B-003: External release evidence is incomplete
@@ -57,7 +70,7 @@
 **Impact:** Blocker para release e visibilidade pública.
 **Workaround:** Manter o remoto privado e o gate de release em `NO-GO`.
 **Progress:** Repositório privado criado; PR #1 e `main` final passaram a matriz Windows/Linux, Node.js 22/24, smoke, auditoria de dependências e mutação; probe Hermes isolado passou com `Hermes ACP check OK`.
-**Resolution:** Smoke VS Code, reconciliação do commit candidato, checksum e aprovação registrados.
+**Resolution:** Candidate CI/OSV, reconciliação do commit, artefatos/manifesto limpos, reprodução após download e aprovação nomeada registrados.
 
 ## Resolved Blockers
 
@@ -97,8 +110,8 @@
 
 - [x] Escolher licença do produto: Apache-2.0.
 - [x] Escolher owner e slug do GitHub: `danielmontagna86-source/protheus-engineering-agent`.
-- [ ] Executar smoke manual da extensão antes do primeiro release.
-- [ ] Executar a matriz CI no primeiro draft PR.
+- [x] Executar fresh-install smoke local da extensão no VS Code mínimo e atual.
+- [ ] Executar a matriz CI/OSV no PR candidato de production readiness.
 
 ## Preferences
 

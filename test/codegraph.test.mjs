@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { performance } from 'node:perf_hooks';
 
 import {
   decodeSource,
@@ -26,9 +27,11 @@ test('parser finds functions and real calls without matching comments or strings
   const graph = parseAdvplSource(source, { file: 'sample.prw' });
 
   assert.deepEqual(graph.symbols.map((item) => item.name), ['EntryPoint', 'Helper']);
+  assert.deepEqual(graph.symbols.map((item) => item.line), [2, 8]);
   assert.deepEqual(graph.calls.map((item) => [item.caller, item.callee]), [
     ['EntryPoint', 'Helper'],
   ]);
+  assert.deepEqual(graph.calls.map((item) => item.line), [5]);
 });
 
 test('workspace index resolves case-insensitive calls across source files', async () => {
@@ -64,4 +67,20 @@ test('source decoding falls back to Windows-1252 without corrupting accents', ()
 
   assert.equal(decoded.encoding, 'windows-1252');
   assert.match(decoded.text, /Função/);
+});
+
+test('parser stays within the large-source performance budget', () => {
+  const source = Array.from({ length: 5_000 }, (_, index) => [
+    `Static Function Perf${index}()`,
+    `    Perf${Math.max(0, index - 1)}()`,
+    'Return',
+  ].join('\n')).join('\n');
+
+  const startedAt = performance.now();
+  const graph = parseAdvplSource(source, { file: 'large.prw' });
+  const durationMs = performance.now() - startedAt;
+
+  assert.equal(graph.symbols.length, 5_000);
+  assert.equal(graph.calls.length, 5_000);
+  assert.ok(durationMs < 1_000, `large-source parse took ${durationMs.toFixed(1)} ms`);
 });

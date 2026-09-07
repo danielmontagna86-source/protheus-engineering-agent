@@ -17,9 +17,13 @@ This repository is an independent compatibility project. Product and company nam
 - Repository license: MIT.
 - Used only to confirm the supported ACP, MCP, plugin, permission and profile contracts. No Hermes source file was copied or modified.
 
-## Runtime dependencies
+## Runtime and build dependencies
 
-The P0 implementation uses Node.js standard-library modules only. It does not redistribute LionCodeLabs, Hermes Agent, Electron, React, SQLite bindings, ACP SDK or MCP SDK packages.
+The alpha runtime uses Node.js standard-library modules only. The VSIX contains generated bundles of this project's own runtime modules and does not redistribute LionCodeLabs, Hermes Agent, React, SQLite bindings, ACP SDK or MCP SDK packages.
+
+Development and release tooling is locked in `package-lock.json`: `@vscode/test-electron` and `@vscode/vsce` (Microsoft, MIT), `esbuild` (MIT), `adm-zip` (MIT), and Stryker Mutator (Apache-2.0). These tools and their transitive dependencies are not included in the VSIX. Their installed license metadata is part of the release dependency review.
+
+The resolved review, including dual-license and VSCE signing-tool treatment, is recorded in [`docs/security/dependency-license-review.md`](docs/security/dependency-license-review.md).
 
 ## GitHub Actions
 

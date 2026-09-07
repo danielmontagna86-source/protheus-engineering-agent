@@ -39,6 +39,7 @@ Próximos itens:
 - cliente ACP ou integração com extensão ACP existente;
 - SDK MCP oficial após licença/SBOM/audit;
 - parser incremental com gramática validada para ADVPL/TLPP;
+- fixtures mínimas e evals derivados de exemplos ADVPL/TLPP validados, com checagem de assinaturas e sem copiar fontes GPL para o produto Apache-2.0;
 - persistência versionada e locking entre processos;
 - TDN MCP e Dictionary com proveniência/cache;
 - adapter Protheus IA Lab para RAG/evals;

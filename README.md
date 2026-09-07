@@ -65,7 +65,20 @@ Para conceder escrita de Project Memory ao processo, defina `PEA_GRANTS=context:
 
 ## Extensão VS Code
 
-Abra a raiz deste produto no VS Code e execute a configuração `Run Protheus Engineering Agent Extension` com `F5`. No Extension Development Host, abra um workspace Protheus e use a paleta:
+Para desenvolvimento, instale as dependências bloqueadas no lockfile, abra a raiz deste produto no VS Code e execute `Run Protheus Engineering Agent Extension` com `F5`. A tarefa de inicialização gera o runtime autocontido antes de abrir o Extension Development Host.
+
+```sh
+npm ci
+```
+
+Para gerar o mesmo VSIX auditado que será anexado ao GitHub Release:
+
+```sh
+npm run package:extension
+code --install-extension release-artifacts/protheus-engineering-agent-v0.2.0-alpha.1.vsix
+```
+
+No workspace ADVPL/TLPP, use a paleta:
 
 - `Protheus Agent: Doctor`
 - `Protheus Agent: Index Workspace`
@@ -98,16 +111,19 @@ plan/                         plano executável por fases
 ```sh
 npm run validate
 npm run smoke
+npm run package:extension
+npm run test:vscode:host
+npm run test:vscode:minimum
 npm run publication:release-check
 ```
 
-`validate` é o gate local completo. `smoke` comprova o caminho crítico CLI/MCP em menos de cinco minutos. O gate de release é deliberadamente mais rigoroso e permanece bloqueado sem evidências reais de CI, revisões e smokes externos. O CI repete testes, smoke e verificações estruturais em Windows e Linux.
+`validate` é o gate determinístico do código-fonte. `smoke` comprova o caminho crítico CLI/MCP em menos de cinco minutos. Os smokes do VS Code instalam o VSIX em um diretório temporário, usam perfil isolado e executam os quatro comandos reais no VS Code atual ou no mínimo 1.95.3. O gate de release é deliberadamente mais rigoroso e permanece bloqueado sem evidências reais do commit candidato, CI, revisões, artefatos e aprovação. O CI repete testes, smoke e verificações estruturais em Windows e Linux.
 
 ## Limites atuais
 
 - O CodeGraph usa uma análise léxica deliberadamente pequena, não uma gramática completa.
 - O review é um pre-gate determinístico; não substitui compilação, análise oficial, testes funcionais ou revisão humana.
-- A extensão ainda não implementa um cliente ACP de chat.
+- A extensão ainda não implementa um cliente ACP de chat; o alpha distribuível contém os quatro comandos determinísticos.
 - Nenhuma integração externa foi configurada ou exercitada.
 - Integrações externas permanecem fail-closed e não recebem credenciais implicitamente.
 - O produto é distribuído sob a licença [Apache-2.0](LICENSE.md); avisos e licenças de referências permanecem separados.

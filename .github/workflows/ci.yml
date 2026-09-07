@@ -29,6 +29,8 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           package-manager-cache: false
+      - name: Install locked dependencies
+        run: npm ci
       - name: Test
         run: node --test
       - name: Smoke critical CLI and MCP path
@@ -56,3 +58,22 @@ jobs:
         run: npm audit --audit-level=high
       - name: Mutation gate
         run: npm run test:mutation
+
+  vscode-extension-host:
+    name: VS Code Extension Host
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Install locked build and test dependencies
+        run: npm ci
+      - name: Build and verify installable VSIX
+        run: npm run package:extension
+      - name: Exercise all extension commands in VS Code
+        run: xvfb-run -a npm run test:vscode:minimum

@@ -1,0 +1,7 @@
+**/.git/**
+**/.pea/**
+**/node_modules/**
+**/test/**
+**/*.map
+.vscodeignore
+

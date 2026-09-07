@@ -1,9 +1,11 @@
 .pea/
 .worktrees/
 .stryker-tmp/
+.vscode-test/
 node_modules/
 coverage/
 dist/
+release-artifacts/
 *.vsix
 *.log
 .env

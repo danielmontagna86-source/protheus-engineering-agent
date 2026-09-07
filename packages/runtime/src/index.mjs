@@ -25,10 +25,13 @@ export function createRuntime(options) {
   const runtimeDirectory = dirname(fileURLToPath(import.meta.url));
   const hermesOptions = options.hermes ?? {};
   const nodeCommand = hermesOptions.nodeCommand ?? process.env.PEA_NODE_COMMAND ?? process.execPath;
+  const mcpServerPath = hermesOptions.mcpServerPath
+    ?? process.env.PEA_MCP_SERVER_PATH
+    ?? resolve(runtimeDirectory, '..', '..', 'mcp', 'src', 'stdio.mjs');
   const hermesHome = resolve(hermesOptions.hermesHome ?? join(workspace, '.pea', 'hermes'));
   assertInside(workspace, hermesHome);
   const hermes = options.hermesAdapter ?? createHermesAdapter({
-    mcpServerPath: resolve(runtimeDirectory, '..', '..', 'mcp', 'src', 'stdio.mjs'),
+    mcpServerPath,
     environment: 'production',
     ...hermesOptions,
     hermesHome,

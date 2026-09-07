@@ -6,6 +6,8 @@
 *.md text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
+.gitignore text eol=lf
+.vscodeignore text eol=lf
 *.prw text working-tree-encoding=windows-1252 eol=lf
 *.prg text working-tree-encoding=windows-1252 eol=lf
 *.tlpp text working-tree-encoding=windows-1252 eol=lf

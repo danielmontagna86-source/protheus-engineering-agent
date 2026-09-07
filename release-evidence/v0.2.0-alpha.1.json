@@ -2,26 +2,41 @@
   "schemaVersion": 1,
   "version": "0.2.0-alpha.1",
   "status": "NO-GO",
-  "commit": "6ec1518437ef001c51143c6f554ac8d148ecc7b0",
+  "commit": null,
   "ci": {
-    "passed": true,
-    "url": "https://github.com/danielmontagna86-source/protheus-engineering-agent/actions/runs/34150665239"
+    "passed": false,
+    "url": null
   },
   "codeReview": {
-    "passed": true
-  },
-  "securityReview": {
-    "passed": true
-  },
-  "vscodeSmoke": {
     "passed": false
   },
+  "securityReview": {
+    "passed": false
+  },
+  "vscodeSmoke": {
+    "passed": true,
+    "versions": [
+      "1.95.3",
+      "1.133.0"
+    ],
+    "commands": 4,
+    "isolated": true
+  },
+  "freshInstall": {
+    "passed": true,
+    "versions": [
+      "1.95.3",
+      "1.133.0"
+    ],
+    "commands": 4,
+    "isolated": true,
+    "vsixSha256": null
+  },
   "hermesProbe": {
-    "passed": true
+    "passed": true,
+    "isolated": true
   },
-  "artifact": {
-    "path": null,
-    "sha256": null
-  },
+  "artifacts": [],
+  "releaseManifest": null,
   "approvedBy": null
 }

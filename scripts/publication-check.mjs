@@ -4,6 +4,8 @@ import { lstat, readdir, readFile, stat } from 'node:fs/promises';
 import { dirname, extname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { assertNoLinkPath } from './path-safety.mjs';
+
 const requiredFiles = [
   'README.md',
   'README.en.md',
@@ -14,13 +16,19 @@ const requiredFiles = [
   'NOTICE',
   'THIRD_PARTY_NOTICES.md',
   'docs/brand-positioning.md',
+  'docs/code-review-production-readiness.md',
   'docs/qa-test-quality-review.md',
+  'docs/security/dependency-license-review.md',
+  'docs/security/owasp-coverage.md',
   '.github/workflows/ci.yml',
+  '.github/workflows/security.yml',
+  '.github/dependabot.yml',
   '.specs/project/PROJECT.md',
   '.specs/features/public-github-release/spec.md',
+  '.specs/features/production-readiness/spec.md',
 ];
 
-const ignoredDirectories = new Set(['.git', 'coverage', 'dist', 'node_modules']);
+const ignoredDirectories = new Set(['.git', '.vscode-test', 'coverage', 'dist', 'node_modules', 'release-artifacts']);
 const localStateDirectories = new Set(['.pea', '.stryker-tmp', '.worktrees', 'work']);
 const textExtensions = new Set([
   '.cjs', '.css', '.html', '.js', '.json', '.md', '.mjs', '.prg', '.prw', '.sql', '.toml', '.ts', '.txt', '.yaml', '.yml',
@@ -57,12 +65,14 @@ async function walk(root, directory, files, errors) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const path = join(directory, entry.name);
     const repositoryPath = relative(root, path).replaceAll('\\', '/');
-    if (entry.isDirectory() && localStateDirectories.has(entry.name)) {
-      errors.push(finding('LOCAL_STATE_DIRECTORY', repositoryPath, 'Local runtime or worktree state must not be published.'));
+    if (entry.name === '.git') {
+      if (repositoryPath !== '.git') {
+        errors.push(finding('NESTED_REPOSITORY', repositoryPath, 'Recovered or nested Git metadata must not be published.'));
+      }
       continue;
     }
-    if (entry.name === '.git' && repositoryPath !== '.git') {
-      errors.push(finding('NESTED_REPOSITORY', repositoryPath, 'Recovered or nested Git metadata must not be published.'));
+    if (entry.isDirectory() && localStateDirectories.has(entry.name)) {
+      errors.push(finding('LOCAL_STATE_DIRECTORY', repositoryPath, 'Local runtime or worktree state must not be published.'));
       continue;
     }
     if (entry.isDirectory() && ignoredDirectories.has(entry.name)) continue;
@@ -98,6 +108,19 @@ function hasCompleteLicenseText(license, contents) {
 }
 
 function completeReleaseEvidence(evidence, targetVersion) {
+  const artifacts = evidence?.artifacts;
+  const vsix = Array.isArray(artifacts) ? artifacts.find((artifact) => artifact?.path?.endsWith('.vsix')) : null;
+  const completeArtifacts = Array.isArray(artifacts)
+    && artifacts.length === 3
+    && new Set(artifacts.map((artifact) => artifact?.path)).size === 3
+    && artifacts.every((artifact) => (
+      typeof artifact?.path === 'string'
+      && /^release-artifacts\/[A-Za-z0-9._-]+$/.test(artifact.path)
+      && /^[0-9a-f]{64}$/i.test(artifact.sha256 ?? '')
+    ))
+    && artifacts.some((artifact) => artifact.path.endsWith('-source.zip'))
+    && artifacts.some((artifact) => artifact.path.endsWith('.vsix'))
+    && artifacts.some((artifact) => artifact.path.endsWith('.cdx.json'));
   return evidence?.schemaVersion === 1
     && evidence.version === targetVersion
     && evidence.status === 'GO'
@@ -107,9 +130,23 @@ function completeReleaseEvidence(evidence, targetVersion) {
     && evidence.codeReview?.passed === true
     && evidence.securityReview?.passed === true
     && evidence.vscodeSmoke?.passed === true
+    && evidence.vscodeSmoke?.commands === 4
+    && evidence.vscodeSmoke?.isolated === true
+    && Array.isArray(evidence.vscodeSmoke?.versions)
+    && evidence.vscodeSmoke.versions.includes('1.95.3')
+    && evidence.vscodeSmoke.versions.length >= 2
+    && evidence.freshInstall?.passed === true
+    && evidence.freshInstall?.commands === 4
+    && evidence.freshInstall?.isolated === true
+    && Array.isArray(evidence.freshInstall?.versions)
+    && evidence.freshInstall.versions.includes('1.95.3')
+    && evidence.freshInstall.versions.length >= 2
+    && evidence.freshInstall?.vsixSha256 === vsix?.sha256
     && evidence.hermesProbe?.passed === true
-    && typeof evidence.artifact?.path === 'string'
-    && /^[0-9a-f]{64}$/i.test(evidence.artifact?.sha256 ?? '')
+    && evidence.hermesProbe?.isolated === true
+    && completeArtifacts
+    && evidence.releaseManifest?.path === `release-artifacts/release-manifest-v${targetVersion}.json`
+    && /^[0-9a-f]{64}$/i.test(evidence.releaseManifest?.sha256 ?? '')
     && typeof evidence.approvedBy === 'string'
     && evidence.approvedBy.trim().length > 0;
 }
@@ -121,6 +158,7 @@ async function verifyReleaseArtifact(productRoot, artifact) {
     if (repositoryPath === '..' || repositoryPath.startsWith(`..${process.platform === 'win32' ? '\\' : '/'}`) || isAbsolute(repositoryPath)) {
       return false;
     }
+    await assertNoLinkPath(productRoot, artifactPath);
     const info = await lstat(artifactPath);
     if (!info.isFile() || info.isSymbolicLink()) return false;
     const hash = createHash('sha256');
@@ -131,7 +169,26 @@ async function verifyReleaseArtifact(productRoot, artifact) {
   }
 }
 
-export async function assessPublication({ root, release = false }) {
+async function verifyReleaseManifestEvidence(productRoot, evidence, targetVersion) {
+  if (!(await verifyReleaseArtifact(productRoot, evidence.releaseManifest))) return false;
+  try {
+    const manifest = JSON.parse(await readFile(resolve(productRoot, evidence.releaseManifest.path), 'utf8'));
+    const manifestArtifacts = Array.isArray(manifest.artifacts)
+      ? manifest.artifacts.map(({ path, sha256 }) => ({ path, sha256 }))
+      : [];
+    return manifest.schemaVersion === 1
+      && manifest.version === targetVersion
+      && manifest.commit === evidence.commit
+      && JSON.stringify(manifestArtifacts) === JSON.stringify(evidence.artifacts)
+      && ['publication', 'sourceArchive', 'vsix', 'sbom'].every(
+        (key) => manifest.verification?.[key] === 'PASS',
+      );
+  } catch {
+    return false;
+  }
+}
+
+export async function assessPublication({ root, release = false, evidencePath: requestedEvidencePath }) {
   const productRoot = resolve(root);
   const errors = [];
   const blockers = [];
@@ -204,13 +261,24 @@ export async function assessPublication({ root, release = false }) {
         if (manifest.version !== targetVersion) {
           blockers.push(finding('RELEASE_VERSION_MISMATCH', 'package.json', `Product version must match planned release ${targetVersion}.`));
         }
-        const evidencePath = `release-evidence/v${targetVersion}.json`;
+        const evidencePath = requestedEvidencePath ?? `release-evidence/v${targetVersion}.json`;
         try {
+          if (requestedEvidencePath && !/^release-artifacts\/[A-Za-z0-9._-]+\.json$/.test(evidencePath)) {
+            throw new Error('final release evidence must be a JSON file inside release-artifacts');
+          }
+          await assertNoLinkPath(productRoot, join(productRoot, evidencePath));
           const evidence = JSON.parse(await readFile(join(productRoot, evidencePath), 'utf8'));
           if (!completeReleaseEvidence(evidence, targetVersion)) {
-            blockers.push(finding('RELEASE_EVIDENCE_INCOMPLETE', evidencePath, 'Release evidence must record GO, CI, reviews, smokes, commit, artifact checksum, and approver.'));
-          } else if (!(await verifyReleaseArtifact(productRoot, evidence.artifact))) {
-            blockers.push(finding('RELEASE_ARTIFACT_INVALID', evidence.artifact.path, 'Release artifact is missing, outside the repository, a symlink, or does not match its SHA-256.'));
+            blockers.push(finding('RELEASE_EVIDENCE_INCOMPLETE', evidencePath, 'Release evidence must record GO, CI, reviews, smokes, commit, artifact and manifest checksums, and approver.'));
+          } else {
+            for (const artifact of evidence.artifacts) {
+              if (!(await verifyReleaseArtifact(productRoot, artifact))) {
+                blockers.push(finding('RELEASE_ARTIFACT_INVALID', artifact.path, 'Release artifact is missing, outside the repository, a symlink, or does not match its SHA-256.'));
+              }
+            }
+            if (!(await verifyReleaseManifestEvidence(productRoot, evidence, targetVersion))) {
+              blockers.push(finding('RELEASE_MANIFEST_INVALID', evidence.releaseManifest.path, 'Release evidence must match the checksummed manifest, commit, artifact set, and successful verifications.'));
+            }
           }
         } catch {
           blockers.push(finding('RELEASE_EVIDENCE_INCOMPLETE', evidencePath, 'Versioned release evidence is missing or invalid.'));
@@ -254,7 +322,15 @@ export async function assessPublication({ root, release = false }) {
 const invokedPath = process.argv[1] ? resolve(process.argv[1]) : '';
 if (invokedPath === fileURLToPath(import.meta.url)) {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-  const report = await assessPublication({ root, release: process.argv.includes('--release') });
+  const evidenceIndex = process.argv.indexOf('--evidence');
+  if (evidenceIndex >= 0 && !process.argv[evidenceIndex + 1]) {
+    throw new Error('--evidence requires a repository-relative JSON path');
+  }
+  const report = await assessPublication({
+    root,
+    release: process.argv.includes('--release'),
+    evidencePath: evidenceIndex >= 0 ? process.argv[evidenceIndex + 1].replaceAll('\\', '/') : undefined,
+  });
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   if (report.status !== 'PASS') process.exitCode = 1;
 }

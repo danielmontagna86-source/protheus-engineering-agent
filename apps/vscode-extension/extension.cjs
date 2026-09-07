@@ -2,7 +2,8 @@ const { execFile: nodeExecFile } = require('node:child_process');
 const path = require('node:path');
 
 function createExtension(vscode, options = {}) {
-  const cliPath = options.cliPath ?? path.resolve(__dirname, '..', '..', 'packages', 'runtime', 'src', 'cli.mjs');
+  const cliPath = options.cliPath ?? path.resolve(__dirname, 'dist', 'runtime-cli.mjs');
+  const mcpServerPath = options.mcpServerPath ?? path.resolve(__dirname, 'dist', 'mcp-stdio.mjs');
   const execFile = options.execFile ?? nodeExecFile;
   let channel;
 
@@ -20,10 +21,12 @@ function createExtension(vscode, options = {}) {
         cwd,
         windowsHide: true,
         maxBuffer: 10 * 1024 * 1024,
+        timeout: 120_000,
         env: {
           ...process.env,
           ELECTRON_RUN_AS_NODE: '1',
           PEA_NODE_COMMAND: process.execPath,
+          PEA_MCP_SERVER_PATH: mcpServerPath,
         },
       }, (error, stdout, stderr) => {
         if (error) {
@@ -41,6 +44,7 @@ function createExtension(vscode, options = {}) {
       channel.clear();
       channel.appendLine(output.trim());
       channel.show(true);
+      return output;
     } catch (error) {
       vscode.window.showErrorMessage(`Protheus Engineering Agent: ${error.message}`);
     }

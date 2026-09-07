@@ -49,6 +49,28 @@ const TOOLS = Object.freeze([
   },
 ]);
 
+const TOOL_ARGUMENTS = Object.freeze({
+  pea_doctor: Object.freeze({ allowed: [], required: [] }),
+  pea_index_workspace: Object.freeze({ allowed: [], required: [] }),
+  pea_review_file: Object.freeze({ allowed: ['path'], required: ['path'] }),
+  pea_read_context: Object.freeze({ allowed: [], required: [] }),
+  pea_session_context: Object.freeze({ allowed: [], required: [] }),
+  pea_write_memory: Object.freeze({ allowed: ['content'], required: ['content'] }),
+});
+
+function validateToolArguments(name, value) {
+  const contract = TOOL_ARGUMENTS[name];
+  if (!contract) throw new Error(`Unknown tool: ${String(name)}`);
+  const args = value ?? {};
+  if (typeof args !== 'object' || Array.isArray(args)) throw new Error('tool arguments must be an object');
+  const unexpected = Object.keys(args).filter((key) => !contract.allowed.includes(key));
+  if (unexpected.length > 0) throw new Error(`unexpected argument: ${unexpected[0]}`);
+  for (const key of contract.required) {
+    if (typeof args[key] !== 'string' || args[key].length === 0) throw new Error(`${key} is required`);
+  }
+  return args;
+}
+
 function toolResult(value, isError = false) {
   return {
     content: [{ type: 'text', text: JSON.stringify(value, null, 2) }],
@@ -82,22 +104,18 @@ export function createMcpHandler(options) {
     }
     if (request?.method === 'tools/call') {
       const name = request.params?.name;
-      const args = request.params?.arguments ?? {};
       try {
+        const args = validateToolArguments(name, request.params?.arguments);
         let value;
         if (name === 'pea_doctor') value = await runtime.doctor();
         else if (name === 'pea_index_workspace') value = await runtime.index();
         else if (name === 'pea_review_file') {
-          if (typeof args.path !== 'string') throw new Error('path is required');
           value = await runtime.reviewFile(args.path);
         } else if (name === 'pea_read_context') value = await runtime.readContext();
         else if (name === 'pea_session_context') value = await runtime.getSessionContext();
         else if (name === 'pea_write_memory') {
-          if (typeof args.content !== 'string') throw new Error('content is required');
           await runtime.writeMemory(args.content);
           value = { ok: true };
-        } else {
-          throw new Error(`Unknown tool: ${String(name)}`);
         }
         return { jsonrpc: '2.0', id, result: toolResult(value) };
       } catch (error) {

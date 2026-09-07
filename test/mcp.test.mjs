@@ -50,6 +50,17 @@ test('MCP unknown method produces a JSON-RPC method-not-found error', async () =
   });
 });
 
+test('MCP rejects undeclared tool arguments instead of silently accepting them', async () => {
+  const handle = createMcpHandler({ workspace: process.cwd() });
+  const response = await handle({
+    jsonrpc: '2.0', id: 12, method: 'tools/call',
+    params: { name: 'pea_doctor', arguments: { unexpected: true } },
+  });
+
+  assert.equal(response.result.isError, true);
+  assert.match(response.result.content[0].text, /unexpected argument/);
+});
+
 test('MCP exposes live project skills and isolated Hermes session configuration', async () => {
   const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-session-'));
   const skillDir = join(workspace, '.pea', 'skills', 'diagnosis');
@@ -95,4 +106,28 @@ test('MCP stdio process accepts newline-delimited initialize and tools/list requ
   const responses = stdout.trim().split(/\r?\n/).map((line) => JSON.parse(line));
   assert.equal(responses[0].result.serverInfo.version, productManifest.version);
   assert.ok(responses[1].result.tools.some((tool) => tool.name === 'pea_session_context'));
+});
+
+test('MCP stdio rejects an oversized request and continues with the next bounded request', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-stdio-limit-'));
+  const serverPath = fileURLToPath(new URL('../packages/mcp/src/stdio.mjs', import.meta.url));
+  const child = spawn(process.execPath, [serverPath], {
+    env: { ...process.env, PEA_WORKSPACE: workspace, PEA_ENVIRONMENT: 'production' },
+    stdio: ['pipe', 'pipe', 'pipe'],
+    windowsHide: true,
+  });
+  let stdout = '';
+  let stderr = '';
+  child.stdout.setEncoding('utf8');
+  child.stderr.setEncoding('utf8');
+  child.stdout.on('data', (chunk) => { stdout += chunk; });
+  child.stderr.on('data', (chunk) => { stderr += chunk; });
+  child.stdin.end(`${'x'.repeat((1024 * 1024) + 1)}\n${JSON.stringify({ jsonrpc: '2.0', id: 31, method: 'tools/list', params: {} })}\n`);
+
+  const [code] = await once(child, 'close');
+  assert.equal(code, 0, stderr);
+  const responses = stdout.trim().split(/\r?\n/).map((line) => JSON.parse(line));
+  assert.equal(responses[0].error.code, -32600);
+  assert.match(responses[0].error.message, /exceeds 1048576 bytes/);
+  assert.ok(responses[1].result.tools.some((tool) => tool.name === 'pea_doctor'));
 });

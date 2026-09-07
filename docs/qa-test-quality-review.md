@@ -11,6 +11,7 @@
 - StrykerJS 10.0.0 mutation gate covered the policy and review cores: 366 mutants, 302 killed, 63 survived, 1 timed out; total score 82.79% against a 60% breaking threshold.
 - Package audit reported 0 known vulnerabilities after pinning the vulnerable transitive `qs` range to 6.16.0.
 - The first mutation run scored 36.19%. Stronger contract and boundary tests raised it without lowering the threshold.
+- The packaged VSIX was installed in isolated extension directories and exercised on VS Code 1.95.3 and 1.133.0; this caught and resolved non-writable normalized ZIP entries.
 
 ## Reviewed files
 
@@ -20,6 +21,8 @@
 | `test/review.test.mjs` | rule detection, masking, severity, bug impact | PASS after correction | new negative tests found and fixed metadata false positives in comments/strings; review mutation score 79.33% |
 | `test/publication.test.mjs` | portability, secrets, license, metadata, CI | PASS | canonical brand/repository and public-file requirements are regression tested |
 | `test/smoke.test.mjs` | runnable release critical path | PASS | subprocess exit, JSON schema, four named checks and duration budget asserted |
+| `test/release-artifacts.test.mjs` | VSIX/source/SBOM integrity and provenance | PASS | deterministic bytes, writable permissions, containment, checksums and manifest-bound evidence |
+| `test/codegraph.test.mjs` | parser correctness and scale | PASS | exact line mapping and 5,000-symbol/call sub-second budget |
 
 ## Readability
 
@@ -43,7 +46,7 @@ PASS WITH OBSERVATIONS. Tests and implementation were evolved in the same engine
 
 ## Coverage and remaining gaps
 
-LOCAL PASS. Happy paths, denial paths, filesystem escapes, limits, concurrency, invalid manifests, secrets and process boundaries are covered. Real VS Code Extension Development Host, Hermes, GitHub Actions and Protheus infrastructure remain external/manual gates and are not represented as passing.
+LOCAL PASS. Happy paths, denial paths, filesystem escapes, limits, concurrency, invalid manifests, secrets, process boundaries and packaged VSIX installation are covered. Hermes was probed in isolation. Candidate GitHub Actions/OSV, downloaded release assets and Protheus infrastructure remain external gates and are not represented as passing.
 
 ## Findings
 
@@ -53,5 +56,7 @@ LOCAL PASS. Happy paths, denial paths, filesystem escapes, limits, concurrency, 
 | Medium | Existing tests constrained only 36.19% of policy/review mutations. | Resolved for the alpha gate: exact contracts and boundary cases raised the score to 82.79%. |
 | Medium | Mutation dependency initially resolved a vulnerable transitive `qs`. | Resolved with a 6.16.0 override; package audit now reports zero vulnerabilities. |
 | Low | One generated Stryker mutant timed out. | Accepted as killed by timeout; the normal suite was green three times and no production test uses time-based waiting. |
+| High | Deterministic ZIP normalization discarded write permissions, so VS Code could not install the VSIX on Windows. | Resolved by normalizing files to `0644`; fresh-install regression and host smoke pass on minimum/current versions. |
+| High | Tracked final evidence would change the commit it was intended to attest. | Resolved with an ignored final-evidence template bound to a checksummed release manifest; the tracked file remains a fail-closed draft. |
 
 No unresolved high-severity QA finding remains. This report does not waive the external evidence required by `RELEASE-v0.2.0-alpha.1.md`.

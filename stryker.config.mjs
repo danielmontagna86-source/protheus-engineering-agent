@@ -9,6 +9,7 @@ const config = {
     'packages/policy/src/index.mjs',
     'packages/review/src/index.mjs',
   ],
+  ignorePatterns: ['.vscode-test', 'dist', 'release-artifacts'],
   reporters: ['clear-text', 'progress'],
   thresholds: {
     high: 80,

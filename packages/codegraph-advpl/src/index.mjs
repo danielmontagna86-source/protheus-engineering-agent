@@ -75,12 +75,23 @@ function maskCommentsAndStrings(source) {
   return chars.join('');
 }
 
-function lineAt(source, offset) {
-  let line = 1;
-  for (let index = 0; index < offset; index += 1) {
-    if (source[index] === '\n') line += 1;
+function createLineIndex(source) {
+  const starts = [0];
+  for (let index = 0; index < source.length; index += 1) {
+    if (source[index] === '\n') starts.push(index + 1);
   }
-  return line;
+  return starts;
+}
+
+function lineAt(starts, offset) {
+  let low = 0;
+  let high = starts.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (starts[middle] <= offset) low = middle + 1;
+    else high = middle;
+  }
+  return low;
 }
 
 function declarationKind(prefix) {
@@ -94,8 +105,9 @@ function declarationKind(prefix) {
 export function parseAdvplSource(source, options = {}) {
   const file = options.file ?? '<memory>';
   const masked = maskCommentsAndStrings(source);
+  const lineIndex = createLineIndex(source);
   const declarations = [];
-  const declarationPattern = /^\s*((?:User\s+|Static\s+)?Function|Method)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)/gim;
+  const declarationPattern = /^[ \t]*((?:User\s+|Static\s+)?Function|Method)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)/gim;
   for (const match of masked.matchAll(declarationPattern)) {
     const name = match[2];
     declarations.push({
@@ -107,7 +119,7 @@ export function parseAdvplSource(source, options = {}) {
         canonical: name.toLowerCase(),
         kind: declarationKind(match[1]),
         file,
-        line: lineAt(source, match.index),
+        line: lineAt(lineIndex, match.index),
         params: match[3].split(',').map((item) => item.trim()).filter(Boolean),
       },
     });
@@ -132,7 +144,7 @@ export function parseAdvplSource(source, options = {}) {
         callee,
         calleeCanonical: callee.toLowerCase(),
         file,
-        line: lineAt(source, declaration.bodyStart + match.index),
+        line: lineAt(lineIndex, declaration.bodyStart + match.index),
       });
     }
   }

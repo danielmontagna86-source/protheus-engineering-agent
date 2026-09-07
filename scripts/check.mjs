@@ -7,10 +7,13 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const failures = [];
 let checkedSources = 0;
 let checkedManifests = 0;
+const ignoredDirectories = new Set([
+  '.git', '.pea', '.stryker-tmp', '.vscode-test', 'coverage', 'dist', 'node_modules', 'release-artifacts', 'work',
+]);
 
 async function walk(directory) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
-    if (['.git', 'node_modules', 'work'].includes(entry.name)) continue;
+    if (entry.isDirectory() && ignoredDirectories.has(entry.name)) continue;
     const path = join(directory, entry.name);
     if (entry.isDirectory()) {
       await walk(path);

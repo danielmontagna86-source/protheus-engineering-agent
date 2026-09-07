@@ -1,8 +1,9 @@
 {
-  "name": "protheus-engineering-agent-vscode",
+  "name": "protheus-engineering-agent",
   "displayName": "Protheus Engineering Agent",
   "description": "Thin VS Code interface for an open engineering runtime for ADVPL/TLPP projects.",
   "version": "0.2.0-alpha.1",
+  "publisher": "danielmontagna86-source",
   "private": true,
   "license": "Apache-2.0",
   "repository": {
@@ -13,6 +14,17 @@
     "vscode": "^1.95.0"
   },
   "categories": ["Other"],
+  "keywords": ["advpl", "tlpp", "protheus", "mcp", "engineering"],
+  "extensionKind": ["workspace"],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Open a trusted workspace before allowing an engineering agent to inspect project files."
+    },
+    "virtualWorkspaces": {
+      "supported": false
+    }
+  },
   "main": "./extension.cjs",
   "activationEvents": [
     "onCommand:pea.doctor",
