@@ -63,7 +63,9 @@ test('Hermes adapter isolates ACP state and exposes the product MCP to the sessi
 
   adapter.probe();
   assert.equal(calls[0].options.env.HERMES_HOME, hermesHome);
-  assert.equal(calls[0].options.env.PATH, process.env.PATH);
+  const pathKey = Object.keys(process.env).find((name) => name.toUpperCase() === 'PATH');
+  assert.ok(pathKey, 'the process environment must expose a PATH entry');
+  assert.equal(calls[0].options.env[pathKey], process.env[pathKey]);
 });
 
 test('external integrations are fail-closed when no adapter is configured', async () => {
