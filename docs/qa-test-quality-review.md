@@ -53,9 +53,9 @@ LOCAL PASS. Happy paths, denial paths, filesystem escapes, limits, concurrency, 
 | Severity | Finding | Resolution |
 |---|---|---|
 | High | Review could report direct system-table access when `DbSelectArea` appeared only in a comment or string. | Resolved with a lexical code-presence guard plus regression test. |
-| Medium | Existing tests constrained only 36.19% of policy/review mutations. | Resolved for the alpha gate: exact contracts and boundary cases raised the score to 82.79%. |
+| Medium | Existing tests constrained only 36.19% of policy/review mutations. | Resolved for the alpha gate: exact contracts and boundary cases raised the focused score to 83.83%. |
 | Medium | Mutation dependency initially resolved a vulnerable transitive `qs`. | Resolved with a 6.16.0 override; package audit now reports zero vulnerabilities. |
-| Low | One generated Stryker mutant timed out. | Accepted as killed by timeout; the normal suite was green three times and no production test uses time-based waiting. |
+| Low | One generated Stryker mutant errored while 0 timed out. | Recorded as a tooling anomaly; the 403-mutant run still passed its 60% threshold and the normal suite uses no time-based waiting. |
 | High | Deterministic ZIP normalization discarded write permissions, so VS Code could not install the VSIX on Windows. | Resolved by normalizing files to `0644`; fresh-install regression and host smoke pass on minimum/current versions. |
 | High | Tracked final evidence would change the commit it was intended to attest. | Resolved with an ignored final-evidence template bound to a checksummed release manifest; the tracked file remains a fail-closed draft. |
 | High | The release evidence schema required a real Hermes probe even though the product claimed Hermes was optional. | Resolved test-first: complete core evidence without a Hermes field now passes, while compatibility remains isolated and non-gating. |

@@ -3,7 +3,7 @@
 **Date:** 2026-09-07
 **Decision:** Local development gate PASS; public release NO-GO.
 
-Latest local run: 84/84 tests passed, 39 source files and 3 manifests checked, and 105 publication files were inspected with zero development errors. The CLI/MCP smoke passed in under one second, npm audit reported zero vulnerabilities, and the focused mutation score reached 82.79%. The packaged VSIX was installed into isolated profiles and all four commands passed on VS Code 1.95.3 and 1.133.0. Candidate CI/OSV and clean-commit reconciliation remain pending.
+Latest local run: 90/90 tests passed, 40 source files and 3 manifests checked, and 115 publication files were inspected with zero development errors. The CLI/MCP smoke passed in under one second, npm audit reported zero vulnerabilities, and the focused mutation score reached 83.83%. The packaged VSIX was installed into isolated profiles and all four commands passed on VS Code 1.95.3 and 1.133.0. The committed candidate passed a clean-worktree audit; candidate GitHub CI/OSV remains pending.
 
 ## Requirement traceability
 
@@ -16,7 +16,7 @@ Latest local run: 84/84 tests passed, 39 source files and 3 manifests checked, a
 | PUB-005 | Apache-2.0 manifest/license/full-text checks | owner selected Apache-2.0 | PASS |
 | PUB-006 | versioned draft plus external final JSON evidence bound to release manifest | candidate CI, clean artifacts and approver pending | PARTIAL / BLOCKED |
 | PUB-007 | thin adapter, Electron/Node, multi-root, packaged install tests | minimum/current VS Code fresh install passed locally | LOCAL PASS / CI PENDING |
-| PUB-008 | isolated descriptors and `.pea` junction rejection | installed Hermes returned `Hermes ACP check OK` from an isolated profile | PASS |
+| PUB-008 | isolated descriptors and `.pea` junction rejection | installed Hermes returned `Hermes ACP check OK` from an isolated profile | OPTIONAL PASS / not a release gate |
 | PUB-009 | Portuguese/English README and limitation checks | editorial review | LOCAL PASS |
 | PUB-010 | fail-closed evidence schema with fresh-install and manifest binding | candidate CI, artifact upload and approval pending | PARTIAL / BLOCKED |
 

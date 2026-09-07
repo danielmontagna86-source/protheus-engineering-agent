@@ -25,6 +25,6 @@
 
 - **C-001 Public license missing:** resolved with Apache-2.0.
 - **C-002 GitHub target missing:** resolved as `danielmontagna86-source/protheus-engineering-agent`.
-- **C-010 Weak mutation resistance:** initial 36.19% score raised to 82.79% with contract and boundary tests.
+- **C-010 Weak mutation resistance:** initial 36.19% score raised to 83.83% with contract and boundary tests.
 - **C-011 Review string/comment false positive:** resolved with lexical code-presence validation for direct metadata access.
 - **C-012 CodeGraph quadratic line lookup:** resolved with a line index, exact-line regression, and sub-second large-source budget.
