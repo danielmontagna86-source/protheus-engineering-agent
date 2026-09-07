@@ -67,7 +67,12 @@ export async function runVsCodeSmoke() {
     mkdir(userData, { recursive: true }),
     mkdir(extensions, { recursive: true }),
   ]);
-  await writeFile(join(workspace, 'empty.prw'), '', 'utf8');
+  await writeFile(join(workspace, 'empty.prw'), [
+    'User Function SmokeReview()',
+    '    IIF(.T., 1, 0)',
+    'Return',
+    '',
+  ].join('\n'), 'utf8');
 
   const requestedVersion = commandLineVersion();
   const version = requestedVersion || process.env.PEA_VSCODE_VERSION || '1.95.3';

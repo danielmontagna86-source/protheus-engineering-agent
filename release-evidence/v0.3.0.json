@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "0.2.0-alpha.1",
+  "version": "0.3.0",
   "status": "NO-GO",
   "commit": null,
   "ci": {
@@ -14,27 +14,21 @@
     "passed": false
   },
   "vscodeSmoke": {
-    "passed": true,
-    "versions": [
-      "1.95.3",
-      "1.133.0"
-    ],
+    "passed": false,
+    "versions": [],
     "commands": 4,
     "isolated": true
   },
   "freshInstall": {
-    "passed": true,
-    "versions": [
-      "1.95.3",
-      "1.133.0"
-    ],
+    "passed": false,
+    "versions": [],
     "commands": 4,
     "isolated": true,
     "vsixSha256": null
   },
   "optionalCompatibility": {
     "hermes": {
-      "status": "PASS",
+      "status": "NOT-RUN",
       "isolated": true,
       "releaseGate": false
     }

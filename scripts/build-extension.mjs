@@ -49,6 +49,7 @@ export async function buildExtension() {
     await cp(join(extensionRoot, file), join(stageRoot, file));
   }
   await cp(extensionDist, join(stageRoot, 'dist'), { recursive: true });
+  await cp(join(extensionRoot, 'media'), join(stageRoot, 'media'), { recursive: true });
   await cp(join(root, 'LICENSE.md'), join(stageRoot, 'LICENSE.md'));
   await cp(join(root, 'CHANGELOG.md'), join(stageRoot, 'CHANGELOG.md'));
 

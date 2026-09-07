@@ -4,7 +4,7 @@ A standalone VS Code extension for ADVPL/TLPP engineering, backed by an open reu
 
 > Independent community project in alpha stage. It is not affiliated with, sponsored by, or maintained by TOTVS, the Protheus brand, or the Hermes Agent project. All trademarks belong to their respective owners.
 
-[Português](README.md) · [Positioning](docs/brand-positioning.md) · [Architecture](docs/architecture.md) · [Effectiveness research](docs/research/product-effectiveness-review.md) · [Roadmap](docs/roadmap.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
+[Português](README.md) · [Positioning](docs/brand-positioning.md) · [Architecture](docs/architecture.md) · [Rules](docs/rules.md) · [Skills](docs/skills.md) · [Premium research](docs/research/premium-product-leadership-review.md) · [Roadmap](docs/roadmap.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
 
 The primary path requires only the VSIX. It does not require Hermes, an AI account, a model, Python, Oracle, TDN, or AppServer. The deterministic runtime ships inside the extension.
 
@@ -16,7 +16,7 @@ The primary path requires only the VSIX. It does not require Hermes, an AI accou
 - deny-by-default environment policy;
 - build supervisor with an injected runner and capability gate;
 - stdio MCP server for doctor, index, review, and engineering context;
-- live, bounded project Skills and Rules treated as untrusted data;
+- standard project Skills, local Rules, and commit-pinned providers, all bounded and treated as untrusted data;
 - an experimental, optional Hermes adapter outside the critical path and release gate;
 - a thin VS Code extension with four orchestration commands.
 
@@ -55,7 +55,7 @@ The process defaults to the `production` policy. Project Memory writes require a
 
 Run `npm ci`, open this repository in VS Code, and start `Run Protheus Engineering Agent Extension`. Its pre-launch task builds the self-contained runtime before opening the Extension Development Host. To produce the audited GitHub Release package, run `npm run package:extension`; the VSIX is written under `release-artifacts/`.
 
-Open an ADVPL/TLPP workspace and run the four `Protheus Agent` commands from the command palette. `npm run test:vscode:host` installs the VSIX and exercises all four commands in an isolated current VS Code instance; `npm run test:vscode:minimum` repeats it on the supported 1.95.3 baseline.
+Open an ADVPL/TLPP workspace and run the four `Protheus Agent` commands from the command palette. Active-file review keeps the machine-readable JSON in the Output channel and publishes findings to native Problems diagnostics. `npm run test:vscode:host` installs the VSIX and exercises all four commands in an isolated current VS Code instance; `npm run test:vscode:minimum` repeats it on the supported 1.95.3 baseline.
 
 The extension delegates to its bundled runtime. It complements TDS-VSCode and does not replace VS Code language, compiler, debugger, editor, terminal, explorer, Git, diff, or chat surfaces.
 

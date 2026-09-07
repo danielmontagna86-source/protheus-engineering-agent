@@ -19,7 +19,7 @@ import { validateReleaseManifest } from '../scripts/verify-release.mjs';
 import { verifyVsix } from '../scripts/verify-vsix.mjs';
 import { npmSbomInvocation } from '../scripts/build-release.mjs';
 
-const version = '0.2.0-alpha.1';
+const version = '0.3.0';
 const prefix = `protheus-engineering-agent-v${version}/`;
 
 test('SBOM invocation uses the active npm CLI for portable Windows execution', () => {
@@ -61,6 +61,7 @@ function vsixArchive(path, extraEntries = []) {
     ['extension/readme.md', '# Extension'],
     ['extension/license.md', 'Apache-2.0'],
     ['extension/changelog.md', '# Changelog'],
+    ['extension/media/icon.png', 'fixture icon'],
     ...extraEntries,
   ];
   for (const [name, contents] of entries) zip.addFile(name, Buffer.from(contents));
@@ -91,7 +92,7 @@ test('release evidence template is bound to the exact manifest and remains fail-
     commit: 'b'.repeat(40),
     artifacts,
     manifest: {
-      path: 'release-artifacts/release-manifest-v0.2.0-alpha.1.json',
+      path: 'release-artifacts/release-manifest-v0.3.0.json',
       sha256: 'c'.repeat(64),
     },
   });
@@ -100,7 +101,7 @@ test('release evidence template is bound to the exact manifest and remains fail-
   assert.equal(evidence.commit, 'b'.repeat(40));
   assert.deepEqual(evidence.artifacts, [{ path: 'release-artifacts/source.zip', sha256: 'a'.repeat(64) }]);
   assert.deepEqual(evidence.releaseManifest, {
-    path: 'release-artifacts/release-manifest-v0.2.0-alpha.1.json',
+    path: 'release-artifacts/release-manifest-v0.3.0.json',
     sha256: 'c'.repeat(64),
   });
   assert.equal(evidence.freshInstall.passed, false);

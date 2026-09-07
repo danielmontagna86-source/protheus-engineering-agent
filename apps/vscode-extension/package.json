@@ -2,10 +2,17 @@
   "name": "protheus-engineering-agent",
   "displayName": "Protheus Engineering Agent",
   "description": "Standalone, evidence-backed engineering tools for ADVPL/TLPP projects in VS Code.",
-  "version": "0.2.0-alpha.1",
+  "version": "0.3.0",
   "publisher": "danielmontagna86-source",
   "private": true,
   "preview": true,
+  "pricing": "Free",
+  "qna": "marketplace",
+  "galleryBanner": {
+    "color": "#08131F",
+    "theme": "dark"
+  },
+  "icon": "media/icon.png",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -19,7 +26,7 @@
     "vscode": "^1.95.0"
   },
   "categories": ["Linters", "Testing"],
-  "keywords": ["advpl", "tlpp", "protheus", "mcp", "engineering"],
+  "keywords": ["advpl", "tlpp", "protheus", "totvs", "vscode", "mcp", "code-review", "engineering"],
   "extensionKind": ["workspace"],
   "capabilities": {
     "untrustedWorkspaces": {
@@ -38,6 +45,30 @@
     "onCommand:pea.reviewActiveFile"
   ],
   "contributes": {
+    "walkthroughs": [
+      {
+        "id": "pea.gettingStarted",
+        "title": "Start with evidence-backed Protheus review",
+        "description": "Validate the workspace, index ADVPL/TLPP sources, and publish review findings to Problems.",
+        "steps": [
+          {
+            "id": "pea.doctorStep",
+            "title": "Validate the workspace",
+            "description": "Run [Protheus Agent: Doctor](command:pea.doctor) to verify local, offline readiness."
+          },
+          {
+            "id": "pea.indexStep",
+            "title": "Build the project evidence map",
+            "description": "Run [Protheus Agent: Index Workspace](command:pea.indexWorkspace) to index supported sources."
+          },
+          {
+            "id": "pea.reviewStep",
+            "title": "Review the active source",
+            "description": "Open an ADVPL/TLPP file and run [Protheus Agent: Review Active ADVPL/TLPP File](command:pea.reviewActiveFile). Findings appear in Problems."
+          }
+        ]
+      }
+    ],
     "commands": [
       { "command": "pea.doctor", "title": "Protheus Agent: Doctor" },
       { "command": "pea.indexWorkspace", "title": "Protheus Agent: Index Workspace" },

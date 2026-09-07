@@ -6,6 +6,7 @@ function createExtension(vscode, options = {}) {
   const mcpServerPath = options.mcpServerPath ?? path.resolve(__dirname, 'dist', 'mcp-stdio.mjs');
   const execFile = options.execFile ?? nodeExecFile;
   let channel;
+  let diagnostics;
 
   function workspacePath(uri) {
     if (uri && typeof vscode.workspace.getWorkspaceFolder === 'function') {
@@ -50,8 +51,54 @@ function createExtension(vscode, options = {}) {
     }
   }
 
+  function diagnosticSeverity(severity) {
+    if (severity === 'CRITICAL') return vscode.DiagnosticSeverity.Error;
+    if (severity === 'MAJOR') return vscode.DiagnosticSeverity.Warning;
+    if (severity === 'MINOR') return vscode.DiagnosticSeverity.Information;
+    return vscode.DiagnosticSeverity.Hint;
+  }
+
+  async function presentReview(uri, file, workspace) {
+    try {
+      const output = await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: 'Reviewing ADVPL/TLPP source',
+        cancellable: false,
+      }, () => runCli(['review', file, workspace], workspace));
+      let report;
+      try {
+        report = JSON.parse(output);
+      } catch {
+        throw new Error('Invalid review output from the bundled runtime.');
+      }
+      if (!Array.isArray(report.findings)) {
+        throw new Error('Invalid review output from the bundled runtime.');
+      }
+      const values = report.findings.map((finding) => {
+        const line = Math.max(0, Number(finding.line || 1) - 1);
+        const range = new vscode.Range(line, 0, line, Number.MAX_SAFE_INTEGER);
+        const message = finding.guidance
+          ? `${finding.title}: ${finding.guidance}`
+          : String(finding.title || finding.ruleId || 'Review finding');
+        const diagnostic = new vscode.Diagnostic(range, message, diagnosticSeverity(finding.severity));
+        diagnostic.code = finding.ruleId;
+        diagnostic.source = 'Protheus Engineering Agent';
+        return diagnostic;
+      });
+      diagnostics.set(uri, values);
+      channel.clear();
+      channel.appendLine(output.trim());
+      channel.show(true);
+      return output;
+    } catch (error) {
+      diagnostics.delete(uri);
+      vscode.window.showErrorMessage(`Protheus Engineering Agent: ${error.message}`);
+    }
+  }
+
   function activate(context) {
     channel = vscode.window.createOutputChannel('Protheus Engineering Agent');
+    diagnostics = vscode.languages.createDiagnosticCollection('protheus-engineering-agent');
     const commands = [
       vscode.commands.registerCommand('pea.doctor', async () => {
         const workspace = workspacePath();
@@ -75,10 +122,10 @@ function createExtension(vscode, options = {}) {
           return vscode.window.showWarningMessage('Open an ADVPL/TLPP source file first.');
         }
         const workspace = workspacePath(uri) ?? path.dirname(file);
-        return present(['review', file, workspace], workspace);
+        return presentReview(uri, file, workspace);
       }),
     ];
-    context.subscriptions.push(channel, ...commands);
+    context.subscriptions.push(channel, diagnostics, ...commands);
   }
 
   return { activate };

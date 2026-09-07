@@ -2,7 +2,7 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use executing-plans to implement this plan task-by-task.
 
-**Goal:** Turn `v0.2.0-alpha.1` into a reproducible, installable, reviewed release candidate while preserving the explicit human/publication gate.
+**Goal:** Turn `v0.3.0` into a reproducible, installable, reviewed preview candidate while preserving the explicit human/publication gate.
 
 **Architecture:** Keep the VS Code extension as an adapter. Bundle the existing runtime and MCP entry points into the VSIX at build time, exercise the commands in a real isolated Extension Host, and make release evidence machine-verifiable. External services remain fail-closed.
 
@@ -71,8 +71,8 @@
 - Create: `scripts/build-release.mjs`
 - Create: `scripts/verify-release.mjs`
 - Modify: `package.json`, `.gitignore`, `.gitattributes`
-- Modify: `RELEASE-v0.2.0-alpha.1.md`
-- Modify: `release-evidence/v0.2.0-alpha.1.json`
+- Modify: `RELEASE-v0.3.0.md`
+- Modify: `release-evidence/v0.3.0.json`
 - Modify: `docs/publication-plan.md`, `docs/validation-report.md`, `CHANGELOG.md`
 
 1. Build source ZIP, VSIX, and CycloneDX SBOM artifacts from a clean exact commit.

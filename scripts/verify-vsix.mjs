@@ -12,6 +12,7 @@ const requiredEntries = new Set([
   'extension/readme.md',
   'extension/license.md',
   'extension/changelog.md',
+  'extension/media/icon.png',
 ]);
 
 const allowedEntries = new Set([

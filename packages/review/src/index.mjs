@@ -50,6 +50,7 @@ export function reviewSource(source, options = {}) {
   const codeLines = maskStringsAndComments(source).split(/\r?\n/);
   const findings = [];
   let loopDepth = 0;
+  let transactionDepth = 0;
 
   function add(line, ruleId, severity, category, title, guidance) {
     findings.push({
@@ -68,19 +69,42 @@ export function reviewSource(source, options = {}) {
     const raw = rawLines[index];
     const code = codeLines[index];
     const trimmed = code.trim();
-    if (/^(While|For\b|DbEval\b)/i.test(trimmed)) loopDepth += 1;
+    if (/^(While|For\b)/i.test(trimmed)) loopDepth += 1;
+    if (/^Begin\s+Transaction\b/i.test(trimmed)) transactionDepth += 1;
 
     if (/^\s*#INCLUDE\s+["'<]protheus\.ch["'>]/i.test(raw)) {
       add(line, 'CA3001', 'MINOR', 'Legacy', 'Obsolete include', 'Use the project-approved modern include after validating compatibility.');
     }
-    if (/\bConOut\s*\(/i.test(code)) {
+    if (/\b(?:ConOut|OutErr)\s*\(/i.test(code)) {
       add(line, 'CA1004', 'MINOR', 'Legacy', 'Console output API', 'Route diagnostics through the project logging abstraction.');
     }
     if (/\bIIF\s*\(/i.test(code)) {
       add(line, 'CA4000', 'INFO', 'Clean Code', 'Inline conditional', 'Prefer an explicit conditional block for maintainability.');
     }
-    if (loopDepth > 0 && /\b(GetMV|SuperGetMV|ExistBlock|AllUsers|Pergunte)\s*\(/i.test(code)) {
+    const insideIteration = loopDepth > 0 || /\bDbEval\s*\(/i.test(code);
+    if (insideIteration && /\b(GetMV|SuperGetMV|ExistBlock|AllUsers|Type|Pergunte)\s*\(/i.test(code)) {
       add(line, 'CA1003', 'MAJOR', 'Performance', 'Expensive API inside loop', 'Resolve the invariant value before entering the loop.');
+    }
+    if (transactionDepth > 0 && /\b(?:MsgAlert|MsgYesNo|MsgInfo|Aviso|Help|Pergunte|ParamBox)\s*\(/i.test(code)) {
+      add(line, 'CA1002', 'MAJOR', 'Transaction', 'User interaction inside transaction', 'Collect the result and interact with the user only after the transaction ends.');
+    }
+    if (/\b(?:MSCREATE|DBCREATE)\s*\(/i.test(code)) {
+      add(line, 'CA1000', 'MAJOR', 'Legacy', 'Legacy ISAM table creation', 'Use the project-approved relational temporary-table abstraction.');
+    }
+    if (/\bStaticCall\s*\(/i.test(code)) {
+      add(line, 'CA2022', 'CRITICAL', 'Security', 'Restricted dynamic call', 'Replace the restricted call with an approved explicit integration boundary.');
+    }
+    if (/\bPTInternal\s*\(/i.test(code)) {
+      add(line, 'CA2023', 'CRITICAL', 'Security', 'Prohibited internal API', 'Remove the prohibited internal API call or document an approved vendor exception.');
+    }
+    if (/\b__cUserID\s*:=/i.test(code)) {
+      add(line, 'CA2024', 'CRITICAL', 'Security', 'System user identity assignment', 'Do not assign the read-only system user identity.');
+    }
+    if (/\bcEmpAnt\s*:=/i.test(code)) {
+      add(line, 'CA2025', 'CRITICAL', 'Environment', 'Company environment assignment', 'Use an approved environment boundary instead of assigning the system company variable.');
+    }
+    if (/\bCREATE\s+PROCEDURE\b/i.test(code)) {
+      add(line, 'CA2053', 'CRITICAL', 'Database', 'Direct procedure creation', 'Move procedure management behind the project-approved supervised database integration.');
     }
     if (/\bDbSelectArea\s*\(/i.test(code)
       && /\bDbSelectArea\s*\(\s*["'](?:SX[A-Z0-9]|SM0|SIX|SE5|SPF)["']/i.test(raw)) {
@@ -88,6 +112,7 @@ export function reviewSource(source, options = {}) {
     }
 
     if (/^(EndDo|Next)\b/i.test(trimmed)) loopDepth = Math.max(0, loopDepth - 1);
+    if (/^End\s+Transaction\b/i.test(trimmed)) transactionDepth = Math.max(0, transactionDepth - 1);
   }
 
   findings.sort((left, right) =>

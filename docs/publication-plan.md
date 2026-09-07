@@ -33,7 +33,7 @@ The first controlled public channel is a GitHub source release with an installab
 ## Release contents
 
 - Source tree without runtime state or private material.
-- `CHANGELOG.md` and completed `RELEASE-v0.2.0-alpha.1.md`.
+- `CHANGELOG.md` and completed `RELEASE-v0.3.0.md`.
 - Third-party notices and the selected product license.
 - Self-contained VSIX, source ZIP and CycloneDX SBOM with SHA-256 checksum for each artifact and a checksummed release manifest.
 - Clear alpha limitations and independent-project disclaimer.

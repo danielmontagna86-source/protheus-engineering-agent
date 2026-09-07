@@ -17,6 +17,20 @@ This repository is an independent compatibility project. Product and company nam
 - Repository license: MIT.
 - Used only to confirm the supported ACP, MCP, plugin, permission and profile contracts. No Hermes source file was copied or modified.
 
+## TOTVS EngPro AI Agent Skills
+
+- Official source: `https://github.com/totvs/engpro-advpl-tlpp-skills`.
+- Reviewed revision: `93e2f81ba71e3e132fa112a99e35162c2176f62b`.
+- Repository license: MIT.
+- The pinned provider and curated allow-list are recorded in `config/skill-providers.json`.
+- Used as an external standards and workflow reference. The full upstream catalog is not redistributed in this product.
+
+## Validated ADVPL examples
+
+- Optional local evidence provider based on the `dan-atilio/AdvPL` corpus.
+- Corpus license: GPL-3.0.
+- No corpus source file or index is included in this repository or VSIX.
+
 ## Runtime and build dependencies
 
 The alpha runtime uses Node.js standard-library modules only. The VSIX contains generated bundles of this project's own runtime modules and does not redistribute LionCodeLabs, Hermes Agent, React, SQLite bindings, ACP SDK or MCP SDK packages.

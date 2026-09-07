@@ -39,7 +39,7 @@ const requiredFiles = [
 const ignoredDirectories = new Set(['.git', '.vscode-test', 'coverage', 'dist', 'node_modules', 'release-artifacts']);
 const localStateDirectories = new Set(['.pea', '.stryker-tmp', '.worktrees', 'work']);
 const textExtensions = new Set([
-  '.cjs', '.css', '.html', '.js', '.json', '.md', '.mjs', '.prg', '.prw', '.sql', '.toml', '.ts', '.txt', '.yaml', '.yml',
+  '.cff', '.cjs', '.css', '.html', '.js', '.json', '.md', '.mjs', '.prg', '.prw', '.sql', '.toml', '.ts', '.txt', '.yaml', '.yml',
 ]);
 const secretFilePatterns = [
   /^\.env(?:\..+)?$/i,
@@ -226,6 +226,24 @@ export async function assessPublication({ root, release = false, evidencePath: r
     }
     if (manifest.license !== extensionManifest.license) {
       errors.push(finding('LICENSE_MISMATCH', 'apps/vscode-extension/package.json', 'Product and extension licenses differ.'));
+    }
+    if (!/^\d+\.\d+\.\d+$/.test(extensionManifest.version ?? '')) {
+      errors.push(finding('MARKETPLACE_VERSION_INVALID', 'apps/vscode-extension/package.json', 'Marketplace extension version must use numeric major.minor.patch; publish preview builds with the Marketplace pre-release flag.'));
+    }
+    const marketplaceMetadataComplete = extensionManifest.preview === true
+      && extensionManifest.pricing === 'Free'
+      && extensionManifest.qna === 'marketplace'
+      && /^#[0-9a-f]{6}$/i.test(extensionManifest.galleryBanner?.color ?? '')
+      && ['dark', 'light'].includes(extensionManifest.galleryBanner?.theme)
+      && /\.png$/i.test(extensionManifest.icon ?? '')
+      && Array.isArray(extensionManifest.contributes?.walkthroughs)
+      && extensionManifest.contributes.walkthroughs.some((walkthrough) => (
+        Array.isArray(walkthrough.steps) && walkthrough.steps.length >= 3
+      ));
+    if (!marketplaceMetadataComplete) {
+      errors.push(finding('MARKETPLACE_METADATA_INCOMPLETE', 'apps/vscode-extension/package.json', 'Preview, pricing, Q&A, gallery, PNG icon, and a three-step walkthrough are required.'));
+    } else if (!(await existsAsFile(join(productRoot, 'apps', 'vscode-extension', extensionManifest.icon)))) {
+      errors.push(finding('MARKETPLACE_ICON_MISSING', extensionManifest.icon, 'The declared Marketplace PNG icon is missing.'));
     }
     try {
       const licenseText = await readFile(join(productRoot, 'LICENSE.md'), 'utf8');

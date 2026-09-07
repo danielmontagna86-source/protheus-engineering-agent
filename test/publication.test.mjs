@@ -16,6 +16,7 @@ const requiredFiles = [
   'GOVERNANCE.md',
   'SUPPORT.md',
   'CHANGELOG.md',
+  'CITATION.cff',
   'NOTICE',
   'THIRD_PARTY_NOTICES.md',
   'docs/brand-positioning.md',
@@ -35,13 +36,18 @@ const requiredFiles = [
   '.specs/features/public-github-release/spec.md',
   '.specs/features/production-readiness/spec.md',
   '.specs/features/vscode-first-product/spec.md',
+  '.specs/features/premium-product-leadership/spec.md',
+  '.agents/skills/planning-protheus-engineering/SKILL.md',
+  '.agents/skills/protheus-evidence-review/SKILL.md',
+  'config/skill-providers.json',
+  'docs/skills.md',
 ];
 
 async function fixture({ license = 'Apache-2.0', repository = true } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'pea-publication-'));
   const manifest = {
     name: 'protheus-engineering-agent',
-    version: '0.2.0-alpha.1',
+    version: '0.3.0',
     private: true,
     license,
     ...(repository
@@ -52,16 +58,29 @@ async function fixture({ license = 'Apache-2.0', repository = true } = {}) {
   await writeFile(join(root, 'package.json'), JSON.stringify(manifest), 'utf8');
   await writeFile(
     join(root, 'apps', 'vscode-extension', 'package.json'),
-    JSON.stringify({ ...manifest, name: 'protheus-engineering-agent-vscode' }),
+    JSON.stringify({
+      ...manifest,
+      name: 'protheus-engineering-agent-vscode',
+      preview: true,
+      pricing: 'Free',
+      qna: 'marketplace',
+      galleryBanner: { color: '#08131F', theme: 'dark' },
+      icon: 'media/icon.png',
+      contributes: {
+        walkthroughs: [{ steps: [{}, {}, {}] }],
+      },
+    }),
     'utf8',
   );
+  await mkdir(join(root, 'apps', 'vscode-extension', 'media'), { recursive: true });
+  await writeFile(join(root, 'apps', 'vscode-extension', 'media', 'icon.png'), 'fixture icon', 'utf8');
   for (const relativePath of requiredFiles) {
     await mkdir(join(root, relativePath, '..'), { recursive: true });
     await writeFile(join(root, relativePath), '# Public product\n', 'utf8');
   }
   await writeFile(
     join(root, '.specs', 'features', 'public-github-release', 'spec.md'),
-    '**Target:** `v0.2.0-alpha.1`\n',
+    '**Target:** `v0.3.0`\n',
     'utf8',
   );
   await writeFile(
@@ -96,20 +115,20 @@ async function fixture({ license = 'Apache-2.0', repository = true } = {}) {
   await writeFile(sourceArtifactPath, sourceContents, 'utf8');
   await writeFile(vsixArtifactPath, vsixContents, 'utf8');
   await writeFile(sbomArtifactPath, sbomContents, 'utf8');
-  const releaseManifestPath = 'release-artifacts/release-manifest-v0.2.0-alpha.1.json';
+  const releaseManifestPath = 'release-artifacts/release-manifest-v0.3.0.json';
   const releaseManifestContents = `${JSON.stringify({
     schemaVersion: 1,
-    version: '0.2.0-alpha.1',
+    version: '0.3.0',
     commit: 'a'.repeat(40),
     artifacts,
     verification: { publication: 'PASS', sourceArchive: 'PASS', vsix: 'PASS', sbom: 'PASS' },
   })}\n`;
   await writeFile(join(root, releaseManifestPath), releaseManifestContents, 'utf8');
   await writeFile(
-    join(root, 'release-evidence', 'v0.2.0-alpha.1.json'),
+    join(root, 'release-evidence', 'v0.3.0.json'),
     JSON.stringify({
       schemaVersion: 1,
-      version: '0.2.0-alpha.1',
+      version: '0.3.0',
       status: 'GO',
       commit: 'a'.repeat(40),
       ci: { passed: true, url: 'https://github.com/example/protheus-engineering-agent/actions/runs/1' },
@@ -225,7 +244,7 @@ test('release audit requires the planned version and completed evidence', async 
     manifest.version = '0.1.0';
     await writeFile(path, JSON.stringify(manifest), 'utf8');
   }
-  const evidencePath = join(root, 'release-evidence', 'v0.2.0-alpha.1.json');
+  const evidencePath = join(root, 'release-evidence', 'v0.3.0.json');
   const evidence = JSON.parse(await (await import('node:fs/promises')).readFile(evidencePath, 'utf8'));
   evidence.status = 'NO-GO';
   evidence.vscodeSmoke.passed = false;
@@ -250,7 +269,7 @@ test('audit rejects an incomplete public license text', async () => {
 
 test('release audit recalculates the declared artifact checksum', async () => {
   const root = await fixture();
-  const evidencePath = join(root, 'release-evidence', 'v0.2.0-alpha.1.json');
+  const evidencePath = join(root, 'release-evidence', 'v0.3.0.json');
   const evidence = JSON.parse(await (await import('node:fs/promises')).readFile(evidencePath, 'utf8'));
   evidence.artifacts[0].sha256 = 'c'.repeat(64);
   await writeFile(evidencePath, JSON.stringify(evidence), 'utf8');
@@ -263,7 +282,7 @@ test('release audit recalculates the declared artifact checksum', async () => {
 
 test('release audit requires source, VSIX, and CycloneDX SBOM artifacts', async () => {
   const root = await fixture();
-  const evidencePath = join(root, 'release-evidence', 'v0.2.0-alpha.1.json');
+  const evidencePath = join(root, 'release-evidence', 'v0.3.0.json');
   const evidence = JSON.parse(await (await import('node:fs/promises')).readFile(evidencePath, 'utf8'));
   evidence.artifacts.pop();
   await writeFile(evidencePath, JSON.stringify(evidence), 'utf8');
@@ -276,7 +295,7 @@ test('release audit requires source, VSIX, and CycloneDX SBOM artifacts', async 
 
 test('release audit requires a successful fresh install of the packaged VSIX', async () => {
   const root = await fixture();
-  const evidencePath = join(root, 'release-evidence', 'v0.2.0-alpha.1.json');
+  const evidencePath = join(root, 'release-evidence', 'v0.3.0.json');
   const evidence = JSON.parse(await (await import('node:fs/promises')).readFile(evidencePath, 'utf8'));
   evidence.freshInstall.passed = false;
   await writeFile(evidencePath, JSON.stringify(evidence), 'utf8');
@@ -289,7 +308,7 @@ test('release audit requires a successful fresh install of the packaged VSIX', a
 
 test('release audit binds fresh-install evidence to the packaged VSIX hash', async () => {
   const root = await fixture();
-  const evidencePath = join(root, 'release-evidence', 'v0.2.0-alpha.1.json');
+  const evidencePath = join(root, 'release-evidence', 'v0.3.0.json');
   const evidence = JSON.parse(await (await import('node:fs/promises')).readFile(evidencePath, 'utf8'));
   evidence.freshInstall.vsixSha256 = 'd'.repeat(64);
   await writeFile(evidencePath, JSON.stringify(evidence), 'utf8');
@@ -302,7 +321,7 @@ test('release audit binds fresh-install evidence to the packaged VSIX hash', asy
 
 test('release audit binds evidence to the checksummed release manifest', async () => {
   const root = await fixture();
-  const evidencePath = join(root, 'release-evidence', 'v0.2.0-alpha.1.json');
+  const evidencePath = join(root, 'release-evidence', 'v0.3.0.json');
   const evidence = JSON.parse(await (await import('node:fs/promises')).readFile(evidencePath, 'utf8'));
   evidence.commit = 'b'.repeat(40);
   await writeFile(evidencePath, JSON.stringify(evidence), 'utf8');
@@ -315,8 +334,8 @@ test('release audit binds evidence to the checksummed release manifest', async (
 
 test('release audit accepts final evidence outside the tracked source tree', async () => {
   const root = await fixture();
-  const draftPath = join(root, 'release-evidence', 'v0.2.0-alpha.1.json');
-  const finalPath = join(root, 'release-artifacts', 'release-evidence-final-v0.2.0-alpha.1.json');
+  const draftPath = join(root, 'release-evidence', 'v0.3.0.json');
+  const finalPath = join(root, 'release-artifacts', 'release-evidence-final-v0.3.0.json');
   const validEvidence = await (await import('node:fs/promises')).readFile(draftPath, 'utf8');
   await writeFile(finalPath, validEvidence, 'utf8');
   const draft = JSON.parse(validEvidence);
@@ -326,7 +345,7 @@ test('release audit accepts final evidence outside the tracked source tree', asy
   const report = await assessPublication({
     root,
     release: true,
-    evidencePath: 'release-artifacts/release-evidence-final-v0.2.0-alpha.1.json',
+    evidencePath: 'release-artifacts/release-evidence-final-v0.3.0.json',
   });
 
   assert.equal(report.status, 'PASS');
@@ -334,7 +353,7 @@ test('release audit accepts final evidence outside the tracked source tree', asy
 
 test('release audit does not require an optional Hermes compatibility probe', async () => {
   const root = await fixture();
-  const evidencePath = join(root, 'release-evidence', 'v0.2.0-alpha.1.json');
+  const evidencePath = join(root, 'release-evidence', 'v0.3.0.json');
   const evidence = JSON.parse(await (await import('node:fs/promises')).readFile(evidencePath, 'utf8'));
   delete evidence.hermesProbe;
   await writeFile(evidencePath, JSON.stringify(evidence), 'utf8');
@@ -434,8 +453,9 @@ test('public product metadata declares the canonical brand and repository', asyn
     'utf8',
   );
 
-  assert.equal(manifest.version, '0.2.0-alpha.1');
+  assert.equal(manifest.version, '0.3.0');
   assert.equal(extension.version, manifest.version);
+  assert.match(extension.version, /^\d+\.\d+\.\d+$/);
   assert.equal(
     manifest.repository?.url,
     'https://github.com/danielmontagna86-source/protheus-engineering-agent.git',
@@ -448,7 +468,45 @@ test('public product metadata declares the canonical brand and repository', asyn
   assert.match(readme, /não exige Hermes, conta de IA, modelo, Python/i);
   assert.deepEqual(extension.categories, ['Linters', 'Testing']);
   assert.equal(extension.preview, true);
+  assert.equal(extension.pricing, 'Free');
+  assert.equal(extension.qna, 'marketplace');
+  assert.match(extension.icon, /\.png$/i);
+  assert.ok(extension.contributes.walkthroughs[0].steps.length >= 3);
   assert.match(extension.bugs?.url ?? '', /^https:\/\/github\.com\//);
+});
+
+test('publication audit rejects a Marketplace-incompatible prerelease version', async () => {
+  const root = await fixture();
+  for (const relativePath of ['package.json', 'apps/vscode-extension/package.json']) {
+    const path = join(root, relativePath);
+    const manifest = JSON.parse(await (await import('node:fs/promises')).readFile(path, 'utf8'));
+    manifest.version = '0.3.0-alpha.1';
+    await writeFile(path, JSON.stringify(manifest), 'utf8');
+  }
+
+  const report = await assessPublication({ root, release: false });
+
+  assert.equal(report.status, 'FAIL');
+  assert.ok(report.errors.some((finding) => finding.code === 'MARKETPLACE_VERSION_INVALID'));
+});
+
+test('Marketplace icon is a real 128 by 128 PNG', async () => {
+  const bytes = await (await import('node:fs/promises')).readFile(
+    new URL('../apps/vscode-extension/media/icon.png', import.meta.url),
+  );
+
+  assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+  assert.equal(bytes.readUInt32BE(16), 128);
+  assert.equal(bytes.readUInt32BE(20), 128);
+});
+
+test('extension staging copies Marketplace media into the VSIX root', async () => {
+  const buildScript = await (await import('node:fs/promises')).readFile(
+    new URL('../scripts/build-extension.mjs', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(buildScript, /cp\(join\(extensionRoot, 'media'\), join\(stageRoot, 'media'\), \{ recursive: true \}\)/);
 });
 
 test('dependency security gate uses pinned actions, fails closed and supports a private repository', async () => {
@@ -463,4 +521,29 @@ test('dependency security gate uses pinned actions, fails closed and supports a 
   assert.doesNotMatch(workflow, /continue-on-error:\s*true/);
   assert.doesNotMatch(workflow, /security-events:\s*write/);
   assert.doesNotMatch(workflow, /pull_request_target/);
+});
+
+test('mutation testing always removes its local sandbox', async () => {
+  const config = await (await import('node:fs/promises')).readFile(
+    new URL('../stryker.config.mjs', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(config, /cleanTempDir:\s*['"]always['"]/);
+});
+
+test('third-party notices preserve the official EngPro provider license and revision', async () => {
+  const notices = await (await import('node:fs/promises')).readFile(
+    new URL('../THIRD_PARTY_NOTICES.md', import.meta.url),
+    'utf8',
+  );
+  const catalog = JSON.parse(await (await import('node:fs/promises')).readFile(
+    new URL('../config/skill-providers.json', import.meta.url),
+    'utf8',
+  ));
+
+  assert.match(notices, /TOTVS EngPro AI Agent Skills/);
+  assert.match(notices, /MIT/);
+  assert.match(notices, new RegExp(catalog.providers[0].revision));
+  assert.equal(catalog.providers[0].mode, 'reference');
 });

@@ -1,6 +1,6 @@
 # Security Coverage
 
-**Target:** `v0.2.0-alpha.1`
+**Target:** `v0.3.0`
 **Assessment date:** 2026-09-07
 **Surface:** local Node.js runtime, MCP stdio process, and VS Code workspace extension. There is no HTTP server, authentication system, database migration, browser UI, or active LLM/RAG call in this alpha.
 

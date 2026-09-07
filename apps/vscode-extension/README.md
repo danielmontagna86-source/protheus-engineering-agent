@@ -2,7 +2,9 @@
 
 Standalone VS Code interface for evidence-backed ADVPL/TLPP engineering. The reusable deterministic runtime is bundled into the VSIX.
 
-The alpha provides four commands: Doctor, Index Workspace, Show Engineering Context, and Review Active ADVPL/TLPP File. Domain analysis runs in the bundled reusable runtime; the extension does not replace VS Code's editor, explorer, terminal, Git, diff, or chat interfaces.
+The preview provides four commands: Doctor, Index Workspace, Show Engineering Context, and Review Active ADVPL/TLPP File. Review findings appear in the native Problems panel while the complete machine-readable report remains in the Output channel. Domain analysis runs in the bundled reusable runtime; the extension does not replace VS Code's editor, explorer, terminal, Git, diff, or chat interfaces.
+
+Use the built-in **Get Started: Start with evidence-backed Protheus review** walkthrough to validate the workspace, index supported sources, and run the first review.
 
 This is an independent community project. It is not affiliated with, sponsored by, or maintained by TOTVS, the Protheus brand, or Hermes Agent.
 

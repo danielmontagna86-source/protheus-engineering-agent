@@ -145,6 +145,91 @@ test('review tracks loop boundaries and escalates more than three major findings
   assert.equal(report.assessment, 'NEEDS REVISION');
 });
 
+test('review detects the high-confidence restricted and legacy EngPro rule subset', () => {
+  const source = [
+    'StaticCall   (Namespace, FunctionName)',
+    'PTInternal  ("unsafe")',
+    '__cUserID:="admin"',
+    'cEmpAnt     := "01"',
+    'CREATE     PROCEDURE CustomProcedure',
+    'MSCREATE   ("TEMP", aFields)',
+    'DBCREATE  ("TEMP", aFields)',
+    'OutErr   ("legacy")',
+  ].join('\n');
+
+  const report = reviewSource(source, { file: 'restricted.prw' });
+
+  assert.deepEqual(report.findings.map(({ ruleId, severity, line }) => ({
+    ruleId, severity, line,
+  })), [
+    { ruleId: 'CA2022', severity: 'CRITICAL', line: 1 },
+    { ruleId: 'CA2023', severity: 'CRITICAL', line: 2 },
+    { ruleId: 'CA2024', severity: 'CRITICAL', line: 3 },
+    { ruleId: 'CA2025', severity: 'CRITICAL', line: 4 },
+    { ruleId: 'CA2053', severity: 'CRITICAL', line: 5 },
+    { ruleId: 'CA1000', severity: 'MAJOR', line: 6 },
+    { ruleId: 'CA1000', severity: 'MAJOR', line: 7 },
+    { ruleId: 'CA1004', severity: 'MINOR', line: 8 },
+  ]);
+  assert.deepEqual(report.counts, { CRITICAL: 5, MAJOR: 2, MINOR: 1, INFO: 0 });
+  assert.equal(report.assessment, 'FAIL');
+  assert.equal(report.findings.every(({ category, title, guidance }) => (
+    category.length > 0 && title.length > 0 && guidance.length > 0
+  )), true);
+});
+
+test('review detects UI in transactions and Type inside loops without leaking scope', () => {
+  const source = [
+    'User Function Scoped()',
+    '    Begin    Transaction',
+    '        MsgAlert("locked")',
+    '    End     Transaction',
+    '    MsgInfo("outside")',
+    '    While .T.',
+    '        Type("A1_COD")',
+    '        Exit',
+    '    EndDo',
+    '    Type("outside")',
+    'Return',
+  ].join('\n');
+
+  const report = reviewSource(source, { file: 'scoped.prw' });
+
+  assert.deepEqual(report.findings.map(({ ruleId, severity, line }) => ({ ruleId, severity, line })), [
+    { ruleId: 'CA1002', severity: 'MAJOR', line: 3 },
+    { ruleId: 'CA1003', severity: 'MAJOR', line: 7 },
+  ]);
+  assert.equal(report.findings.every(({ category, title, guidance }) => (
+    category.length > 0 && title.length > 0 && guidance.length > 0
+  )), true);
+});
+
+test('review treats DbEval as a callback function without leaking loop scope', () => {
+  const source = [
+    'DbEval({|| GetMV("MV_TEST")})',
+    'cValue := GetMV("MV_TEST")',
+  ].join('\n');
+
+  const report = reviewSource(source, { file: 'dbeval.prw' });
+
+  assert.deepEqual(report.findings.map(({ ruleId, line }) => ({ ruleId, line })), [
+    { ruleId: 'CA1003', line: 1 },
+  ]);
+});
+
+test('review ignores restricted rule text inside comments and string literals', () => {
+  const source = [
+    '// StaticCall() PTInternal() __cUserID := cEmpAnt :=',
+    'cSql := "CREATE PROCEDURE Hidden"',
+    "cLegacy := 'MSCREATE() DBCREATE() OutErr()'",
+    '/* Begin Transaction MsgAlert() End Transaction */',
+  ].join('\n');
+
+  const report = reviewSource(source);
+
+  assert.deepEqual(report.findings, []);
+});
+
 test('bug review filters unresolved and unrelated edges, deduplicates callers and sorts them', () => {
   const report = createBugReview({
     title: 'Impact contract',

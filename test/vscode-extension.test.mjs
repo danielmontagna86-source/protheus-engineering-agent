@@ -13,10 +13,14 @@ function fakeVscode() {
   const handlers = new Map();
   const output = [];
   const warnings = [];
+  const diagnostics = [];
+  const diagnosticDeletes = [];
   return {
     handlers,
     output,
     warnings,
+    diagnostics,
+    diagnosticDeletes,
     api: {
       commands: {
         registerCommand(name, handler) {
@@ -36,7 +40,30 @@ function fakeVscode() {
         },
         showWarningMessage(message) { warnings.push(message); },
         showErrorMessage(message) { warnings.push(message); },
+        withProgress(_options, task) { return task(); },
       },
+      languages: {
+        createDiagnosticCollection() {
+          return {
+            set(uri, values) { diagnostics.push({ uri, values }); },
+            delete(uri) { diagnosticDeletes.push(uri); },
+            clear() {},
+            dispose() {},
+          };
+        },
+      },
+      Diagnostic: class Diagnostic {
+        constructor(range, message, severity) {
+          Object.assign(this, { range, message, severity });
+        }
+      },
+      Range: class Range {
+        constructor(startLine, startCharacter, endLine, endCharacter) {
+          Object.assign(this, { startLine, startCharacter, endLine, endCharacter });
+        }
+      },
+      DiagnosticSeverity: { Error: 0, Warning: 1, Information: 2, Hint: 3 },
+      ProgressLocation: { Notification: 15 },
       workspace: {
         workspaceFolders: [{ uri: { fsPath: 'C:\\workspace' } }],
       },
@@ -129,6 +156,84 @@ test('review uses the workspace folder that owns the active file in a multi-root
     'review', 'D:\\protheus-two\\source.prw', 'D:\\protheus-two',
   ]);
   assert.equal(calls[0].options.cwd, 'D:\\protheus-two');
+});
+
+test('review publishes evidence-backed findings to the native Problems panel', async () => {
+  const fake = fakeVscode();
+  const activeUri = { fsPath: 'C:\\workspace\\source.prw' };
+  fake.api.window.activeTextEditor = { document: { uri: activeUri } };
+  const controller = extension.createExtension(fake.api, {
+    cliPath: 'cli.mjs',
+    execFile(_command, _args, _options, callback) {
+      callback(null, JSON.stringify({
+        findings: [
+          {
+            ruleId: 'CA1003',
+            severity: 'MAJOR',
+            title: 'Expensive API inside loop',
+            guidance: 'Resolve the invariant before the loop.',
+            line: 4,
+          },
+          {
+            ruleId: 'CA4000',
+            severity: 'INFO',
+            title: 'Inline conditional',
+            guidance: 'Use an explicit conditional.',
+            line: 7,
+          },
+        ],
+      }), '');
+    },
+  });
+  controller.activate({ subscriptions: [] });
+
+  await fake.handlers.get('pea.reviewActiveFile')();
+
+  assert.equal(fake.diagnostics.length, 1);
+  assert.equal(fake.diagnostics[0].uri, activeUri);
+  assert.equal(fake.diagnostics[0].values.length, 2);
+  assert.equal(fake.diagnostics[0].values[0].range.startLine, 3);
+  assert.equal(fake.diagnostics[0].values[0].severity, fake.api.DiagnosticSeverity.Warning);
+  assert.equal(fake.diagnostics[0].values[0].code, 'CA1003');
+  assert.equal(fake.diagnostics[0].values[0].source, 'Protheus Engineering Agent');
+});
+
+test('review reports malformed runtime output without publishing stale diagnostics', async () => {
+  const fake = fakeVscode();
+  fake.api.window.activeTextEditor = { document: { uri: { fsPath: 'C:\\workspace\\source.prw' } } };
+  const controller = extension.createExtension(fake.api, {
+    cliPath: 'cli.mjs',
+    execFile(_command, _args, _options, callback) { callback(null, 'not-json', ''); },
+  });
+  controller.activate({ subscriptions: [] });
+
+  await fake.handlers.get('pea.reviewActiveFile')();
+
+  assert.equal(fake.diagnostics.length, 0);
+  assert.match(fake.warnings[0], /invalid review output/i);
+});
+
+test('review clears diagnostics for the active file when a later runtime result is invalid', async () => {
+  const fake = fakeVscode();
+  const uri = { fsPath: 'C:\\workspace\\source.prw' };
+  fake.api.window.activeTextEditor = { document: { uri } };
+  let invocation = 0;
+  const controller = extension.createExtension(fake.api, {
+    cliPath: 'cli.mjs',
+    execFile(_command, _args, _options, callback) {
+      invocation += 1;
+      callback(null, invocation === 1
+        ? JSON.stringify({ findings: [{ ruleId: 'CA4000', severity: 'INFO', title: 'Finding', line: 1 }] })
+        : 'invalid', '');
+    },
+  });
+  controller.activate({ subscriptions: [] });
+
+  await fake.handlers.get('pea.reviewActiveFile')();
+  await fake.handlers.get('pea.reviewActiveFile')();
+
+  assert.equal(fake.diagnostics.length, 1);
+  assert.deepEqual(fake.diagnosticDeletes, [uri]);
 });
 
 test('real host smoke installs the packaged VSIX before exercising commands', async () => {

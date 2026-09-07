@@ -51,7 +51,7 @@ Transformar o scaffold local em um produto público independente, com especifica
 | TASK-006 | Escolher e aplicar licença SPDX consistente. | x: Apache-2.0 | 2026-09-07 |
 | TASK-007 | Definir owner/slug e completar URLs/metadados. | x | 2026-09-07 |
 | TASK-008 | Executar full tests, structural audit, code review, security review, mutation gate e smokes. | partial: local automated/review/mutation PASS | 2026-09-07 |
-| TASK-009 | Gerar arquivo `RELEASE-v0.2.0-alpha.1.md`, pacote e SHA-256. |  |  |
+| TASK-009 | Gerar arquivo `RELEASE-v0.3.0.md`, pacote e SHA-256. |  |  |
 
 ### Implementation Phase 3 — GitHub publication
 
@@ -83,7 +83,7 @@ Transformar o scaffold local em um produto público independente, com especifica
 - **FILE-002**: `scripts/publication-check.mjs` e testes — auditoria pública.
 - **FILE-003**: `.github/workflows/ci.yml` — CI.
 - **FILE-004**: `README.md`, `README.en.md`, `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`.
-- **FILE-005**: `RELEASE-v0.2.0-alpha.1.md` — evidência final.
+- **FILE-005**: `RELEASE-v0.3.0.md` — evidência final.
 
 ## 6. Testing
 

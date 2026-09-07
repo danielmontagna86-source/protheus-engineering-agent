@@ -2,7 +2,7 @@
 
 **Status:** Approved for implementation; public release remains gated
 **Owner:** Montagna
-**Target:** `v0.2.0-alpha.1`
+**Target:** `v0.3.0`
 
 ## Product outcome
 

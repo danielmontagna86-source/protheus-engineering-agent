@@ -14,7 +14,7 @@
 | T7 | Add least-privilege GitHub CI matrix. | T5 | workflow passes structural check and first draft PR run | full | IN PROGRESS: local contract passes; GitHub run pending |
 | T8 | Select/apply license and repository owner metadata. | owner decision | SPDX metadata and URL are consistent | release | COMPLETE: Apache-2.0 and canonical repository configured |
 | T9 | Execute code review, automated/manual smokes and release checklist. | T5-T8 | no blocking findings and signed GO | release | IN PROGRESS: local code/security review and CLI/MCP smoke PASS; manual/external gates pending |
-| T10 | Create public GitHub repository and `v0.2.0-alpha.1`. | T9 | protected main, tag, release notes, artifacts and checksums exist | release | PLANNED |
+| T10 | Publish `v0.3.0` as a Marketplace pre-release only after explicit authorization. | T9 | protected main, tag, release notes, artifacts and checksums exist | release | PLANNED |
 
 ## Atomic Verification
 

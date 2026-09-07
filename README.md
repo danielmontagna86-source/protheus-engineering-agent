@@ -4,7 +4,7 @@ Extensão VS Code autônoma para engenharia ADVPL/TLPP, com runtime aberto e reu
 
 > Projeto comunitário independente, em estágio alpha. Não é afiliado, patrocinado ou mantido pela TOTVS, pela marca Protheus ou pelo projeto Hermes Agent. As marcas pertencem aos seus respectivos titulares.
 
-[English](README.en.md) · [Posicionamento](docs/brand-positioning.md) · [Arquitetura](docs/architecture.md) · [Pesquisa de efetividade](docs/research/product-effectiveness-review.md) · [Roadmap](docs/roadmap.md) · [Segurança](SECURITY.md) · [Como contribuir](CONTRIBUTING.md)
+[English](README.en.md) · [Posicionamento](docs/brand-positioning.md) · [Arquitetura](docs/architecture.md) · [Regras](docs/rules.md) · [Skills](docs/skills.md) · [Pesquisa premium](docs/research/premium-product-leadership-review.md) · [Roadmap](docs/roadmap.md) · [Segurança](SECURITY.md) · [Como contribuir](CONTRIBUTING.md)
 
 O caminho principal exige somente o VSIX: não exige Hermes, conta de IA, modelo, Python, Oracle, TDN ou AppServer. O runtime determinístico é empacotado junto da extensão.
 
@@ -16,7 +16,7 @@ O caminho principal exige somente o VSIX: não exige Hermes, conta de IA, modelo
 - política por ambiente com deny-by-default;
 - supervisor de build com runner injetável e gate de capacidade;
 - servidor MCP stdio com tools de doctor, index, review e contexto;
-- Skills e Rules locais lidas ao vivo, limitadas e tratadas como dados não confiáveis;
+- Skills em caminhos padrão do ecossistema, Rules locais e provedores fixados por commit, todos limitados e tratados como dados não confiáveis;
 - adaptador experimental e opcional para Hermes, fora do caminho crítico e do gate de release;
 - extensão VS Code fina com quatro comandos, sem UI de terminal/explorer/Git própria.
 
@@ -84,7 +84,7 @@ Para gerar o mesmo VSIX auditado que será anexado ao GitHub Release:
 
 ```sh
 npm run package:extension
-code --install-extension release-artifacts/protheus-engineering-agent-v0.2.0-alpha.1.vsix
+code --install-extension release-artifacts/protheus-engineering-agent-v0.3.0.vsix
 ```
 
 No workspace ADVPL/TLPP, use a paleta:
@@ -94,7 +94,7 @@ No workspace ADVPL/TLPP, use a paleta:
 - `Protheus Agent: Show Engineering Context`
 - `Protheus Agent: Review Active ADVPL/TLPP File`
 
-A extensão apenas chama o runtime empacotado e mostra JSON em um Output Channel. Ela complementa o TDS-VSCode e não substitui editor, linguagem, compilador, debugger, terminal, explorer, Git, diff ou chat do VS Code.
+A extensão apenas chama o runtime empacotado, preserva o JSON auditável no Output Channel e publica os findings no painel nativo Problems. Ela complementa o TDS-VSCode e não substitui editor, linguagem, compilador, debugger, terminal, explorer, Git, diff ou chat do VS Code.
 
 ## Estrutura
 

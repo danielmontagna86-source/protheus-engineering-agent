@@ -40,8 +40,13 @@ async function run() {
   const document = await vscode.workspace.openTextDocument(sourceUri);
   await vscode.window.showTextDocument(document);
   const review = await execute('pea.reviewActiveFile');
-  assert.equal(review.assessment, 'PASS');
+  assert.equal(review.assessment, 'PASS WITH OBSERVATIONS');
   assert.equal(review.file, 'empty.prw');
+  const diagnostics = vscode.languages.getDiagnostics(sourceUri);
+  assert.equal(diagnostics.length, 1, 'review finding was not published to Problems');
+  assert.equal(diagnostics[0].code, 'CA4000');
+  assert.equal(diagnostics[0].source, 'Protheus Engineering Agent');
+  assert.equal(diagnostics[0].range.start.line, 1);
 
   process.stdout.write('VS Code Extension Host smoke: PASS (4 commands)\n');
 }

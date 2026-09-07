@@ -5,6 +5,7 @@ const config = {
     command: 'node --test test/codegraph.test.mjs test/policy.test.mjs test/review.test.mjs',
   },
   coverageAnalysis: 'off',
+  cleanTempDir: 'always',
   mutate: [
     'packages/policy/src/index.mjs',
     'packages/review/src/index.mjs',
