@@ -1,0 +1,197 @@
+import { readFile, readdir } from 'node:fs/promises';
+import { extname, join, relative, resolve } from 'node:path';
+
+export const ADVPL_EXTENSIONS = Object.freeze(new Set([
+  '.prw', '.prg', '.prx', '.tlpp', '.ppx', '.ppp', '.apw', '.aph',
+]));
+
+const SKIP_DIRECTORIES = new Set(['.git', '.pea', 'node_modules', 'dist', 'build']);
+
+export function decodeSource(bytes) {
+  if (!Buffer.isBuffer(bytes) && !(bytes instanceof Uint8Array)) {
+    throw new TypeError('source bytes must be a Buffer or Uint8Array');
+  }
+  const view = Buffer.from(bytes);
+  if (view.length >= 2 && view[0] === 0xff && view[1] === 0xfe) {
+    return { encoding: 'utf-16le', text: new TextDecoder('utf-16le').decode(view) };
+  }
+  try {
+    return {
+      encoding: 'utf-8',
+      text: new TextDecoder('utf-8', { fatal: true }).decode(view),
+    };
+  } catch {
+    return {
+      encoding: 'windows-1252',
+      text: new TextDecoder('windows-1252').decode(view),
+    };
+  }
+}
+
+function maskCommentsAndStrings(source) {
+  const chars = Array.from(source);
+  let mode = 'code';
+  for (let index = 0; index < chars.length; index += 1) {
+    const current = chars[index];
+    const next = chars[index + 1];
+    if (mode === 'line-comment') {
+      if (current === '\n') mode = 'code';
+      else chars[index] = ' ';
+      continue;
+    }
+    if (mode === 'block-comment') {
+      if (current === '*' && next === '/') {
+        chars[index] = ' ';
+        chars[index + 1] = ' ';
+        index += 1;
+        mode = 'code';
+      } else if (current !== '\n') chars[index] = ' ';
+      continue;
+    }
+    if (mode === 'string-double' || mode === 'string-single') {
+      const quote = mode === 'string-double' ? '"' : "'";
+      if (current === quote) mode = 'code';
+      if (current !== '\n') chars[index] = ' ';
+      continue;
+    }
+    if (current === '/' && next === '/') {
+      chars[index] = ' ';
+      chars[index + 1] = ' ';
+      index += 1;
+      mode = 'line-comment';
+    } else if (current === '/' && next === '*') {
+      chars[index] = ' ';
+      chars[index + 1] = ' ';
+      index += 1;
+      mode = 'block-comment';
+    } else if (current === '"') {
+      chars[index] = ' ';
+      mode = 'string-double';
+    } else if (current === "'") {
+      chars[index] = ' ';
+      mode = 'string-single';
+    }
+  }
+  return chars.join('');
+}
+
+function lineAt(source, offset) {
+  let line = 1;
+  for (let index = 0; index < offset; index += 1) {
+    if (source[index] === '\n') line += 1;
+  }
+  return line;
+}
+
+function declarationKind(prefix) {
+  const normalized = prefix.trim().toLowerCase();
+  if (normalized.startsWith('user')) return 'user-function';
+  if (normalized.startsWith('static')) return 'static-function';
+  if (normalized.startsWith('method')) return 'method';
+  return 'function';
+}
+
+export function parseAdvplSource(source, options = {}) {
+  const file = options.file ?? '<memory>';
+  const masked = maskCommentsAndStrings(source);
+  const declarations = [];
+  const declarationPattern = /^\s*((?:User\s+|Static\s+)?Function|Method)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)/gim;
+  for (const match of masked.matchAll(declarationPattern)) {
+    const name = match[2];
+    declarations.push({
+      index: match.index,
+      bodyStart: match.index + match[0].length,
+      symbol: {
+        id: `${file}#${name.toLowerCase()}`,
+        name,
+        canonical: name.toLowerCase(),
+        kind: declarationKind(match[1]),
+        file,
+        line: lineAt(source, match.index),
+        params: match[3].split(',').map((item) => item.trim()).filter(Boolean),
+      },
+    });
+  }
+
+  const calls = [];
+  const ignored = new Set([
+    'if', 'elseif', 'while', 'for', 'return', 'local', 'private', 'public',
+    'default', 'function', 'method', 'class', 'static', 'user',
+  ]);
+  for (let index = 0; index < declarations.length; index += 1) {
+    const declaration = declarations[index];
+    const end = declarations[index + 1]?.index ?? masked.length;
+    const body = masked.slice(declaration.bodyStart, end);
+    const callPattern = /\b([A-Za-z_][A-Za-z0-9_]*)\s*\(/g;
+    for (const match of body.matchAll(callPattern)) {
+      const callee = match[1];
+      if (ignored.has(callee.toLowerCase())) continue;
+      calls.push({
+        caller: declaration.symbol.name,
+        callerCanonical: declaration.symbol.canonical,
+        callee,
+        calleeCanonical: callee.toLowerCase(),
+        file,
+        line: lineAt(source, declaration.bodyStart + match.index),
+      });
+    }
+  }
+
+  return { symbols: declarations.map((item) => item.symbol), calls };
+}
+
+async function collectSources(directory, root, files) {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    if (entry.isSymbolicLink()) continue;
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      if (!SKIP_DIRECTORIES.has(entry.name)) await collectSources(path, root, files);
+      continue;
+    }
+    if (ADVPL_EXTENSIONS.has(extname(entry.name).toLowerCase())) files.push(path);
+  }
+}
+
+export async function indexWorkspace(workspacePath) {
+  const root = resolve(workspacePath);
+  const files = [];
+  await collectSources(root, root, files);
+  files.sort((left, right) => left.localeCompare(right));
+
+  const nodes = [];
+  const rawCalls = [];
+  const encodings = {};
+  for (const path of files) {
+    const rel = relative(root, path).replaceAll('\\', '/');
+    const decoded = decodeSource(await readFile(path));
+    encodings[rel] = decoded.encoding;
+    const parsed = parseAdvplSource(decoded.text, { file: rel });
+    nodes.push(...parsed.symbols);
+    rawCalls.push(...parsed.calls);
+  }
+
+  const byCanonical = new Map();
+  for (const node of nodes) {
+    if (!byCanonical.has(node.canonical)) byCanonical.set(node.canonical, node);
+  }
+  const edges = rawCalls.map((call) => {
+    const target = byCanonical.get(call.calleeCanonical);
+    return {
+      from: call.caller,
+      to: target?.name ?? call.callee,
+      file: call.file,
+      line: call.line,
+      resolved: Boolean(target),
+      targetFile: target?.file ?? null,
+    };
+  });
+
+  return {
+    schemaVersion: 1,
+    workspace: root,
+    files: files.map((path) => relative(root, path).replaceAll('\\', '/')),
+    encodings,
+    nodes,
+    edges,
+  };
+}

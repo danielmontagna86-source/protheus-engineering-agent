@@ -1,0 +1,44 @@
+{
+  "name": "protheus-engineering-agent",
+  "version": "0.2.0-alpha.1",
+  "description": "Open-source engineering runtime and thin VS Code interface for ADVPL/TLPP projects.",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "keywords": [
+    "advpl",
+    "tlpp",
+    "protheus",
+    "vscode",
+    "mcp",
+    "engineering-agent"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danielmontagna86-source/protheus-engineering-agent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/danielmontagna86-source/protheus-engineering-agent/issues"
+  },
+  "homepage": "https://github.com/danielmontagna86-source/protheus-engineering-agent#readme",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "test": "node --test",
+    "test:mutation": "stryker run",
+    "check": "node scripts/check.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "publication:check": "node scripts/publication-check.mjs",
+    "publication:release-check": "node scripts/publication-check.mjs --release",
+    "validate": "node --test && node scripts/check.mjs && node scripts/publication-check.mjs",
+    "doctor": "node packages/runtime/src/cli.mjs doctor",
+    "mcp": "node packages/mcp/src/stdio.mjs"
+  },
+  "devDependencies": {
+    "@stryker-mutator/core": "10.0.0"
+  },
+  "overrides": {
+    "qs": "6.16.0"
+  }
+}

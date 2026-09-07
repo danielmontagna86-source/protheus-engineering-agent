@@ -1,0 +1,31 @@
+{
+  "name": "protheus-engineering-agent-vscode",
+  "displayName": "Protheus Engineering Agent",
+  "description": "Thin VS Code interface for an open engineering runtime for ADVPL/TLPP projects.",
+  "version": "0.2.0-alpha.1",
+  "private": true,
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danielmontagna86-source/protheus-engineering-agent.git"
+  },
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": ["Other"],
+  "main": "./extension.cjs",
+  "activationEvents": [
+    "onCommand:pea.doctor",
+    "onCommand:pea.indexWorkspace",
+    "onCommand:pea.openContext",
+    "onCommand:pea.reviewActiveFile"
+  ],
+  "contributes": {
+    "commands": [
+      { "command": "pea.doctor", "title": "Protheus Agent: Doctor" },
+      { "command": "pea.indexWorkspace", "title": "Protheus Agent: Index Workspace" },
+      { "command": "pea.openContext", "title": "Protheus Agent: Show Engineering Context" },
+      { "command": "pea.reviewActiveFile", "title": "Protheus Agent: Review Active ADVPL/TLPP File" }
+    ]
+  }
+}

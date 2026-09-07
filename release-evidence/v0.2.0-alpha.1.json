@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "version": "0.2.0-alpha.1",
+  "status": "NO-GO",
+  "commit": null,
+  "ci": {
+    "passed": false,
+    "url": null
+  },
+  "codeReview": {
+    "passed": false
+  },
+  "securityReview": {
+    "passed": false
+  },
+  "vscodeSmoke": {
+    "passed": false
+  },
+  "hermesProbe": {
+    "passed": false
+  },
+  "artifact": {
+    "path": null,
+    "sha256": null
+  },
+  "approvedBy": null
+}

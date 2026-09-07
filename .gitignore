@@ -1,0 +1,14 @@
+.pea/
+.worktrees/
+.stryker-tmp/
+node_modules/
+coverage/
+dist/
+*.vsix
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+Desktop.ini
