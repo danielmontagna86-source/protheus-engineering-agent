@@ -224,6 +224,127 @@ export function createDictionarySnapshotAdapter(options = {}) {
   });
 }
 
+const ORACLE_FORBIDDEN = /\b(?:insert|update|delete|merge|alter|drop|truncate|grant|revoke|execute|begin|declare|commit|rollback|call)\b/i;
+const SENSITIVE_FIELD = /(?:password|passwd|secret|token|api[_-]?key|authorization|credential)/i;
+
+function validateReadOnlyQuery(name, query) {
+  assertPlainObject(query, `Oracle query ${name}`);
+  const sql = requiredString(query.sql, `Oracle query ${name} SQL`);
+  if (!/^\s*(?:select|with)\b/i.test(sql) || ORACLE_FORBIDDEN.test(sql)
+    || /;|--|\/\*|\bfor\s+update\b/i.test(sql)) {
+    throw new TypeError(`Oracle query ${name} must be one read-only SELECT`);
+  }
+  const bindNames = query.bindNames ?? [];
+  if (!Array.isArray(bindNames) || bindNames.some((item) => !/^[A-Za-z][A-Za-z0-9_]*$/.test(item))) {
+    throw new TypeError(`Oracle query ${name} bindNames are invalid`);
+  }
+  const uniqueBinds = [...new Set(bindNames)];
+  const placeholders = [...sql.matchAll(/:([A-Za-z][A-Za-z0-9_]*)/g)].map((match) => match[1]);
+  if (uniqueBinds.length !== bindNames.length
+    || [...new Set(placeholders)].some((item) => !uniqueBinds.includes(item))
+    || uniqueBinds.some((item) => !placeholders.includes(item))) {
+    throw new TypeError(`Oracle query ${name} placeholders must match bindNames`);
+  }
+  const redactFields = query.redactFields ?? [];
+  if (!Array.isArray(redactFields) || redactFields.some((item) => typeof item !== 'string' || item.length === 0)) {
+    throw new TypeError(`Oracle query ${name} redactFields are invalid`);
+  }
+  return Object.freeze({ sql, bindNames: Object.freeze(uniqueBinds), redactFields: Object.freeze([...redactFields]) });
+}
+
+function validateBinds(args, query) {
+  const allowed = new Set(['name', 'binds']);
+  const unexpectedArgs = Object.keys(args).filter((key) => !allowed.has(key));
+  if (unexpectedArgs.length > 0) throw new IntegrationError('INTEGRATION_ARGUMENT_INVALID', `unexpected Oracle argument: ${unexpectedArgs[0]}`);
+  assertPlainObject(args.binds, 'Oracle binds');
+  const keys = Object.keys(args.binds);
+  const unexpected = keys.filter((key) => !query.bindNames.includes(key));
+  const missing = query.bindNames.filter((key) => !Object.hasOwn(args.binds, key));
+  if (unexpected.length > 0 || missing.length > 0) {
+    throw new IntegrationError('INTEGRATION_ARGUMENT_INVALID', `Oracle binds do not match named query ${args.name}`);
+  }
+  for (const value of Object.values(args.binds)) {
+    if (value !== null && !['string', 'number', 'boolean'].includes(typeof value)) {
+      throw new IntegrationError('INTEGRATION_ARGUMENT_INVALID', 'Oracle bind values must be JSON scalars');
+    }
+    if (typeof value === 'string' && Buffer.byteLength(value) > 4_096) {
+      throw new IntegrationError('INTEGRATION_ARGUMENT_INVALID', 'Oracle bind value exceeds 4096 bytes');
+    }
+  }
+  return { ...args.binds };
+}
+
+function redactRows(rows, fields) {
+  const explicit = new Set(fields.map((field) => field.toLowerCase()));
+  return rows.map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [
+    key,
+    explicit.has(key.toLowerCase()) || SENSITIVE_FIELD.test(key) ? '[REDACTED]' : value,
+  ])));
+}
+
+export function createOracleReadOnlyAdapter(options = {}) {
+  if (typeof options.execute !== 'function') throw new TypeError('Oracle execute adapter is required');
+  if (typeof options.authorize !== 'function') throw new TypeError('Oracle capability authorizer is required');
+  assertPlainObject(options.queries, 'Oracle named queries');
+  const queries = new Map(Object.entries(options.queries).map(([name, query]) => [
+    requiredString(name, 'Oracle query name'), validateReadOnlyQuery(name, query),
+  ]));
+  if (queries.size === 0) throw new TypeError('at least one Oracle named query is required');
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const maxRows = options.maxRows ?? 100;
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60_000) throw new TypeError('Oracle timeout is invalid');
+  if (!Number.isInteger(maxRows) || maxRows < 1 || maxRows > 1_000) throw new TypeError('Oracle maxRows is invalid');
+
+  return Object.freeze({
+    integration: 'oracle',
+    mode: 'read-only-named-query',
+    schemaVersion: 1,
+    async invoke(operation, args = {}) {
+      if (operation !== 'query') throw new IntegrationError('INTEGRATION_OPERATION_DENIED', 'Oracle supports only named query');
+      assertPlainObject(args, 'Oracle arguments');
+      const name = requiredString(args.name, 'Oracle query name');
+      const query = queries.get(name);
+      if (!query) throw new IntegrationError('INTEGRATION_OPERATION_DENIED', `Oracle named query is not allowlisted: ${name}`);
+      const binds = validateBinds(args, query);
+      const decision = await options.authorize('oracle:read', { queryName: name });
+      if (!decision?.allowed) throw new IntegrationError('INTEGRATION_PERMISSION_DENIED', decision?.reason ?? 'Oracle read denied');
+      const startedAt = Date.now();
+      let raw;
+      try {
+        raw = await withTimeout(
+          () => options.execute(query.sql, binds, { timeoutMs, maxRows: maxRows + 1 }),
+          timeoutMs,
+          'oracle',
+        );
+      } catch (error) {
+        if (error?.code === 'INTEGRATION_TIMEOUT') throw error;
+        throw new IntegrationError('INTEGRATION_FAILED', 'Oracle named query failed');
+      }
+      if (!raw || !Array.isArray(raw.rows) || raw.rows.some((row) => !row || typeof row !== 'object' || Array.isArray(row))) {
+        throw new IntegrationError('INTEGRATION_SCHEMA_INVALID', 'Oracle result requires object rows');
+      }
+      const truncated = raw.rows.length > maxRows;
+      const rows = redactRows(raw.rows.slice(0, maxRows), query.redactFields);
+      return {
+        ok: true,
+        schemaVersion: 1,
+        integration: 'oracle',
+        operation: 'query',
+        data: { rows },
+        evidence: {
+          integration: 'oracle',
+          mode: 'read-only-named-query',
+          queryName: name,
+          querySha256: createHash('sha256').update(query.sql).digest('hex'),
+          rowCount: rows.length,
+          truncated,
+          durationMs: Math.max(0, Date.now() - startedAt),
+        },
+      };
+    },
+  });
+}
+
 export function createIntegrationRegistry(adapters = {}) {
   const configured = new Map(
     Object.entries(adapters).filter(([name, adapter]) =>

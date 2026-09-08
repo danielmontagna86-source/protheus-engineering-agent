@@ -8,6 +8,7 @@ import { createHermesAdapter } from '../packages/hermes-adapter/src/index.mjs';
 import {
   createDictionarySnapshotAdapter,
   createIntegrationRegistry,
+  createOracleReadOnlyAdapter,
   createTdnSnapshotAdapter,
 } from '../packages/integrations/src/index.mjs';
 import {
@@ -161,6 +162,82 @@ test('snapshot integrations fail with explicit schema, operation and timeout evi
   assert.equal((await registry.invoke('tdn', 'search', { query: 'x' })).error.code, 'INTEGRATION_SCHEMA_INVALID');
   assert.equal((await registry.invoke('dictionary', 'unknown', {})).error.code, 'INTEGRATION_OPERATION_DENIED');
   assert.equal((await registry.invoke('dictionary', 'table', { name: 'SE1' })).error.code, 'INTEGRATION_TIMEOUT');
+});
+
+test('Oracle adapter executes only named read-only queries with binds and redaction', async () => {
+  const calls = [];
+  const adapter = createOracleReadOnlyAdapter({
+    authorize: async () => ({ allowed: true, reason: 'allowed' }),
+    queries: {
+      receivable: {
+        sql: 'SELECT E1_PREFIXO, API_TOKEN FROM SE1010 WHERE E1_CLIENTE = :customer',
+        bindNames: ['customer'],
+        redactFields: ['API_TOKEN'],
+      },
+    },
+    execute: async (sql, binds) => {
+      calls.push({ sql, binds });
+      return { rows: [{ E1_PREFIXO: 'A', API_TOKEN: 'never-return' }] };
+    },
+  });
+  const result = await adapter.invoke('query', {
+    name: 'receivable', binds: { customer: '000001' },
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.data.rows, [{ E1_PREFIXO: 'A', API_TOKEN: '[REDACTED]' }]);
+  assert.equal(result.evidence.queryName, 'receivable');
+  assert.equal('sql' in result.evidence, false);
+  assert.deepEqual(calls[0].binds, { customer: '000001' });
+});
+
+test('Oracle adapter rejects raw SQL, mutating catalog statements and unexpected binds', async () => {
+  assert.throws(() => createOracleReadOnlyAdapter({
+    authorize: async () => ({ allowed: true }), execute: async () => ({ rows: [] }),
+    queries: { unsafe: { sql: 'DELETE FROM SE1010', bindNames: [] } },
+  }), /read-only SELECT/i);
+
+  const adapter = createOracleReadOnlyAdapter({
+    authorize: async () => ({ allowed: true }), execute: async () => ({ rows: [] }),
+    queries: { safe: { sql: 'SELECT E1_PREFIXO FROM SE1010 WHERE E1_CLIENTE = :customer', bindNames: ['customer'] } },
+  });
+  assert.equal((await createIntegrationRegistry({ oracle: adapter }).invoke('oracle', 'query', {
+    sql: 'SELECT * FROM secrets', name: 'safe', binds: { customer: '1' },
+  })).error.code, 'INTEGRATION_ARGUMENT_INVALID');
+  assert.equal((await createIntegrationRegistry({ oracle: adapter }).invoke('oracle', 'query', {
+    name: 'safe', binds: { customer: '1', extra: '2' },
+  })).error.code, 'INTEGRATION_ARGUMENT_INVALID');
+});
+
+test('Oracle adapter fails closed on permission denial, timeout and excessive rows', async () => {
+  const denied = createOracleReadOnlyAdapter({
+    authorize: async () => ({ allowed: false, reason: 'explicit-grant-required' }),
+    queries: { safe: { sql: 'SELECT 1 AS VALUE FROM DUAL', bindNames: [] } },
+    execute: async () => ({ rows: [] }),
+  });
+  assert.equal((await createIntegrationRegistry({ oracle: denied }).invoke('oracle', 'query', {
+    name: 'safe', binds: {},
+  })).error.code, 'INTEGRATION_PERMISSION_DENIED');
+
+  const slow = createOracleReadOnlyAdapter({
+    timeoutMs: 5,
+    authorize: async () => ({ allowed: true }),
+    queries: { safe: { sql: 'SELECT 1 AS VALUE FROM DUAL', bindNames: [] } },
+    execute: async () => new Promise(() => {}),
+  });
+  assert.equal((await createIntegrationRegistry({ oracle: slow }).invoke('oracle', 'query', {
+    name: 'safe', binds: {},
+  })).error.code, 'INTEGRATION_TIMEOUT');
+
+  const bounded = createOracleReadOnlyAdapter({
+    maxRows: 1,
+    authorize: async () => ({ allowed: true }),
+    queries: { safe: { sql: 'SELECT VALUE FROM TEST', bindNames: [] } },
+    execute: async () => ({ rows: [{ VALUE: 1 }, { VALUE: 2 }] }),
+  });
+  const result = await bounded.invoke('query', { name: 'safe', binds: {} });
+  assert.equal(result.data.rows.length, 1);
+  assert.equal(result.evidence.truncated, true);
 });
 
 test('build supervisor blocks execution until the environment grant exists', async () => {

@@ -51,13 +51,20 @@ to 500 characters.
 ```
 
 Read-only operations are `table`, `field` and `search`. Names are matched case-insensitively.
-The adapter never opens an Oracle connection or reads live SX tables.
+The snapshot adapter never opens an Oracle connection or reads live SX tables.
+
+## Oracle named-query adapter
+
+Oracle is unavailable by default and no driver or credential is bundled. A host may inject a driver function and a trusted catalog of named `SELECT` queries. Callers provide only a query name and the exact declared bind variables; raw SQL, comments, multiple statements, `FOR UPDATE`, DDL, DML and control blocks are rejected while the catalog is loaded.
+
+The adapter requires an `oracle:read` authorizer, limits timeout, bind size and rows, redacts configured and conventionally sensitive fields, and returns only the query name plus a SHA-256 identity—not SQL, bind values, connection strings or credentials. Driver errors are normalized so their potentially sensitive text is not exposed.
 
 ## MCP tools
 
 - `pea_tdn_search`
 - `pea_dictionary_table`
 - `pea_dictionary_field`
+- `pea_oracle_query` (unavailable until a host injects an approved adapter)
 
 Missing configuration returns `INTEGRATION_UNAVAILABLE`; invalid snapshots, unsupported
 operations and load timeouts return their own structured error codes. Snapshot data is

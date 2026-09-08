@@ -116,6 +116,16 @@ const TOOLS = Object.freeze([
       additionalProperties: false,
     },
   },
+  {
+    name: 'pea_oracle_query',
+    description: 'Execute one configured read-only Oracle named query with bind variables.',
+    inputSchema: {
+      type: 'object',
+      properties: { name: { type: 'string' }, binds: { type: 'object' } },
+      required: ['name', 'binds'],
+      additionalProperties: false,
+    },
+  },
 ]);
 
 const TOOL_ARGUMENTS = Object.freeze({
@@ -141,6 +151,9 @@ const TOOL_ARGUMENTS = Object.freeze({
     required: ['instruction', 'context'],
     nonStringRequired: ['context'],
   }),
+  pea_oracle_query: Object.freeze({
+    allowed: ['name', 'binds'], required: ['name', 'binds'], nonStringRequired: ['binds'],
+  }),
 });
 
 function validateToolArguments(name, value) {
@@ -153,7 +166,7 @@ function validateToolArguments(name, value) {
   for (const key of contract.required) {
     if (contract.nonStringRequired?.includes(key)) {
       if (key === 'depth' && (!Number.isInteger(args[key]) || args[key] < 1)) throw new Error('depth is required');
-      if (['input', 'context'].includes(key) && (!args[key] || typeof args[key] !== 'object' || Array.isArray(args[key]))) {
+      if (['input', 'context', 'binds'].includes(key) && (!args[key] || typeof args[key] !== 'object' || Array.isArray(args[key]))) {
         throw new Error(`${key} is required`);
       }
     } else if (typeof args[key] !== 'string' || args[key].length === 0) throw new Error(`${key} is required`);
@@ -182,6 +195,7 @@ export function createMcpHandler(options) {
     subagentSupervisor: options.subagentSupervisor,
     subagentAllowedTools: options.subagentAllowedTools,
     aiGateway: options.aiGateway,
+    oracleAdapter: options.oracleAdapter,
   });
 
   return async function handle(request) {
@@ -240,6 +254,8 @@ export function createMcpHandler(options) {
             context: args.context,
             outputSchema: args.outputSchema,
           });
+        } else if (name === 'pea_oracle_query') {
+          value = await runtime.invokeIntegration('oracle', 'query', { name: args.name, binds: args.binds });
         }
         return { jsonrpc: '2.0', id, result: toolResult(value) };
       } catch (error) {

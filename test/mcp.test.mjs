@@ -28,6 +28,26 @@ test('MCP handler initializes and lists the product tools', async () => {
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_bug_review'), true);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_subagent_run'), true);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_ai_task'), true);
+  assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_oracle_query'), true);
+});
+
+test('MCP exposes only configured Oracle named-query adapters', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-oracle-'));
+  const handle = createMcpHandler({
+    workspace,
+    oracleAdapter: {
+      async invoke(operation, args) {
+        return { ok: true, integration: 'oracle', operation, data: { name: args.name, rows: [] } };
+      },
+    },
+  });
+  const response = await handle({
+    jsonrpc: '2.0', id: 45, method: 'tools/call',
+    params: { name: 'pea_oracle_query', arguments: { name: 'receivable', binds: { customer: '1' } } },
+  });
+  const result = JSON.parse(response.result.content[0].text);
+  assert.equal(result.ok, true);
+  assert.equal(result.data.name, 'receivable');
 });
 
 test('MCP uses an injected provider-neutral AI gateway without making it a core dependency', async () => {

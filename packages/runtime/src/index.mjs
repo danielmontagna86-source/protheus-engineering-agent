@@ -51,6 +51,7 @@ export function createRuntime(options) {
   if (dictionarySnapshotPath) {
     configuredAdapters.dictionary = createDictionarySnapshotAdapter({ snapshotPath: dictionarySnapshotPath });
   }
+  if (options.oracleAdapter) configuredAdapters.oracle = options.oracleAdapter;
   const integrations = options.integrations ?? createIntegrationRegistry(configuredAdapters);
   const context = createProjectContext({ workspace });
   const subagentSupervisor = options.subagentSupervisor;
