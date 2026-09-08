@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { constants } from 'node:fs';
-import { lstat, mkdir, open, readFile, rename, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
 async function statIfPresent(path) {
@@ -61,6 +61,9 @@ export function createProjectContext(options) {
   const maxJournalEntries = options.maxJournalEntries ?? 200;
   const memoryPath = join(stateDirectory, 'memory.md');
   const journalPath = join(stateDirectory, 'journal.jsonl');
+  const lockPath = join(stateDirectory, '.context.lock');
+  const lockTimeoutMs = options.lockTimeoutMs ?? 5_000;
+  const staleLockMs = options.staleLockMs ?? 30_000;
   let queue = Promise.resolve();
 
   async function assertStateDirectorySafe() {
@@ -72,7 +75,62 @@ export function createProjectContext(options) {
 
   async function ensureStateDirectory() {
     const stat = await assertStateDirectorySafe();
-    if (!stat) await mkdir(stateDirectory, { recursive: false });
+    if (!stat) {
+      try {
+        await mkdir(stateDirectory, { recursive: false });
+      } catch (error) {
+        if (error?.code !== 'EEXIST') throw error;
+        await assertStateDirectorySafe();
+      }
+    }
+  }
+
+  async function acquireLock() {
+    const deadline = Date.now() + lockTimeoutMs;
+    const token = `${process.pid}-${randomBytes(12).toString('hex')}`;
+    while (Date.now() <= deadline) {
+      await assertRegularOrMissing(lockPath);
+      try {
+        const handle = await open(lockPath, 'wx', 0o600);
+        try {
+          await handle.writeFile(JSON.stringify({ token, pid: process.pid, createdAt: new Date().toISOString() }), 'utf8');
+        } finally {
+          await handle.close();
+        }
+        return token;
+      } catch (error) {
+        if (!['EEXIST', 'EPERM'].includes(error?.code)) throw error;
+        const stat = await statIfPresent(lockPath);
+        if (!stat) throw error;
+        if (stat && Date.now() - stat.mtimeMs > staleLockMs) {
+          await rm(lockPath, { force: true });
+          continue;
+        }
+        await new Promise((resolveDelay) => setTimeout(resolveDelay, 10));
+      }
+    }
+    throw new Error(`state lock timeout after ${lockTimeoutMs} ms`);
+  }
+
+  async function releaseLock(token) {
+    try {
+      await assertRegularOrMissing(lockPath);
+      const current = JSON.parse(await readFile(lockPath, 'utf8'));
+      if (current.token !== token) throw new Error('state lock ownership changed');
+      await rm(lockPath);
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error;
+    }
+  }
+
+  async function withStateLock(work) {
+    await ensureStateDirectory();
+    const token = await acquireLock();
+    try {
+      return await work();
+    } finally {
+      await releaseLock(token);
+    }
   }
 
   function serialize(work) {
@@ -113,19 +171,17 @@ export function createProjectContext(options) {
       return readSnapshot();
     },
     async writeMemory(content) {
-      return serialize(async () => {
-        await ensureStateDirectory();
+      return serialize(() => withStateLock(async () => {
         const normalized = String(content).replaceAll('\r\n', '\n');
         const size = Buffer.byteLength(normalized, 'utf8');
         if (size > maxMemoryBytes) {
           throw new Error(`memory exceeds ${maxMemoryBytes} bytes`);
         }
         await writeAtomic(memoryPath, normalized.endsWith('\n') ? normalized : `${normalized}\n`);
-      });
+      }));
     },
     async recordJournal(event) {
-      return serialize(async () => {
-        await ensureStateDirectory();
+      return serialize(() => withStateLock(async () => {
         const current = await readBounded(journalPath, 1024 * 1024);
         const records = current.text.split(/\r?\n/).filter(Boolean);
         const record = {
@@ -136,7 +192,7 @@ export function createProjectContext(options) {
         records.push(JSON.stringify(record));
         const rotated = records.slice(-maxJournalEntries);
         await writeAtomic(journalPath, `${rotated.join('\n')}\n`);
-      });
+      }));
     },
   };
 }

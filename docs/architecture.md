@@ -49,10 +49,10 @@ Runtime empacotado / CLI ------------- MCP stdio <---- hosts compatíveis
 - `.pea`, arquivos de contexto e Hermes home rejeitam symlink/junction que escape a fronteira do workspace.
 - `memory.md` limitado a 8 KiB no P0.
 - `journal.jsonl` rotacionado por contagem.
-- fila por instância serializa gravações concorrentes.
+- fila por instância e lock exclusivo workspace-local serializam gravações concorrentes entre instâncias/processos;
 - escrita usa arquivo temporário no mesmo diretório e rename.
 - colisão ou symlink falha fechada.
-- P1 adicionará locking entre processos e proveniência de commits/builds.
+- lock abandonado tem recuperação limitada por idade; symlink/junction e troca de ownership falham fechados.
 
 ## AI and optional orchestrators
 

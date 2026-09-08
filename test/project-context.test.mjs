@@ -42,6 +42,21 @@ test('journal serializes concurrent writes, rotates entries, and leaves no temp 
   assert.equal(names.some((name) => name.endsWith('.tmp')), false);
 });
 
+test('journal lock preserves writes across independent context instances', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-journal-cross-instance-'));
+  const first = createProjectContext({ workspace, maxJournalEntries: 20 });
+  const second = createProjectContext({ workspace, maxJournalEntries: 20 });
+
+  await Promise.all(Array.from({ length: 20 }, (_, index) => (
+    (index % 2 === 0 ? first : second).recordJournal({ kind: 'parallel', summary: `item-${index}`, at: index })
+  )));
+  const snapshot = await first.read();
+  const names = await readdir(join(workspace, '.pea'));
+  assert.equal(snapshot.journal.length, 20);
+  assert.equal(new Set(snapshot.journal.map((entry) => entry.summary)).size, 20);
+  assert.equal(names.includes('.context.lock'), false);
+});
+
 test('state directory collision with a regular file fails closed', async () => {
   const workspace = await mkdtemp(join(tmpdir(), 'pea-collision-'));
   await writeFile(join(workspace, '.pea'), 'not a directory');
