@@ -11,6 +11,9 @@ const forbiddenArchivePatterns = [
   /(?:^|\/)\.pea(?:\/|$)/i,
   /(?:^|\/)node_modules(?:\/|$)/i,
   /(?:^|\/)release-artifacts(?:\/|$)/i,
+  /(?:^|\/)\.stryker-tmp(?:\/|$)/i,
+  /(?:^|\/)\.worktrees(?:\/|$)/i,
+  /(?:^|\/)work(?:\/|$)/i,
 ];
 
 const NORMALIZED_ZIP_TIME = new Date('2000-01-01T00:00:00.000Z');

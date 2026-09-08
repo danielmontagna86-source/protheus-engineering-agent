@@ -40,7 +40,13 @@ export async function buildRelease() {
   const dirty = git(root, ['status', '--porcelain=v1', '--untracked-files=all']);
   if (dirty) throw new Error('release artifacts require a clean tracked and untracked source tree');
 
-  const publication = await assessPublication({ root, release: false });
+  const tracked = git(root, ['ls-files']).split(/\r?\n/).filter(Boolean);
+  const trackedLocalState = tracked.find((path) => path.split('/').some((part) => (
+    ['.pea', '.stryker-tmp', '.worktrees', 'work', 'release-artifacts'].includes(part)
+  )));
+  if (trackedLocalState) throw new Error(`tracked local state cannot enter release: ${trackedLocalState}`);
+
+  const publication = await assessPublication({ root, release: false, excludeLocalState: true });
   if (publication.status !== 'PASS') throw new Error('development publication audit must pass before packaging');
 
   const manifest = JSON.parse(await (await import('node:fs/promises')).readFile(join(root, 'package.json'), 'utf8'));

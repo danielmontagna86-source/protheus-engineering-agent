@@ -225,6 +225,16 @@ test('audit rejects an interrupted mutation-testing sandbox', async () => {
   )));
 });
 
+test('exact-commit preparation may exclude untracked runtime state without weakening normal audit', async () => {
+  const root = await fixture();
+  await mkdir(join(root, '.stryker-tmp', 'locked-old-sandbox'), { recursive: true });
+  await writeFile(join(root, '.stryker-tmp', 'locked-old-sandbox', 'mutation.json'), '{}\n', 'utf8');
+
+  const report = await assessPublication({ root, release: false, excludeLocalState: true });
+
+  assert.equal(report.status, 'PASS');
+});
+
 test('audit ignores the configured VS Code test download cache', async () => {
   const root = await fixture();
   await mkdir(join(root, '.vscode-test', 'vscode-test-runtime'), { recursive: true });

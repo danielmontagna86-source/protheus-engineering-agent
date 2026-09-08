@@ -69,7 +69,7 @@ async function existsAsFile(path) {
   }
 }
 
-async function walk(root, directory, files, errors) {
+async function walk(root, directory, files, errors, options = {}) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const path = join(directory, entry.name);
     const repositoryPath = relative(root, path).replaceAll('\\', '/');
@@ -80,7 +80,9 @@ async function walk(root, directory, files, errors) {
       continue;
     }
     if (entry.isDirectory() && localStateDirectories.has(entry.name)) {
-      errors.push(finding('LOCAL_STATE_DIRECTORY', repositoryPath, 'Local runtime or worktree state must not be published.'));
+      if (!options.excludeLocalState) {
+        errors.push(finding('LOCAL_STATE_DIRECTORY', repositoryPath, 'Local runtime or worktree state must not be published.'));
+      }
       continue;
     }
     if (entry.isDirectory() && ignoredDirectories.has(entry.name)) continue;
@@ -89,7 +91,7 @@ async function walk(root, directory, files, errors) {
       continue;
     }
     if (entry.isDirectory()) {
-      await walk(root, path, files, errors);
+      await walk(root, path, files, errors, options);
       continue;
     }
     if (entry.isFile()) files.push({ path, repositoryPath, name: entry.name });
@@ -194,7 +196,7 @@ async function verifyReleaseManifestEvidence(productRoot, evidence, targetVersio
   }
 }
 
-export async function assessPublication({ root, release = false, evidencePath: requestedEvidencePath }) {
+export async function assessPublication({ root, release = false, evidencePath: requestedEvidencePath, excludeLocalState = false }) {
   const productRoot = resolve(root);
   const errors = [];
   const blockers = [];
@@ -312,7 +314,7 @@ export async function assessPublication({ root, release = false, evidencePath: r
   }
 
   const files = [];
-  await walk(productRoot, productRoot, files, errors);
+  await walk(productRoot, productRoot, files, errors, { excludeLocalState });
   for (const file of files) {
     if (file.name !== '.env.example' && secretFilePatterns.some((pattern) => pattern.test(file.name))) {
       errors.push(finding('SECRET_FILE', file.repositoryPath, 'Secret-bearing filename must not be published.'));
