@@ -2,7 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createHermesAdapter } from '../packages/hermes-adapter/src/index.mjs';
-import { createIntegrationRegistry } from '../packages/integrations/src/index.mjs';
+import {
+  createDictionarySnapshotAdapter,
+  createIntegrationRegistry,
+  createTdnSnapshotAdapter,
+} from '../packages/integrations/src/index.mjs';
 import { createBuildSupervisor } from '../packages/build-supervisor/src/index.mjs';
 import { decideCapability } from '../packages/policy/src/index.mjs';
 
@@ -80,6 +84,77 @@ test('external integrations are fail-closed when no adapter is configured', asyn
     ok: false,
     error: { code: 'INTEGRATION_UNAVAILABLE', integration: 'oracle' },
   });
+});
+
+test('TDN snapshot adapter searches bounded cited content and reuses its cache', async () => {
+  let loads = 0;
+  const adapter = createTdnSnapshotAdapter({
+    async load() {
+      loads += 1;
+      return {
+        kind: 'pea.tdn.snapshot',
+        schemaVersion: 1,
+        source: 'https://tdn.totvs.com/display/public/PROT/Exemplo',
+        capturedAt: '2026-09-07T12:00:00.000Z',
+        pages: [
+          { id: '2', title: 'Rotina financeira', url: 'https://tdn.totvs.com/2', body: 'Baixa de títulos' },
+          { id: '1', title: 'FWExecStatement', url: 'https://tdn.totvs.com/1', body: 'Consulta parametrizada' },
+        ],
+      };
+    },
+  });
+
+  const first = await adapter.invoke('search', { query: 'consulta', limit: 5 });
+  const second = await adapter.invoke('get', { id: '2' });
+
+  assert.equal(first.ok, true);
+  assert.equal(first.data.items[0].id, '1');
+  assert.equal(first.evidence.integration, 'tdn');
+  assert.equal(first.evidence.snapshotSchemaVersion, 1);
+  assert.match(first.evidence.sha256, /^[a-f0-9]{64}$/);
+  assert.equal(first.evidence.cached, false);
+  assert.equal(second.data.item.title, 'Rotina financeira');
+  assert.equal(second.evidence.cached, true);
+  assert.equal(loads, 1);
+});
+
+test('Dictionary snapshot adapter resolves tables and fields case-insensitively', async () => {
+  const adapter = createDictionarySnapshotAdapter({
+    load: async () => ({
+      kind: 'pea.protheus.dictionary',
+      schemaVersion: 1,
+      source: 'customer-export:SX2/SX3',
+      capturedAt: '2026-09-07T12:00:00.000Z',
+      tables: [{
+        name: 'SE1',
+        description: 'Contas a receber',
+        fields: [{ name: 'E1_PREFIXO', type: 'C', length: 3, decimals: 0, title: 'Prefixo' }],
+      }],
+    }),
+  });
+
+  const table = await adapter.invoke('table', { name: 'se1' });
+  const field = await adapter.invoke('field', { table: 'se1', name: 'e1_prefixo' });
+
+  assert.equal(table.ok, true);
+  assert.equal(table.data.table.name, 'SE1');
+  assert.equal(field.data.field.title, 'Prefixo');
+  assert.equal(field.evidence.integration, 'dictionary');
+});
+
+test('snapshot integrations fail with explicit schema, operation and timeout evidence', async () => {
+  const invalid = createTdnSnapshotAdapter({
+    load: async () => ({ schemaVersion: 99, pages: [] }),
+  });
+  const slow = createDictionarySnapshotAdapter({
+    timeoutMs: 5,
+    load: async () => new Promise((resolve) => setTimeout(() => resolve({}), 50)),
+  });
+  const registry = createIntegrationRegistry({ tdn: invalid, dictionary: slow });
+
+  assert.equal((await registry.invoke('tdn', 'search', { query: 'x' })).error.code, 'INTEGRATION_SCHEMA_INVALID');
+  assert.equal((await registry.invoke('dictionary', 'unknown', {})).error.code, 'INTEGRATION_OPERATION_DENIED');
+  assert.equal((await registry.invoke('dictionary', 'table', { name: 'SE1' })).error.code, 'INTEGRATION_TIMEOUT');
 });
 
 test('build supervisor blocks execution until the environment grant exists', async () => {

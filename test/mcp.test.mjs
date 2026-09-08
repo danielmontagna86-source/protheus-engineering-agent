@@ -23,6 +23,43 @@ test('MCP handler initializes and lists the product tools', async () => {
   assert.equal(initialized.result.serverInfo.version, productManifest.version);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_review_file'), true);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_write_memory'), true);
+  assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_tdn_search'), true);
+  assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_dictionary_field'), true);
+});
+
+test('MCP exposes configured read-only TDN and Dictionary evidence', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-integrations-'));
+  const tdnPath = join(workspace, 'tdn.json');
+  const dictionaryPath = join(workspace, 'dictionary.json');
+  await writeFile(tdnPath, JSON.stringify({
+    kind: 'pea.tdn.snapshot', schemaVersion: 1,
+    source: 'https://tdn.totvs.com/example', capturedAt: '2026-09-07T12:00:00.000Z',
+    pages: [{ id: '1', title: 'Build', url: 'https://tdn.totvs.com/1', body: 'Compilação' }],
+  }));
+  await writeFile(dictionaryPath, JSON.stringify({
+    kind: 'pea.protheus.dictionary', schemaVersion: 1,
+    source: 'customer-export:SX2/SX3', capturedAt: '2026-09-07T12:00:00.000Z',
+    tables: [{ name: 'SE1', description: 'Contas a receber', fields: [
+      { name: 'E1_PREFIXO', type: 'C', title: 'Prefixo' },
+    ] }],
+  }));
+  const handle = createMcpHandler({ workspace, tdnSnapshotPath: tdnPath, dictionarySnapshotPath: dictionaryPath });
+
+  const tdnResponse = await handle({
+    jsonrpc: '2.0', id: 40, method: 'tools/call',
+    params: { name: 'pea_tdn_search', arguments: { query: 'compila', limit: 3 } },
+  });
+  const dictionaryResponse = await handle({
+    jsonrpc: '2.0', id: 41, method: 'tools/call',
+    params: { name: 'pea_dictionary_field', arguments: { table: 'se1', name: 'e1_prefixo' } },
+  });
+  const tdn = JSON.parse(tdnResponse.result.content[0].text);
+  const dictionary = JSON.parse(dictionaryResponse.result.content[0].text);
+
+  assert.equal(tdn.ok, true);
+  assert.equal(tdn.data.items[0].id, '1');
+  assert.equal(dictionary.data.field.name, 'E1_PREFIXO');
+  assert.equal(dictionary.evidence.mode, 'read-only-snapshot');
 });
 
 test('MCP tool call executes the real workspace index and returns JSON text', async () => {

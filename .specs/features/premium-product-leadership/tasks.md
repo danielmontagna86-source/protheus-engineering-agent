@@ -95,11 +95,11 @@
 
 ### T-021 — Implement versioned read-only TDN and Dictionary adapters
 
-- **Status:** Planned
+- **Status:** Complete; versioned local snapshot adapters are wired into runtime and MCP with provenance, SHA-256, timeout, bounded cache and explicit unavailable/error states.
 - **Files:** `packages/integrations/src/*`, adapter fixtures/tests, `docs/integrations.md`.
 - **Depends on:** T-013, T-020.
 - **Done when:** Offline fixtures, provenance, timeout, cache, schema version, and unavailable state are tested; no credential is required for offline tests.
-- **Gate:** Contract/integration tests and security review.
+- **Gate:** Adapter, runtime and MCP contract/integration tests pass; no credential or network is used.
 
 ### T-022 — Complete bug-review evidence pipeline
 

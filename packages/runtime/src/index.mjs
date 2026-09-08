@@ -7,7 +7,11 @@ import { ADVPL_EXTENSIONS, decodeSource, indexWorkspace } from '../../codegraph-
 import { createProjectContext } from '../../project-context/src/index.mjs';
 import { decideCapability, getEnvironmentPolicy } from '../../policy/src/index.mjs';
 import { createHermesAdapter } from '../../hermes-adapter/src/index.mjs';
-import { createIntegrationRegistry } from '../../integrations/src/index.mjs';
+import {
+  createDictionarySnapshotAdapter,
+  createIntegrationRegistry,
+  createTdnSnapshotAdapter,
+} from '../../integrations/src/index.mjs';
 import { reviewSource } from '../../review/src/index.mjs';
 
 function assertInside(workspace, candidate) {
@@ -40,7 +44,14 @@ export function createRuntime(options) {
       ?? (process.env.ELECTRON_RUN_AS_NODE === '1' && nodeCommand === process.env.PEA_NODE_COMMAND),
     command: hermesOptions.command ?? process.env.PEA_HERMES_COMMAND ?? 'hermes',
   });
-  const integrations = options.integrations ?? createIntegrationRegistry();
+  const tdnSnapshotPath = options.tdnSnapshotPath ?? process.env.PEA_TDN_SNAPSHOT;
+  const dictionarySnapshotPath = options.dictionarySnapshotPath ?? process.env.PEA_DICTIONARY_SNAPSHOT;
+  const configuredAdapters = {};
+  if (tdnSnapshotPath) configuredAdapters.tdn = createTdnSnapshotAdapter({ snapshotPath: tdnSnapshotPath });
+  if (dictionarySnapshotPath) {
+    configuredAdapters.dictionary = createDictionarySnapshotAdapter({ snapshotPath: dictionarySnapshotPath });
+  }
+  const integrations = options.integrations ?? createIntegrationRegistry(configuredAdapters);
   const context = createProjectContext({ workspace });
 
   async function assertHermesBoundary() {
@@ -78,6 +89,9 @@ export function createRuntime(options) {
     },
     index() {
       return indexWorkspace(workspace);
+    },
+    invokeIntegration(name, operation, args) {
+      return integrations.invoke(name, operation, args);
     },
     async reviewFile(filePath) {
       const absolute = resolve(filePath);

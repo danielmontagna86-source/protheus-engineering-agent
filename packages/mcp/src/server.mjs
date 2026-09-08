@@ -47,6 +47,36 @@ const TOOLS = Object.freeze([
       additionalProperties: false,
     },
   },
+  {
+    name: 'pea_tdn_search',
+    description: 'Search a configured read-only, versioned TDN snapshot and return provenance.',
+    inputSchema: {
+      type: 'object',
+      properties: { query: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: 50 } },
+      required: ['query'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'pea_dictionary_table',
+    description: 'Read one table from a configured, versioned Protheus dictionary snapshot.',
+    inputSchema: {
+      type: 'object',
+      properties: { name: { type: 'string' } },
+      required: ['name'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'pea_dictionary_field',
+    description: 'Read one field from a configured, versioned Protheus dictionary snapshot.',
+    inputSchema: {
+      type: 'object',
+      properties: { table: { type: 'string' }, name: { type: 'string' } },
+      required: ['table', 'name'],
+      additionalProperties: false,
+    },
+  },
 ]);
 
 const TOOL_ARGUMENTS = Object.freeze({
@@ -56,6 +86,9 @@ const TOOL_ARGUMENTS = Object.freeze({
   pea_read_context: Object.freeze({ allowed: [], required: [] }),
   pea_session_context: Object.freeze({ allowed: [], required: [] }),
   pea_write_memory: Object.freeze({ allowed: ['content'], required: ['content'] }),
+  pea_tdn_search: Object.freeze({ allowed: ['query', 'limit'], required: ['query'] }),
+  pea_dictionary_table: Object.freeze({ allowed: ['name'], required: ['name'] }),
+  pea_dictionary_field: Object.freeze({ allowed: ['table', 'name'], required: ['table', 'name'] }),
 });
 
 function validateToolArguments(name, value) {
@@ -83,6 +116,8 @@ export function createMcpHandler(options) {
     workspace: resolve(options.workspace),
     environment: options.environment ?? 'production',
     grants: options.grants ?? [],
+    tdnSnapshotPath: options.tdnSnapshotPath,
+    dictionarySnapshotPath: options.dictionarySnapshotPath,
   });
 
   return async function handle(request) {
@@ -116,6 +151,12 @@ export function createMcpHandler(options) {
         else if (name === 'pea_write_memory') {
           await runtime.writeMemory(args.content);
           value = { ok: true };
+        } else if (name === 'pea_tdn_search') {
+          value = await runtime.invokeIntegration('tdn', 'search', args);
+        } else if (name === 'pea_dictionary_table') {
+          value = await runtime.invokeIntegration('dictionary', 'table', args);
+        } else if (name === 'pea_dictionary_field') {
+          value = await runtime.invokeIntegration('dictionary', 'field', args);
         }
         return { jsonrpc: '2.0', id, result: toolResult(value) };
       } catch (error) {

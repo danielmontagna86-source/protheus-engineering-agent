@@ -30,6 +30,32 @@ test('runtime indexes and reviews a file inside the workspace', async () => {
   );
 });
 
+test('runtime configures read-only TDN and Dictionary snapshots without credentials', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-runtime-integrations-'));
+  const tdnPath = join(workspace, 'tdn.json');
+  const dictionaryPath = join(workspace, 'dictionary.json');
+  await writeFile(tdnPath, JSON.stringify({
+    kind: 'pea.tdn.snapshot', schemaVersion: 1,
+    source: 'https://tdn.totvs.com/example', capturedAt: '2026-09-07T12:00:00.000Z',
+    pages: [{ id: '1', title: 'FWExecStatement', url: 'https://tdn.totvs.com/1', body: 'Consulta segura' }],
+  }));
+  await writeFile(dictionaryPath, JSON.stringify({
+    kind: 'pea.protheus.dictionary', schemaVersion: 1,
+    source: 'customer-export:SX2/SX3', capturedAt: '2026-09-07T12:00:00.000Z',
+    tables: [{ name: 'SE1', description: 'Contas a receber', fields: [] }],
+  }));
+  const runtime = createRuntime({ workspace, tdnSnapshotPath: tdnPath, dictionarySnapshotPath: dictionaryPath });
+
+  const doctor = await runtime.doctor();
+  const tdn = await runtime.invokeIntegration('tdn', 'search', { query: 'segura' });
+  const dictionary = await runtime.invokeIntegration('dictionary', 'table', { name: 'se1' });
+
+  assert.equal(doctor.integrations.find((item) => item.name === 'tdn').available, true);
+  assert.equal(doctor.integrations.find((item) => item.name === 'dictionary').available, true);
+  assert.equal(tdn.data.items[0].id, '1');
+  assert.equal(dictionary.data.table.name, 'SE1');
+});
+
 test('runtime rejects a source whose resolved target escapes through a symlink', async () => {
   const workspace = await mkdtemp(join(tmpdir(), 'pea-runtime-link-'));
   const linkedSource = join(workspace, 'linked.prw');

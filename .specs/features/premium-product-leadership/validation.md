@@ -24,6 +24,7 @@
 | T-014 | final candidate pending | expanded-rule failures recorded | 11 focused tests PASS; mutation review 83.93% | review/tests/rule catalog | Complete |
 | T-015 | final candidate pending | Marketplace version/icon/staging failures recorded | package + manifests + host smoke PASS | manifests/media/docs/scripts | Automated scope complete |
 | T-020 | current working candidate | missing `analysis` contract failed 2 focused tests | 11/11 CodeGraph tests PASS; 5,000-symbol fixture remains under 1 second | CodeGraph resolver/index/tests/docs | Complete |
+| T-021 | current working candidate | missing adapter/runtime/MCP exports failed focused tests | adapter 7/7 and runtime/MCP 17/17 PASS | adapters/runtime/MCP/tests/docs | Complete |
 
 ## Complete QA battery
 
