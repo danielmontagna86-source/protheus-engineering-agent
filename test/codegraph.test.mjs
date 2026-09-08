@@ -76,6 +76,21 @@ test('workspace index resolves case-insensitive calls across source files', asyn
   assert.equal(graph.edges[0].candidateCount, 1);
 });
 
+test('workspace index excludes TDS generated sources under .vscode', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pea-graph-tds-generated-'));
+  await mkdir(join(root, '.vscode', '.advpl'), { recursive: true });
+  await writeFile(join(root, 'entry.prw'), 'User Function Entry()\nReturn\n');
+  await writeFile(
+    join(root, '.vscode', '.advpl', '_binary_functions.prw'),
+    'User Function TdsInternal()\nReturn\n',
+  );
+
+  const graph = await indexWorkspace(root);
+
+  assert.deepEqual(graph.files, ['entry.prw']);
+  assert.deepEqual(graph.nodes.map((node) => node.name), ['Entry']);
+});
+
 test('workspace index resolves duplicate static helpers to the caller file', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pea-graph-static-'));
   await writeFile(

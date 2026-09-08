@@ -7,7 +7,7 @@ export const ADVPL_EXTENSIONS = Object.freeze(new Set([
   '.prw', '.prg', '.prx', '.tlpp', '.ppx', '.ppp', '.apw', '.aph',
 ]));
 
-const SKIP_DIRECTORIES = new Set(['.git', '.pea', 'node_modules', 'dist', 'build']);
+const SKIP_DIRECTORIES = new Set(['.git', '.pea', '.vscode', 'node_modules', 'dist', 'build']);
 
 export function decodeSource(bytes) {
   if (!Buffer.isBuffer(bytes) && !(bytes instanceof Uint8Array)) {

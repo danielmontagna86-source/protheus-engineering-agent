@@ -119,11 +119,11 @@
 
 ### T-024 — Verify TDS coexistence and first-value UX
 
-- **Status:** Planned
+- **Status:** Complete for reproducible installed-profile UAT on Windows: official TDS 2.0.16 activates with VS Code 1.133.0, no command conflict, multi-root routing works and CP1252/LF bytes are preserved. Live compile stays in the T-023 environment gate.
 - **Files:** compatibility fixtures, VS Code host integration, README/walkthrough, validation report.
 - **Depends on:** T-015, T-023.
 - **Done when:** Supported TDS line, Windows-1252/LF fixture, multi-root workspace, and five-minute onboarding are exercised without command or contribution conflicts.
-- **Gate:** Installed clean-profile VS Code UAT on Windows plus CI smoke.
+- **Gate:** Installed clean-profile Windows UAT plus regression/CI-capable standalone smoke; exploratory finding `TDS-GEN-001` is fixed test-first.
 
 ### T-025 — Build and run the product-effectiveness benchmark
 

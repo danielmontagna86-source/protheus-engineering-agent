@@ -27,6 +27,7 @@
 | T-021 | current working candidate | missing adapter/runtime/MCP exports failed focused tests | adapter 7/7 and runtime/MCP 17/17 PASS | adapters/runtime/MCP/tests/docs | Complete |
 | T-022 | current working candidate | bug-review v2 and runtime/MCP tool failed focused tests before implementation | review/runtime/MCP focused suites PASS | review/runtime/MCP/tests/docs | Complete |
 | T-023 | current working candidate | compiler proof, timeout and cancellation tests failed before implementation | 11/11 adapter/supervisor tests PASS, including a real shell-free child process and artifact hash | build supervisor/process runner/tests/docs | Contract complete; live AppServer pending environment gate |
+| T-024 | current working candidate | first real TDS run found generated `.vscode/.advpl` sources contaminating the index | regression 12/12 PASS; repeated packaged UAT PASS on VS Code 1.133.0 + official TDS 2.0.16, 0 command conflicts, multi-root + CP1252/LF PASS | VS Code host/smoke/CodeGraph/compatibility/session log | Complete for coexistence; live compile remains external |
 
 ## Complete QA battery
 

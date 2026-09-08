@@ -1,7 +1,7 @@
-import { access, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { access, cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -36,6 +36,28 @@ function commandLineVersion() {
   return version;
 }
 
+function commandLineValue(flag) {
+  const index = process.argv.indexOf(flag);
+  return index < 0 ? null : process.argv[index + 1];
+}
+
+async function installedTdsExtension() {
+  if (!process.argv.includes('--with-tds')) return null;
+  const configured = commandLineValue('--tds-extension') ?? process.env.PEA_TDS_EXTENSION_PATH;
+  if (configured) {
+    const path = resolve(configured);
+    if (!await existingFile(join(path, 'package.json'))) throw new Error('TDS extension path is invalid');
+    return path;
+  }
+  const extensionRoot = join(homedir(), '.vscode', 'extensions');
+  const entries = await readdir(extensionRoot, { withFileTypes: true });
+  const match = entries
+    .filter((entry) => entry.isDirectory() && entry.name.toLowerCase().startsWith('totvs.tds-vscode-'))
+    .sort((left, right) => right.name.localeCompare(left.name))[0];
+  if (!match) throw new Error('--with-tds requires an installed TOTVS.tds-vscode extension or --tds-extension');
+  return join(extensionRoot, match.name);
+}
+
 async function localVsCodeExecutable(requestedVersion) {
   if (requestedVersion || process.env.PEA_VSCODE_VERSION) return null;
   if (process.env.PEA_VSCODE_EXECUTABLE) {
@@ -58,12 +80,15 @@ function runVsCodeCli(cli, args) {
 
 export async function runVsCodeSmoke() {
   const packaged = await packageExtension();
+  const tdsSource = await installedTdsExtension();
   const sandbox = await mkdtemp(join(tmpdir(), 'pea-vscode-host-'));
   const workspace = join(sandbox, 'workspace');
+  const secondWorkspace = join(sandbox, 'workspace-cp1252');
   const userData = join(sandbox, 'user-data');
   const extensions = join(sandbox, 'extensions');
   await Promise.all([
     mkdir(workspace, { recursive: true }),
+    mkdir(secondWorkspace, { recursive: true }),
     mkdir(userData, { recursive: true }),
     mkdir(extensions, { recursive: true }),
   ]);
@@ -73,6 +98,17 @@ export async function runVsCodeSmoke() {
     'Return',
     '',
   ].join('\n'), 'utf8');
+  const cp1252Source = Buffer.concat([
+    Buffer.from('User Function Accent()\n    // Fun'),
+    Buffer.from([0xe7, 0xe3]),
+    Buffer.from('o financeira\n    IIF(.T., 1, 0)\nReturn\n'),
+  ]);
+  await writeFile(join(secondWorkspace, 'accent.prw'), cp1252Source);
+  const workspaceFile = join(sandbox, 'tds-coexistence.code-workspace');
+  await writeFile(workspaceFile, JSON.stringify({
+    folders: [{ path: workspace }, { path: secondWorkspace }],
+    settings: { 'files.encoding': 'windows1252' },
+  }, null, 2));
 
   const requestedVersion = commandLineVersion();
   const version = requestedVersion || process.env.PEA_VSCODE_VERSION || '1.95.3';
@@ -96,6 +132,16 @@ export async function runVsCodeSmoke() {
       throw new Error(`VS Code ${actualVscodeVersion} does not match requested ${version}`);
     }
 
+    let tdsVersion = null;
+    if (tdsSource) {
+      const tdsManifest = JSON.parse(await readFile(join(tdsSource, 'package.json'), 'utf8'));
+      if (`${tdsManifest.publisher}.${tdsManifest.name}`.toLowerCase() !== 'totvs.tds-vscode') {
+        throw new Error('configured TDS extension has an unexpected identity');
+      }
+      tdsVersion = tdsManifest.version;
+      await cp(tdsSource, join(extensions, `totvs.tds-vscode-${tdsVersion}`), { recursive: true, force: false });
+    }
+
     const install = runVsCodeCli(cli, [
       ...baseArgs,
       '--install-extension', packaged.path,
@@ -114,7 +160,7 @@ export async function runVsCodeSmoke() {
       extensionDevelopmentPath: hostRoot,
       extensionTestsPath: join(root, 'integration', 'vscode-host', 'index.cjs'),
       launchArgs: [
-        workspace,
+        tdsSource ? workspaceFile : workspace,
         '--disable-extension=github.copilot',
         '--disable-extension=github.copilot-chat',
         `--user-data-dir=${userData}`,
@@ -123,6 +169,8 @@ export async function runVsCodeSmoke() {
       extensionTestsEnv: {
         PEA_VSCODE_SMOKE: '1',
         PEA_EXPECTED_EXTENSIONS_DIR: extensions,
+        PEA_EXPECT_TDS: tdsSource ? '1' : '0',
+        PEA_EXPECT_TDS_VERSION: tdsVersion ?? '',
       },
     });
     const report = {
@@ -134,6 +182,9 @@ export async function runVsCodeSmoke() {
       installedVsix: true,
       vsixSha256: await sha256(packaged.path),
       hermesProbed: false,
+      tds: tdsSource ? { installed: true, version: tdsVersion, activated: true, commandConflicts: 0 } : null,
+      cp1252Lf: tdsSource ? true : null,
+      multiRoot: tdsSource ? true : null,
     };
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     if (code !== 0) process.exitCode = code;

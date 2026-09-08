@@ -29,6 +29,7 @@
     "test:mutation": "stryker run",
     "test:vscode:host": "node scripts/run-vscode-smoke.mjs",
     "test:vscode:minimum": "node scripts/run-vscode-smoke.mjs --version 1.95.3",
+    "test:vscode:tds": "node scripts/run-vscode-smoke.mjs --with-tds",
     "build:extension": "node scripts/build-extension.mjs",
     "package:extension": "node scripts/package-extension.mjs",
     "build:release": "node scripts/build-release.mjs",
