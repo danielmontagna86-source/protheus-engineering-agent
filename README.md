@@ -10,17 +10,20 @@ O caminho principal exige somente o VSIX: não exige Hermes, conta de IA, modelo
 
 ## O que já executa
 
-- indexação local de símbolos e chamadas ADVPL/TLPP;
-- pre-review determinístico com evidência de arquivo/linha;
-- Project Memory e Journal locais, limitados e atômicos;
-- política por ambiente com deny-by-default;
-- supervisor de build com runner injetável e gate de capacidade;
-- servidor MCP stdio com tools de doctor, index, review e contexto;
+- indexação local de símbolos, chamadas, callers, dependências, ambiguidades e alvos não resolvidos;
+- pre-review determinístico e bug review rastreável com evidência de arquivo/linha/impacto;
+- Project Memory e Journal locais, limitados, atômicos e protegidos contra gravação concorrente;
+- política `local/development/test/homologation/production` com deny-by-default e broker de aprovação;
+- supervisor de build injetável com evidência de compilador/artefato e retomada idempotente;
+- snapshots TDN/Dictionary versionados e Oracle read-only por consulta nomeada, todos fail-closed;
+- subagentes MCP limitados por tool, profundidade, concorrência, timeout, checkpoint e diff;
+- gateway de IA neutro, opt-in, estruturado, com redaction e sem telemetria;
+- servidor MCP stdio para as capacidades portáveis do runtime;
 - Skills em caminhos padrão do ecossistema, Rules locais e provedores fixados por commit, todos limitados e tratados como dados não confiáveis;
 - adaptador experimental e opcional para Hermes, fora do caminho crítico e do gate de release;
 - extensão VS Code fina com quatro comandos, sem UI de terminal/explorer/Git própria.
 
-Tools/chat nativos do VS Code, o compilador Protheus, TDN/Dictionary reais, Oracle e subagentes estão planejados para P1/P2 e ainda não estão disponíveis.
+As integrações são contratos prontos, mas continuam inativas até o host fornecer configuração, autorização e, quando aplicável, credenciais. O compilador/AppServer/RPO real e um driver Oracle real não estão embutidos. O produto nunca transforma simulação em prova de compilação.
 
 ## Desenvolvimento local
 
@@ -70,7 +73,7 @@ Configuração conceitual para um host MCP:
 }
 ```
 
-Para conceder escrita de Project Memory ao processo, defina `PEA_GRANTS=context:write` de forma explícita no host. TDN, Dictionary, Oracle e build real não ganham acesso com esse grant.
+Para conceder escrita de Project Memory ao processo, defina `PEA_GRANTS=context:write` de forma explícita no host. TDN/Dictionary usam apenas snapshots configurados. Oracle, IA e build exigem adapters do host e grants próprios; um grant nunca autoriza outra capacidade.
 
 ## Extensão VS Code
 
@@ -110,6 +113,9 @@ packages/review/              review e bug sheet
 packages/mcp/                 MCP stdio
 packages/integrations/        portas TDN/Dictionary/Oracle
 packages/build-supervisor/    máquina de estados
+packages/subagents/           execução filha limitada e recuperável
+packages/ai-gateway/          provider de IA opcional e governado
+benchmark/                    baseline de efetividade reproduzível
 test/                         testes de comportamento
 docs/                         arquitetura, auditoria, roadmap e QA
 plan/                         plano executável por fases
@@ -123,18 +129,21 @@ npm run smoke
 npm run package:extension
 npm run test:vscode:host
 npm run test:vscode:minimum
+npm run test:vscode:tds
+npm run benchmark
 npm run publication:release-check
 ```
 
-`validate` é o gate determinístico do código-fonte. `smoke` comprova o caminho crítico CLI/MCP em menos de cinco minutos. Os smokes do VS Code instalam o VSIX em um diretório temporário, usam perfil isolado e executam os quatro comandos reais sem Hermes no VS Code atual ou no mínimo 1.95.3. O gate de release é deliberadamente mais rigoroso e permanece bloqueado sem evidências reais do commit candidato, CI, revisões, artefatos e aprovação. O CI repete testes, smoke e verificações estruturais em Windows e Linux.
+`validate` é o gate determinístico do código-fonte. `smoke` comprova o caminho crítico CLI/MCP em menos de cinco minutos. Os smokes instalam o VSIX em perfil isolado no VS Code atual e no mínimo 1.95.3; o UAT TDS também valida coexistência, multi-root e preservação CP1252/LF. O benchmark mede somente fixtures sintéticas e não sustenta promessa de produtividade. O gate de release permanece bloqueado sem evidências do commit candidato, CI, revisões, artefatos e aprovação.
 
 ## Limites atuais
 
 - O CodeGraph usa uma análise léxica deliberadamente pequena, não uma gramática completa.
 - O review é um pre-gate determinístico; não substitui compilação, análise oficial, testes funcionais ou revisão humana.
-- A extensão ainda não implementa um cliente ACP de chat; o alpha distribuível contém os quatro comandos determinísticos.
-- Nenhuma integração externa foi configurada ou exercitada.
-- Integrações externas permanecem fail-closed e não recebem credenciais implicitamente.
+- A extensão ainda não implementa um cliente ACP de chat; o preview distribuível contém quatro comandos determinísticos e o MCP governado.
+- TDN/Dictionary foram exercitados com snapshots; Oracle/build/IA foram exercitados com adapters sintéticos e processos locais, não com infraestrutura de cliente.
+- Integrações externas permanecem fail-closed, não recebem credenciais implicitamente e exigem validação no ambiente homologado do adotante.
+- Ganho de produtividade e liderança de mercado não são alegações aprovadas; exigem o piloto humano publicado em `docs/effectiveness-methodology.md`.
 - O produto é distribuído sob a licença [Apache-2.0](LICENSE.md); avisos e licenças de referências permanecem separados.
 
 Os resultados reproduzíveis e os limites do gate estão no [relatório de validação](docs/validation-report.md). Veja também o [plano de publicação](docs/publication-plan.md).

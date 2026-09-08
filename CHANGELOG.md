@@ -22,6 +22,15 @@ All notable changes are recorded here. The project follows Semantic Versioning a
 - Product-owned planning and evidence-review skills plus a pinned official EngPro reference catalog.
 - High-confidence deterministic EngPro review rules for restricted calls/assignments, transactions, loops, ISAM, console output, and procedure creation.
 - Marketplace walkthrough, independent product icon, citation metadata, and numeric preview version `0.3.0`.
+- Explainable CodeGraph impact evidence and traceable bug-review schema v2.
+- Versioned read-only TDN/Dictionary snapshot adapters with provenance and cache evidence.
+- Allowlisted Oracle named-query adapter with exact binds, row limits and field redaction.
+- Environment-scoped approval broker for local, development, test, homologation and production.
+- Bounded MCP subagent contract with checkpoint, diff review, cancellation and rollback evidence.
+- Provider-neutral governed AI gateway with structured untrusted context, redaction and no telemetry.
+- Reproducible synthetic effectiveness benchmark with an explicit human-pilot claim gate.
+- Durable idempotent build checkpoints, safe pause/resume and unknown-outcome reconciliation.
+- Installed official TDS 2.0.16 coexistence UAT with multi-root and CP1252/LF preservation.
 
 ### Security
 
@@ -36,6 +45,7 @@ All notable changes are recorded here. The project follows Semantic Versioning a
 - CodeGraph now prefers same-file static functions, rejects inaccessible cross-file statics, and leaves duplicate global targets ambiguous.
 - CI now follows GitHub Flow without duplicating full runs for feature-branch pushes that already have a pull request.
 - Marketplace preview status is expressed by the publication flag instead of a SemVer suffix.
+- Project Memory and Journal writes now use a workspace-local cross-instance lock.
 
 ## 0.1.0 - 2026-09-07
 

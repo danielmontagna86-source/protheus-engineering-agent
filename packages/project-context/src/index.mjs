@@ -101,7 +101,7 @@ export function createProjectContext(options) {
       } catch (error) {
         if (!['EEXIST', 'EPERM'].includes(error?.code)) throw error;
         const stat = await statIfPresent(lockPath);
-        if (!stat) throw error;
+        if (!stat) continue;
         if (stat && Date.now() - stat.mtimeMs > staleLockMs) {
           await rm(lockPath, { force: true });
           continue;

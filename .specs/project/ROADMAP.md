@@ -17,7 +17,7 @@
 - Runtime/CLI, MCP, CodeGraph, review, contexto e permissões.
 - 21 testes P0 aprovados antes do início do P1.
 
-**Standalone VS Code Product** - P0 COMPLETE / P1 IN PROGRESS
+**Standalone VS Code Product** - P0/P1 CONTRACT COMPLETE
 
 - VSIX com runtime empacotado e comandos offline.
 - Skills/Rules relidos por snapshot, raízes padrão e proveniência EngPro fixada.
@@ -39,11 +39,11 @@
 
 ### Features
 
-**TDN and Dictionary adapters** - PLANNED
+**TDN and Dictionary adapters** - VERSIONED SNAPSHOT CONTRACT COMPLETE
 
-**Supervised Protheus build** - PLANNED
+**Supervised Protheus build** - CONTRACT, PROCESS EVIDENCE AND DURABLE RESUME COMPLETE; LIVE APPSERVER GATE EXTERNAL
 
-**Dual-tracer bug review** - PLANNED
+**Traceable bug review** - COMPLETE
 
 ---
 
@@ -53,11 +53,11 @@
 
 ### Features
 
-**Bounded MCP subagents** - PLANNED
+**Bounded MCP subagents** - CONTRACT COMPLETE
 
-**Oracle read-only** - PLANNED
+**Oracle read-only** - NAMED-QUERY CONTRACT COMPLETE; LIVE DATABASE GATE EXTERNAL
 
-**AI and grounding evals** - PLANNED
+**AI and grounding evals** - PROVIDER-NEUTRAL CONTRACT AND REGRESSION SUITE COMPLETE; HUMAN EFFECTIVENESS PILOT EXTERNAL
 
 ---
 

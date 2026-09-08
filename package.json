@@ -40,7 +40,7 @@
     "publication:check": "node scripts/publication-check.mjs",
     "publication:release-check": "node scripts/publication-check.mjs --release",
     "validate": "node --test && node scripts/check.mjs && node scripts/publication-check.mjs",
-    "validate:release-candidate": "npm run validate && npm run smoke && npm run package:extension && npm run test:vscode:host && npm audit --audit-level=high && npm run test:mutation",
+    "validate:release-candidate": "npm run validate && npm run benchmark && npm run smoke && npm run package:extension && npm run test:vscode:host && npm run test:vscode:minimum && npm run test:vscode:tds && npm audit --audit-level=high && npm run test:mutation",
     "doctor": "node packages/runtime/src/cli.mjs doctor",
     "mcp": "node packages/mcp/src/stdio.mjs"
   },

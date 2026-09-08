@@ -10,17 +10,19 @@ The primary path requires only the VSIX. It does not require Hermes, an AI accou
 
 ## What runs today
 
-- local ADVPL/TLPP symbol and call indexing;
-- deterministic pre-review with file and line evidence;
-- bounded, atomic local Project Memory and Journal;
-- deny-by-default environment policy;
-- build supervisor with an injected runner and capability gate;
-- stdio MCP server for doctor, index, review, and engineering context;
+- local ADVPL/TLPP symbols, calls, callers, dependencies, ambiguity, and unresolved-target evidence;
+- deterministic pre-review and traceable bug review with source and impact evidence;
+- bounded, atomic Project Memory and Journal with cross-instance write locking;
+- deny-by-default local/development/test/homologation/production policy and approval broker;
+- supervised build evidence with durable idempotent resume;
+- versioned TDN/Dictionary snapshots and allowlisted read-only Oracle contracts;
+- bounded MCP subagents and a governed provider-neutral optional AI gateway;
+- stdio MCP server for portable runtime capabilities;
 - standard project Skills, local Rules, and commit-pinned providers, all bounded and treated as untrusted data;
 - an experimental, optional Hermes adapter outside the critical path and release gate;
 - a thin VS Code extension with four orchestration commands.
 
-VS Code-native tools/chat, a real Protheus compiler integration, TDN/Dictionary, Oracle, and subagents are planned and not available yet.
+External adapters are implemented but inactive until a host supplies trusted configuration, authorization and credentials where applicable. No live compiler/AppServer/RPO, Oracle driver or AI provider is embedded, and simulation never counts as compiler proof.
 
 ## Local development
 
@@ -49,7 +51,7 @@ Hermes is not part of normal commands or publication criteria. To test the exper
 node packages/mcp/src/stdio.mjs
 ```
 
-The process defaults to the `production` policy. Project Memory writes require an explicit `PEA_GRANTS=context:write` grant. That grant does not authorize build, Oracle, TDN, or Dictionary access.
+The process defaults to the `production` policy. Project Memory writes require an explicit `PEA_GRANTS=context:write` grant. TDN/Dictionary use configured snapshots; Oracle, AI and build require host adapters plus their own exact grants.
 
 ## VS Code extension
 
@@ -67,9 +69,11 @@ npm run smoke
 npm run package:extension
 npm run test:vscode:host
 npm run test:vscode:minimum
+npm run test:vscode:tds
+npm run benchmark
 npm run publication:release-check
 ```
 
-The product is licensed under [Apache-2.0](LICENSE.md). `validate` is the complete local gate, while `smoke` exercises the critical CLI/MCP path in under five minutes. The release audit remains blocked until real CI, review, and external smoke evidence is complete. External integrations remain fail-closed.
+The product is licensed under [Apache-2.0](LICENSE.md). `validate` is the complete local gate, while `smoke` exercises the critical CLI/MCP path in under five minutes. The TDS UAT covers coexistence, multi-root routing and CP1252/LF preservation. The synthetic benchmark does not prove productivity. The release audit remains blocked until real CI, review, exact artifacts and external approval are complete.
 
 See the [validation report](docs/validation-report.md) and [publication plan](docs/publication-plan.md) for current evidence and open gates.

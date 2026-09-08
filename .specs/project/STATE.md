@@ -87,6 +87,17 @@
 **Reason:** Navegação por arquivo/linha entrega valor imediato sem recriar editor, explorer ou interface própria.
 **Impact:** Resultado malformado limpa diagnostics obsoletos e falha de forma visível; o VSIX instalado é o alvo do smoke.
 
+### AD-013: External intelligence is injected and capability-gated (2026-09-07)
+
+**Decision:** TDN/Dictionary use versioned snapshots; Oracle uses trusted named read-only queries; AI and child agents are host-injected governed contracts.
+**Reason:** The offline VSIX must remain useful without credentials while connected features must be testable without silently expanding authority.
+**Impact:** Live providers stay unavailable until a host supplies exact adapters, grants and approval evidence.
+
+### AD-014: Product claims follow evidence levels (2026-09-07)
+
+**Decision:** Publish the synthetic benchmark and its limitations; do not claim productivity uplift or market leadership before a consenting representative pilot.
+**Impact:** Technical correctness on fixtures is separated from human outcome evidence.
+
 ## Active Blockers
 
 ### B-003: External release evidence is incomplete
@@ -94,7 +105,7 @@
 **Discovered:** 2026-09-07
 **Impact:** Blocker para release e visibilidade pública.
 **Workaround:** Manter o remoto privado e o gate de release em `NO-GO`.
-**Progress:** Repositório privado criado; `main` e o candidato anterior passaram a matriz Windows/Linux, Node.js 22/24, smoke, auditoria de dependências e mutação. O candidato `0.3.0` passou localmente no VS Code mínimo e atual; CI/OSV do commit final, screenshots/UAT TDS e evidência externa ainda precisam ser reconciliados.
+**Progress:** Repositório privado criado; `main` e o candidato anterior passaram a matriz Windows/Linux, Node.js 22/24, smoke, auditoria de dependências e mutação. O candidato `0.3.0` passou localmente no VS Code mínimo/atual e com TDS 2.0.16, multi-root e CP1252/LF. CI/OSV do commit final, inspeção assistiva/screenshots, AppServer homologado e evidência externa ainda precisam ser reconciliados.
 **Resolution:** Candidate CI/OSV, reconciliação do commit, artefatos/manifesto limpos, reprodução após download e aprovação nomeada registrados.
 
 ## Resolved Blockers
@@ -137,7 +148,8 @@
 - [x] Escolher owner e slug do GitHub: `danielmontagna86-source/protheus-engineering-agent`.
 - [x] Executar fresh-install smoke local da extensão no VS Code mínimo e atual.
 - [ ] Executar e reconciliar a matriz CI/OSV no commit final do PR candidato.
-- [ ] Executar UAT visual/acessível e coexistência com TDS antes da publicação no Marketplace.
+- [x] Executar coexistência automatizada com TDS, multi-root e CP1252/LF.
+- [ ] Executar UAT visual/acessível e capturar screenshots reais antes da publicação no Marketplace.
 
 ## Preferences
 

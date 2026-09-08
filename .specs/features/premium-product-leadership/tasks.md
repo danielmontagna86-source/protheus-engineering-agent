@@ -127,7 +127,7 @@
 
 ### T-025 — Build and run the product-effectiveness benchmark
 
-- **Status:** Planned
+- **Status:** Reproducible synthetic benchmark complete; representative human pilot remains an external marketing-claim gate.
 - **Files:** `benchmark/*`, `docs/effectiveness-methodology.md`, `docs/effectiveness-results.md`.
 - **Depends on:** T-020, T-022, T-024.
 - **Done when:** Legal fixtures, preregistered metrics, paired/crossover protocol, raw anonymized results, limitations, and claim decision exist.
@@ -137,24 +137,31 @@
 
 ### T-030 — Add environment-scoped permission broker
 
-- **Status:** Planned
+- **Status:** Complete; local/development/test/homologation/production matrices and correlated async approvals fail closed on missing handler, denial, malformed response, timeout and cancellation.
 - **Depends on:** P1 validated.
 - **Done when:** Read/write/execute/network/database/deploy capabilities and local/dev/homologation/production policies deny fail-closed.
 - **Gate:** Security and policy mutation tests.
 
 ### T-031 — Add bounded MCP subagents and checkpoints
 
-- **Status:** Planned
+- **Status:** Complete as a host-neutral/MCP runtime contract; no provider or autonomous shell access is bundled.
 - **Depends on:** T-030.
 - **Done when:** Tool/input/time/output bounds, parent-child evidence, checkpoint/worktree, diff review, cancellation, and rollback are tested.
 - **Gate:** Adversarial, timeout, cancellation, and recovery tests.
 
 ### T-032 — Add provider-neutral AI and optional Hermes compatibility
 
-- **Status:** Planned
+- **Status:** Complete as an injected, governed provider contract; deterministic features remain standalone and Hermes remains non-gating.
 - **Depends on:** T-031.
 - **Done when:** Deterministic P0/P1 remains functional without AI; model/provider and Hermes paths use the same governed runtime/MCP contracts.
 - **Gate:** AI regression/evaluation suite, privacy review, and isolated Hermes probe; Hermes is non-gating.
+
+### T-033 — Add allowlisted Oracle read-only adapter
+
+- **Status:** Contract complete; live customer database validation remains an explicitly authorized environment gate.
+- **Depends on:** T-030.
+- **Done when:** Only trusted named SELECT queries and exact binds execute; DDL/DML/raw SQL, excess rows, sensitive fields, timeout and permission denial fail closed.
+- **Gate:** Adapter/MCP negative tests pass; live query requires a disposable homologation database, customer-owned catalog and credentials.
 
 ## Phase 4 — Release validation and publication handoff
 

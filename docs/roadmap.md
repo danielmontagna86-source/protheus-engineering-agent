@@ -63,12 +63,12 @@ Critérios de aceite:
 
 ## P2 — Supervised product workflows
 
-- subagentes MCP com papel, depth, concorrência, timeout e orçamento;
-- Oracle read-only com allowlist, bind variables, timeout e redaction;
-- build supervisor durável com pause/resume/retry idempotente;
-- revisão de diffs e gates de merge usando UI nativa do VS Code;
-- evals de grounding, CodeGraph, review, bug diagnosis e prompt regression;
-- telemetria local opt-in, SBOM, security scan e release readiness.
+- subagentes MCP com papel, depth, concorrência, timeout, checkpoint, diff e rollback — contrato entregue;
+- Oracle read-only com allowlist, bind variables, timeout e redaction — contrato entregue, live DB externo;
+- build supervisor durável com pause/resume/replay idempotente e reconciliação de resultado desconhecido — entregue;
+- revisão de diffs e merge continuam delegados à UI Git/review nativa do VS Code/GitHub; o produto fornece evidência, não duplica essa UI;
+- evals de CodeGraph/review e regressão de IA — baseline sintético entregue; piloto humano externo;
+- sem telemetria por padrão, com SBOM, security scan e release readiness entregues.
 
 Critérios de aceite:
 
