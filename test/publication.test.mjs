@@ -26,6 +26,7 @@ const requiredFiles = [
   'docs/security/owasp-coverage.md',
   '.github/workflows/ci.yml',
   '.github/workflows/security.yml',
+  '.github/workflows/codeql.yml',
   '.github/dependabot.yml',
   '.github/CODEOWNERS',
   '.github/PULL_REQUEST_TEMPLATE.md',
@@ -134,6 +135,7 @@ async function fixture({ license = 'Apache-2.0', repository = true } = {}) {
       ci: { passed: true, url: 'https://github.com/example/protheus-engineering-agent/actions/runs/1' },
       codeReview: { passed: true },
       securityReview: { passed: true },
+      codeScanning: { passed: true, url: 'https://github.com/example/protheus-engineering-agent/security/code-scanning' },
       vscodeSmoke: { passed: true, versions: ['1.95.3', '1.133.0'], commands: 4, isolated: true },
       freshInstall: {
         passed: true,
@@ -308,6 +310,19 @@ test('release audit requires a successful fresh install of the packaged VSIX', a
   const evidencePath = join(root, 'release-evidence', 'v0.3.0.json');
   const evidence = JSON.parse(await (await import('node:fs/promises')).readFile(evidencePath, 'utf8'));
   evidence.freshInstall.passed = false;
+  await writeFile(evidencePath, JSON.stringify(evidence), 'utf8');
+
+  const report = await assessPublication({ root, release: true });
+
+  assert.equal(report.status, 'BLOCKED');
+  assert.ok(report.blockers.some((finding) => finding.code === 'RELEASE_EVIDENCE_INCOMPLETE'));
+});
+
+test('release audit requires public CodeQL evidence bound to a GitHub URL', async () => {
+  const root = await fixture();
+  const evidencePath = join(root, 'release-evidence', 'v0.3.0.json');
+  const evidence = JSON.parse(await (await import('node:fs/promises')).readFile(evidencePath, 'utf8'));
+  evidence.codeScanning = { passed: false, url: 'https://example.invalid/report' };
   await writeFile(evidencePath, JSON.stringify(evidence), 'utf8');
 
   const report = await assessPublication({ root, release: true });
@@ -533,6 +548,22 @@ test('dependency security gate uses pinned actions, fails closed and supports a 
   assert.doesNotMatch(workflow, /pull_request_target/);
 });
 
+test('CodeQL is pinned, least-privilege and activates automatically when the repository is public', async () => {
+  const workflow = await (await import('node:fs/promises')).readFile(
+    new URL('../.github/workflows/codeql.yml', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(workflow, /if: github\.event\.repository\.private == false/);
+  assert.match(workflow, /github\/codeql-action\/init@f52b05f4acaaa234e44466e66d29050e135ea9ef # v4\.36\.0/);
+  assert.match(workflow, /github\/codeql-action\/analyze@f52b05f4acaaa234e44466e66d29050e135ea9ef # v4\.36\.0/);
+  assert.match(workflow, /languages: javascript-typescript/);
+  assert.match(workflow, /queries: security-extended/);
+  assert.match(workflow, /security-events: write/);
+  assert.doesNotMatch(workflow, /pull_request_target/);
+  assert.doesNotMatch(workflow, /continue-on-error:\s*true/);
+});
+
 test('mutation testing always removes its local sandbox', async () => {
   const config = await (await import('node:fs/promises')).readFile(
     new URL('../stryker.config.mjs', import.meta.url),
@@ -540,6 +571,8 @@ test('mutation testing always removes its local sandbox', async () => {
   );
 
   assert.match(config, /cleanTempDir:\s*['"]always['"]/);
+  assert.match(config, /high:\s*95/);
+  assert.match(config, /break:\s*95/);
 });
 
 test('third-party notices preserve the official EngPro provider license and revision', async () => {

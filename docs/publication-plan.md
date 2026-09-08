@@ -1,6 +1,6 @@
 # GitHub Publication Plan
 
-**Current decision:** NO-GO until final-candidate evidence is reconciled. The canonical repository exists privately; the standalone VSIX runs on isolated VS Code 1.95.3/1.133.0 and coexists with installed official TDS 2.0.16 without Hermes. The exact final commit still needs green CI/OSV, clean artifacts, final review, assistive/visual UAT, downloaded-asset reproduction and named approval.
+**Current decision:** NO-GO until final-candidate evidence is reconciled. The canonical repository exists privately; the standalone VSIX runs on isolated VS Code 1.95.3/1.133.0 and coexists with installed official TDS 2.0.16 without Hermes. The exact final commit still needs green CI/OSV, public CodeQL, clean artifacts, final review, assistive/visual UAT, downloaded-asset reproduction, live Protheus/Oracle acceptance and named approval.
 
 ## Publication model
 
@@ -16,7 +16,7 @@ The first controlled public channel is a GitHub source release with an installab
 8. Build and verify the self-contained VSIX. Local package and installation verification passed; final clean-commit artifact is pending.
 9. Resolve code/security review findings, update the changelog, bump all version fields together, and rerun the release audit.
 10. Build source ZIP, VSIX and CycloneDX SBOM from the exact clean commit; record `SHA256SUMS`, the release manifest and the generated fail-closed evidence template. Complete final evidence outside the tracked tree so it can bind to the exact commit without changing it.
-11. With explicit owner approval, make the repository public, then enable branch rulesets, private vulnerability reporting, CodeQL/SARIF upload, and artifact attestations before accepting general contributions. These controls are unavailable on the current private GitHub Free repository.
+11. With explicit owner approval, make the repository public. The pinned CodeQL workflow then activates automatically; confirm its first green analysis and enable branch rulesets, private vulnerability reporting and artifact attestations before accepting general contributions. These platform controls are unavailable on the current private GitHub Free repository.
 12. Create the immutable tag and GitHub Release only after named approval, then verify the downloaded assets.
 
 ## Repository settings

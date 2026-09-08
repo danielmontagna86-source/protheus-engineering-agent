@@ -223,3 +223,71 @@ test('production Oracle access requires the matching grant, not an unrelated gra
     requiresApproval: true,
   });
 });
+
+test('permission broker validates exact timeout boundaries and every approval field type', async () => {
+  for (const timeoutMs of [1, 300_000]) {
+    const broker = createPermissionBroker({
+      timeoutMs,
+      requestApproval: async () => ({
+        approved: true, approvedBy: 'owner', approvedAt: '2026-09-07T12:00:00.000Z',
+      }),
+    });
+    assert.equal((await broker.authorize('production', 'oracle:read')).allowed, true);
+  }
+  for (const response of [
+    undefined,
+    null,
+    { approved: null, approvedBy: 'owner', approvedAt: '2026-09-07T12:00:00.000Z' },
+    { approved: true, approvedBy: 7, approvedAt: '2026-09-07T12:00:00.000Z' },
+    { approved: true, approvedBy: { length: 5 }, approvedAt: '2026-09-07T12:00:00.000Z' },
+    { approved: true, approvedBy: 'owner', approvedAt: 7 },
+  ]) {
+    const broker = createPermissionBroker({ requestApproval: async () => response });
+    assert.deepEqual(await broker.authorize('production', 'oracle:read'), {
+      allowed: false, reason: 'approval-response-invalid', requiresApproval: true,
+    });
+  }
+});
+
+test('permission broker re-authorizes after approval and fails closed if policy still denies', async () => {
+  const grantSnapshots = [];
+  const broker = createPermissionBroker({
+    decideCapability: (_environment, capability, context) => {
+      grantSnapshots.push([...context.grants]);
+      return { allowed: false, reason: `blocked-${capability}`, requiresApproval: true };
+    },
+    requestApproval: async () => ({
+      approved: true, approvedBy: 'owner', approvedAt: '2026-09-07T12:00:00.000Z',
+    }),
+  });
+
+  assert.deepEqual(await broker.authorize('production', 'oracle:read'), {
+    allowed: false, reason: 'approval-did-not-authorize', requiresApproval: true,
+  });
+  assert.deepEqual(grantSnapshots, [[], ['oracle:read']]);
+});
+
+test('permission broker registers one-shot cancellation and always removes its listener', async () => {
+  const calls = [];
+  const signal = {
+    aborted: false,
+    addEventListener(name, listener, options) {
+      calls.push(['add', name, options]);
+      this.listener = listener;
+    },
+    removeEventListener(name, listener) {
+      calls.push(['remove', name, listener === this.listener]);
+    },
+  };
+  const broker = createPermissionBroker({
+    requestApproval: async () => ({
+      approved: true, approvedBy: 'owner', approvedAt: '2026-09-07T12:00:00.000Z',
+    }),
+  });
+
+  assert.equal((await broker.authorize('production', 'oracle:read', { signal })).allowed, true);
+  assert.deepEqual(calls, [
+    ['add', 'abort', { once: true }],
+    ['remove', 'abort', true],
+  ]);
+});

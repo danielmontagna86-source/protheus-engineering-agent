@@ -14,9 +14,9 @@ const config = {
   ignorePatterns: ['.vscode-test', 'dist', 'release-artifacts'],
   reporters: ['clear-text', 'progress'],
   thresholds: {
-    high: 80,
-    low: 60,
-    break: 60,
+    high: 95,
+    low: 90,
+    break: 95,
   },
   concurrency: 1,
   timeoutMS: 10_000,

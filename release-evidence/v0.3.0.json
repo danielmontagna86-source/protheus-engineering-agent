@@ -13,6 +13,10 @@
   "securityReview": {
     "passed": false
   },
+  "codeScanning": {
+    "passed": false,
+    "url": null
+  },
   "vscodeSmoke": {
     "passed": false,
     "versions": [],

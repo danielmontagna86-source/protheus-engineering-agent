@@ -1,7 +1,209 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createBugReview, reviewSource } from '../packages/review/src/index.mjs';
+import {
+  assessmentFor,
+  createBugReview,
+  maskStringsAndComments,
+  reviewSource,
+} from '../packages/review/src/index.mjs';
+
+test('review masker preserves positions and newlines while removing only comments and strings', () => {
+  const source = [
+    'ConOut()',
+    '// IIF()',
+    '/*GetMV()*/OutErr()',
+    'cOne := "PTInternal()" + ConOut()',
+    "cTwo := 'StaticCall()' + IIF()",
+  ].join('\n');
+  const masked = maskStringsAndComments(source);
+
+  assert.equal(masked.length, source.length);
+  assert.deepEqual(masked.split('\n'), [
+    'ConOut()',
+    '        ',
+    '           OutErr()',
+    `cOne := ${' '.repeat(14)} + ConOut()`,
+    `cTwo := ${' '.repeat(14)} + IIF()`,
+  ]);
+});
+
+test('review masker handles multiline blocks and unterminated literals without leaking hidden rules', () => {
+  const source = [
+    '/* hidden ConOut()',
+    'still GetMV() */ IIF()',
+    '"unterminated StaticCall()',
+    'still hidden PTInternal()',
+  ].join('\n');
+  const masked = maskStringsAndComments(source);
+
+  assert.equal(masked.length, source.length);
+  assert.deepEqual(masked.split('\n'), [
+    '                  ',
+    '                 IIF()',
+    '                          ',
+    '                         ',
+  ]);
+});
+
+test('assessment boundaries distinguish clean, observed, revision and failed reviews', () => {
+  const major = { severity: 'MAJOR' };
+  assert.equal(assessmentFor([]), 'PASS');
+  assert.equal(assessmentFor([{ severity: 'INFO' }]), 'PASS WITH OBSERVATIONS');
+  assert.equal(assessmentFor([major, major, major]), 'PASS WITH OBSERVATIONS');
+  assert.equal(assessmentFor(Array.from({ length: 4 }, () => ({ severity: 'MINOR' }))), 'PASS WITH OBSERVATIONS');
+  assert.equal(assessmentFor([major, major, major, major]), 'NEEDS REVISION');
+  assert.equal(assessmentFor([{ severity: 'CRITICAL' }]), 'FAIL');
+});
+
+test('bug review validates every changed-file boundary and normalizes safe Windows separators', () => {
+  const base = {
+    title: 'Path boundary',
+    targetSymbol: 'Entry',
+    sourceReport: { file: 'entry.prw', findings: [] },
+    graph: { nodes: [{ name: 'Entry', file: 'entry.prw', line: 1 }], edges: [] },
+  };
+  for (const changedFiles of [
+    [''], ['/absolute.prw'], ['C:/absolute.prw'], ['prefixC:/absolute.prw'],
+    ['src:alternate-stream.prw'], ['src/../escape.prw'], [{}], [null],
+  ]) {
+    assert.throws(() => createBugReview({ ...base, changedFiles }), /workspace-relative/);
+  }
+  assert.deepEqual(createBugReview({
+    ...base,
+    changedFiles: [{ path: 'src\\entry.prw', status: 'renamed' }, 'src/other.prw'],
+  }).changedFiles, [
+    { path: 'src/entry.prw', status: 'renamed' },
+    { path: 'src/other.prw', status: 'modified' },
+  ]);
+  assert.deepEqual(createBugReview({
+    ...base, changedFiles: [{ path: 'src/undefined-status.prw', status: undefined }],
+  }).changedFiles, [{ path: 'src/undefined-status.prw', status: 'modified' }]);
+});
+
+test('bug review requires object validation checks and proves only exact build evidence', () => {
+  const base = {
+    title: 'Evidence boundary',
+    targetSymbol: 'Entry',
+    sourceReport: { file: 'entry.prw', findings: [] },
+    graph: { nodes: [{ name: 'Entry', file: 'entry.prw', line: 1 }], edges: [] },
+  };
+  for (const validation of [[null], [undefined], [{ name: 1, status: 'passed' }]]) {
+    assert.throws(() => createBugReview({ ...base, validation }), /validation checks require/);
+  }
+  const passed = createBugReview({ ...base, validation: [{ name: 'unit', status: 'passed' }] });
+  assert.deepEqual(passed.validation.summary, { passed: 1, failed: 0, notRun: 0, allPassed: true });
+  assert.equal(passed.residualRisks.some((risk) => risk.code === 'VALIDATION_INCOMPLETE'), false);
+
+  for (const buildEvidence of [
+    { status: 'queued', compiler: { exitCode: 0, identity: 'compiler' }, artifact: { sha256: 'e'.repeat(64), path: 'build/out' } },
+    { status: 'completed', compiler: { exitCode: 0, identity: 7 }, artifact: { sha256: 'e'.repeat(64), path: 'build/out' } },
+    { status: 'completed', compiler: { exitCode: 0, identity: { length: 1 } }, artifact: { sha256: 'e'.repeat(64), path: 'build/out' } },
+    { status: 'completed', compiler: { exitCode: 0, identity: 'compiler' }, artifact: { sha256: 'e'.repeat(65), path: 'build/out' } },
+    { status: 'completed', compiler: { exitCode: 0, identity: 'compiler' }, artifact: { sha256: 'e'.repeat(64), path: 7 } },
+    { status: 'completed', compiler: { exitCode: 0, identity: 'compiler' }, artifact: { sha256: 'e'.repeat(64), path: { length: 1 } } },
+  ]) {
+    const report = createBugReview({ ...base, validation: [{ name: 'unit', status: 'passed' }], buildEvidence });
+    assert.equal(report.build.verified, false);
+  }
+});
+
+test('bug review does not infer a target from the missing-symbol default', () => {
+  const report = createBugReview({
+    title: 'No target requested',
+    sourceReport: { file: 'entry.prw', findings: [] },
+    graph: { nodes: [{ name: '', file: 'invalid-empty-name.prw', line: 1 }], edges: [] },
+  });
+  assert.equal(report.target, null);
+  assert.equal(report.status, 'needs-evidence');
+});
+
+test('bug review trims the requested symbol and selects the matching node instead of the first node', () => {
+  const report = createBugReview({
+    title: 'Explicit target selection',
+    targetSymbol: '  SharedHelper  ',
+    sourceReport: { file: 'helper.prw', findings: [] },
+    graph: {
+      nodes: [
+        { name: 'Unrelated', file: 'first.prw', line: 1 },
+        { name: 'SharedHelper', file: 'helper.prw', line: 7 },
+      ],
+      edges: [],
+    },
+  });
+
+  assert.equal(report.status, 'diagnosed');
+  assert.deepEqual(report.target, { name: 'SharedHelper', file: 'helper.prw', line: 7 });
+});
+
+test('review truncates bounded source excerpts without changing line evidence', () => {
+  const longLine = `ConOut("x") ${'z'.repeat(400)}`;
+  const [finding] = reviewSource(longLine, { file: 'long.prw' }).findings;
+  assert.equal(finding.evidence.excerpt.length, 240);
+  assert.equal(finding.evidence.excerpt, longLine.slice(0, 240));
+  assert.equal(finding.evidence.line, 1);
+});
+
+test('bug review exposes exact default and absent-target risk evidence', () => {
+  const report = createBugReview({
+    title: 'Absent evidence',
+    sourceReport: { file: 'missing.prw', findings: [] },
+    graph: { nodes: [{ name: 'Other', file: 'other.prw', line: 4 }], edges: [] },
+  });
+
+  assert.deepEqual(report.build, {
+    status: 'not-run', reason: 'No build evidence supplied.', verified: false,
+  });
+  assert.deepEqual(report.uncertainty, { items: [], hasOpenQuestions: false });
+  assert.deepEqual(report.residualRisks, [
+    {
+      code: 'TARGET_NOT_FOUND', severity: 'major',
+      detail: 'The target symbol is absent from the lexical CodeGraph.',
+    },
+    {
+      code: 'VALIDATION_INCOMPLETE', severity: 'major',
+      detail: 'Not every declared validation check passed.',
+    },
+    {
+      code: 'BUILD_NOT_VERIFIED', severity: 'major',
+      detail: 'No completed compiler run and checksummed artifact prove the build.',
+    },
+  ]);
+});
+
+test('review rule anchors reject prefixed lookalikes and accept exact whitespace contracts', () => {
+  const source = [
+    'x While .T.',
+    'GetMV("outside")',
+    'x Begin Transaction',
+    'MsgAlert("outside")',
+    'x #include "protheus.ch"',
+    '#include"protheus.ch"',
+    'IIFx(',
+    'DbEvalx(GetMV("outside"))',
+    'x EndDo',
+    'x End Transaction',
+    'DbSelectAreaX("SX1")',
+    'DbSelectArea( x "SX1")',
+    '  #include   "protheus.ch"',
+  ].join('\n');
+
+  const report = reviewSource(source);
+  assert.deepEqual(report.findings.map(({ ruleId, line }) => ({ ruleId, line })), [
+    { ruleId: 'CA3001', line: 13 },
+  ]);
+});
+
+test('review preserves source line order among findings with the same severity', () => {
+  const report = reviewSource([
+    'ConOut("first")',
+    'OutErr("second")',
+  ].join('\n'));
+  assert.deepEqual(report.findings.map(({ ruleId, line }) => ({ ruleId, line })), [
+    { ruleId: 'CA1004', line: 1 },
+    { ruleId: 'CA1004', line: 2 },
+  ]);
+});
 
 test('review emits evidence-backed findings with stable severity ordering', () => {
   const source = [

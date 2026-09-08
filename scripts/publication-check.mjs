@@ -139,6 +139,8 @@ function completeReleaseEvidence(evidence, targetVersion) {
     && /^https:\/\/github\.com\//.test(evidence.ci?.url ?? '')
     && evidence.codeReview?.passed === true
     && evidence.securityReview?.passed === true
+    && evidence.codeScanning?.passed === true
+    && /^https:\/\/github\.com\//.test(evidence.codeScanning?.url ?? '')
     && evidence.vscodeSmoke?.passed === true
     && evidence.vscodeSmoke?.commands === 4
     && evidence.vscodeSmoke?.isolated === true
@@ -295,7 +297,7 @@ export async function assessPublication({ root, release = false, evidencePath: r
           await assertNoLinkPath(productRoot, join(productRoot, evidencePath));
           const evidence = JSON.parse(await readFile(join(productRoot, evidencePath), 'utf8'));
           if (!completeReleaseEvidence(evidence, targetVersion)) {
-            blockers.push(finding('RELEASE_EVIDENCE_INCOMPLETE', evidencePath, 'Release evidence must record GO, CI, reviews, smokes, commit, artifact and manifest checksums, and approver.'));
+            blockers.push(finding('RELEASE_EVIDENCE_INCOMPLETE', evidencePath, 'Release evidence must record GO, CI, reviews, code scanning, smokes, commit, artifact and manifest checksums, and approver.'));
           } else {
             for (const artifact of evidence.artifacts) {
               if (!(await verifyReleaseArtifact(productRoot, artifact))) {

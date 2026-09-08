@@ -14,7 +14,7 @@ All notable changes are recorded here. The project follows Semantic Versioning a
 - Dependency-free release smoke for the critical CLI/MCP path.
 - Self-contained VSIX build with bundled runtime and MCP entry points.
 - Automated fresh installation of the packaged VSIX and real Extension Host smoke for all four commands on minimum/current VS Code.
-- OSV dependency gate, npm/GitHub Actions Dependabot coverage, and OWASP/agent threat mapping.
+- OSV dependency gate, npm/GitHub Actions Dependabot coverage, pinned public CodeQL `security-extended`, and OWASP/agent threat mapping.
 - Clean-commit source/VSIX/CycloneDX release builder with deterministic VSIX normalization, SHA-256 manifest verification, and an external final-evidence template.
 - VS Code-first product specification, effectiveness review, governance, support, issue forms, pull-request template, and CODEOWNERS.
 - Native VS Code Problems diagnostics and progress for active-file review.
@@ -37,6 +37,7 @@ All notable changes are recorded here. The project follows Semantic Versioning a
 - Release gate for personal paths, secret filenames, license consistency, and repository metadata.
 - VSIX content allow-list, root/nested Git metadata regression checks, and untrusted-workspace disablement.
 - Exact MCP tool arguments, 1 MiB stdio request cap, extension process timeout, and writable archive permission checks.
+- Colon-bearing changed-file rejection to block Windows alternate-stream/path ambiguity in bug evidence.
 
 ### Changed
 
@@ -46,6 +47,7 @@ All notable changes are recorded here. The project follows Semantic Versioning a
 - CI now follows GitHub Flow without duplicating full runs for feature-branch pushes that already have a pull request.
 - Marketplace preview status is expressed by the publication flag instead of a SemVer suffix.
 - Project Memory and Journal writes now use a workspace-local cross-instance lock.
+- The focused mutation release gate now breaks below 95%; the candidate reached 95.17% across 870 mutants.
 
 ## 0.1.0 - 2026-09-07
 

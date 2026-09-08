@@ -1,6 +1,6 @@
 const SEVERITY_ORDER = Object.freeze({ CRITICAL: 0, MAJOR: 1, MINOR: 2, INFO: 3 });
 
-function maskStringsAndComments(source) {
+export function maskStringsAndComments(source) {
   const chars = Array.from(source);
   let mode = 'code';
   for (let index = 0; index < chars.length; index += 1) {
@@ -35,7 +35,7 @@ function maskStringsAndComments(source) {
   return chars.join('');
 }
 
-function assessmentFor(findings) {
+export function assessmentFor(findings) {
   const critical = findings.filter((item) => item.severity === 'CRITICAL').length;
   const major = findings.filter((item) => item.severity === 'MAJOR').length;
   if (critical > 0) return 'FAIL';
@@ -132,8 +132,10 @@ export function reviewSource(source, options = {}) {
 }
 
 export function createBugReview(input) {
-  const canonical = String(input.targetSymbol ?? '').toLowerCase();
-  const target = input.graph.nodes.find((node) => node.name.toLowerCase() === canonical) ?? null;
+  const canonical = typeof input.targetSymbol === 'string' ? input.targetSymbol.trim().toLowerCase() : '';
+  const target = canonical.length > 0
+    ? input.graph.nodes.find((node) => node.name.toLowerCase() === canonical) ?? null
+    : null;
   const callers = [...new Set(input.graph.edges
     .filter((edge) => edge.resolved && edge.to.toLowerCase() === canonical)
     .map((edge) => edge.from))]
@@ -142,7 +144,7 @@ export function createBugReview(input) {
   const changedFiles = [...new Set((input.changedFiles ?? []).map((item) => {
     const value = typeof item === 'string' ? { path: item, status: 'modified' } : item;
     const path = String(value?.path ?? '').replaceAll('\\', '/');
-    if (!path || path.startsWith('/') || /^[A-Za-z]:\//.test(path)
+    if (!path || path.startsWith('/') || path.includes(':')
       || path.split('/').includes('..')) throw new TypeError('changed file must be workspace-relative');
     return JSON.stringify({ path, status: value?.status ?? 'modified' });
   }))].map((item) => JSON.parse(item)).sort((left, right) => left.path.localeCompare(right.path));

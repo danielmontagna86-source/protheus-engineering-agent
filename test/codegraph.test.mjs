@@ -10,14 +10,30 @@ import {
   indexWorkspace,
   parseAdvplSource,
 } from '../packages/codegraph-advpl/src/index.mjs';
-import { resolveCallTarget } from '../packages/codegraph-advpl/src/resolve.mjs';
+import { eligibleCallTargets, resolveCallTarget } from '../packages/codegraph-advpl/src/resolve.mjs';
 
 test('call resolver defaults to an unresolved result with no candidates', () => {
+  assert.deepEqual(eligibleCallTargets({ file: 'entry.prw' }), []);
   assert.deepEqual(resolveCallTarget({ file: 'entry.prw' }), {
     target: null,
     resolution: 'unresolved',
     candidateCount: 0,
   });
+});
+
+test('call resolver prefers only actual same-file statics and preserves global ambiguity', () => {
+  const sameFileGlobal = { name: 'Shared', file: 'entry.prw', kind: 'user-function' };
+  const otherGlobal = { name: 'Shared', file: 'other.prw', kind: 'function' };
+  const otherStatic = { name: 'Shared', file: 'other.prw', kind: 'static-function' };
+
+  assert.deepEqual(
+    eligibleCallTargets({ file: 'entry.prw' }, [sameFileGlobal, otherGlobal, otherStatic]),
+    [sameFileGlobal, otherGlobal],
+  );
+  assert.deepEqual(
+    resolveCallTarget({ file: 'entry.prw' }, [sameFileGlobal, otherGlobal, otherStatic]),
+    { target: null, resolution: 'ambiguous', candidateCount: 2 },
+  );
 });
 
 test('call resolver does not mistake a same-file global for a static symbol', () => {

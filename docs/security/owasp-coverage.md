@@ -10,7 +10,7 @@
 |---|---|---|
 | A01 Broken Access Control | Covered for the implemented surface | Environment policy is deny-by-default; homologation/production writes, build, Oracle and AI require exact grants. The approval broker denies missing/malformed/timed-out decisions; subagents inherit only an exact tool allowlist. |
 | A02 Security Misconfiguration | Covered for the local surface | External integrations start unavailable; Hermes probing is opt-in; the extension is disabled in untrusted/virtual workspaces; CI permissions are read-only by default. |
-| A03 Software Supply Chain Failures | Covered with one platform limitation | Exact lockfile, `npm ci`, npm audit, OSV gate, pinned Actions, mutation tests, VSIX content verification, checksums, and third-party notices. GitHub attestation and ruleset enforcement are blocked while the repository is private on GitHub Free and are pre-publication actions. |
+| A03 Software Supply Chain Failures | Covered with one platform limitation | Exact lockfile, `npm ci`, npm audit, OSV, pinned CodeQL `security-extended`, pinned Actions, mutation tests, VSIX content verification, checksums, and third-party notices. CodeQL is intentionally skipped while the repository is private and activates automatically after public visibility; attestation and ruleset enforcement remain pre-publication actions. |
 | A04 Cryptographic Failures | Not applicable in alpha | The product has no authentication, cookie, TLS endpoint, credential store, or custom cryptography. Credentials are neither accepted nor stored by the alpha. Reassess before any network/auth integration. |
 | A05 Injection | Covered for implemented process boundaries | The extension/build runner uses `execFile` with an argument array, not a shell. MCP dispatch is allowlisted. Oracle accepts only trusted named read-only statements plus exact scalar binds; caller-supplied SQL, comments, multiple statements, DDL/DML and `FOR UPDATE` are rejected. No HTML rendering exists. |
 | A06 Insecure Design | Covered for alpha | Hexagonal boundaries, explicit capability policy, bounded project resources, isolated Hermes state, and mandatory human release approval reduce blast radius. |
@@ -28,7 +28,7 @@ DAST, browser authentication tests, CSRF, cookies, CORS, and HTTP security heade
 | Indirect prompt injection | Covered structurally, residual model risk accepted | The optional AI gateway keeps project content in a structured `untrusted-project-data` field; adversarial instruction text remains data. This reduces confusion but cannot prove a provider will never follow injected content, so tool capabilities remain bounded and output requires review. |
 | Excessive agency | Covered for implemented tools | Policy denies unknown/external capabilities without exact grants; subagents have depth/concurrency/time/input/output limits and mutating runs require checkpoint/diff review. |
 | Sensitive information disclosure | Covered for repository/local defaults | Publication audit rejects credentials and local state. AI context redacts common secret-key fields and reports no telemetry; Oracle redacts sensitive columns and never returns SQL/binds/driver errors. Hosts must still avoid sending secrets. |
-| Supply-chain poisoning | Partially covered | Locked build/test dependencies, OSV, pinned Actions, no runtime third-party packages, license record, and verified VSIX contents. Attestation is deferred only by the current private-plan limitation. |
+| Supply-chain poisoning | Partially covered | Locked build/test dependencies, OSV, public-repository CodeQL, pinned Actions, no runtime third-party packages, license record, and verified VSIX contents. Attestation is deferred only by the current private-plan limitation. |
 | Hallucination, grounding, model drift, jailbreak | Optional contract tested; live-provider quality not claimed | No provider ships. Fake-provider regression covers schema, denial, prompt injection structure, redaction, size, timeout and cancellation. A real provider needs versioned domain evals and explicit activation before its output can support release claims. |
 
 ## Release-blocking thresholds
@@ -38,3 +38,4 @@ DAST, browser authentication tests, CSRF, cookies, CORS, and HTTP security heade
 - Any workspace-containment, permission, or VSIX-content regression: NO-GO.
 - Any unreviewed third-party GitHub Action reference: NO-GO; Actions are pinned to full commit SHAs.
 - Any active AI path without its corresponding eval and injection suite: NO-GO.
+- A public candidate without a green CodeQL `security-extended` analysis: NO-GO.

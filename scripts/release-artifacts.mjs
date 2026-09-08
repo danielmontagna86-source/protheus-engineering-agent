@@ -27,6 +27,7 @@ export function createReleaseEvidenceTemplate({ version, commit, artifacts, mani
     ci: { passed: false, url: null },
     codeReview: { passed: false },
     securityReview: { passed: false },
+    codeScanning: { passed: false, url: null },
     vscodeSmoke: { passed: false, versions: [], commands: 4, isolated: true },
     freshInstall: {
       passed: false,

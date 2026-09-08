@@ -8,23 +8,26 @@
 
 | Gate | Result | Evidence |
 |---|---|---|
-| Full automated suite | PASS | 107 tests passed, 0 failed, 0 skipped in three consecutive runs |
-| Source/manifests | PASS | 40 JavaScript source files and 3 manifests syntax/structure checked |
-| Development publication audit | PENDING FINAL COMMIT | Active tree rejects three old locked `.stryker-tmp` directories as designed. Exact-commit archive audit will run after commit without weakening the auditor or killing unrelated processes. |
-| Critical-path smoke | PASS | doctor, index, review and MCP passed in 515 ms |
-| Mutation testing | PASS | 495 mutants: 428 killed, 1 timeout, 66 survived, 0 errors; 86.67% overall, 98.48% policy, 83.93% review, 94.59% CodeGraph resolver; breaking threshold 60% |
+| Full automated suite | PASS | 170 tests passed, 0 failed, 0 skipped in three consecutive runs |
+| Source/manifests | PASS | 47 JavaScript source files and 3 manifests syntax/structure checked |
+| Development publication audit | PENDING FINAL COMMIT | Active tree rejects old locked `.stryker-tmp` state as designed. Exact-commit archive audit runs after the final commit without weakening the auditor or killing unrelated processes. |
+| Critical-path smoke | PASS | doctor, index, review and MCP passed in 496 ms |
+| Mutation testing | PASS | 870 mutants: 820 killed, 8 timeout, 42 survived, 0 errors; 95.17% overall, 99.07% policy, 94.27% review, 88.89% CodeGraph resolver; breaking threshold 95% |
 | Dependency audit | PASS | 0 known vulnerabilities after lockfile resolution |
 | MCP stdio process | PASS | real child process initialized and listed tools using newline-delimited JSON-RPC |
 | Standalone core contract | PASS | CLI/MCP, live Skills/Rules and Electron-as-Node propagation covered without requiring Hermes |
 | Workspace containment | PASS | source symlink and `.pea` junction escape regressions covered |
-| Local code/security review | PASS WITH ACCEPTED ALPHA LIMITS | Review found and fixed one `DbEval` loop-scope leak test-first; exact-commit audit and candidate PR evidence remain required before GO |
+| Local code/security review | PASS WITH ACCEPTED PREVIEW LIMITS | Review found and fixed the `DbEval` loop-scope leak and unsafe colon-bearing changed-file boundary test-first; exact-commit audit and candidate PR evidence remain required before GO |
 | Release publication audit | BLOCKED AS DESIGNED | candidate CI/OSV, clean-commit manifest, final reviews, downloaded-asset reproduction and named approval remain missing |
 | `actionlint` | NOT RUN | executable is not installed in this environment |
 | GitHub Actions live matrix | PASS ON BASE | latest `main` [run 34151775373](https://github.com/danielmontagna86-source/protheus-engineering-agent/actions/runs/34151775373); candidate branch matrix and OSV remain pending |
-| Packaged VSIX fresh install | PASS LOCALLY | v0.3.0 VSIX SHA-256 `449242b46db502091a567d5d9b80bbff3ebd25a7651609af6dd4b931d9bafe9a`, 10 entries and 54,060 compressed bytes; four commands plus native Problems diagnostics passed without Hermes on VS Code 1.95.3 and 1.133.0 |
+| Packaged VSIX fresh install | PASS LOCALLY | v0.3.0 was installed and exercised without Hermes on VS Code 1.95.3 and 1.133.0; final-commit hash is regenerated after this report update |
+| Official TDS coexistence | PASS LOCALLY | TDS 2.0.16 activated beside the packaged extension; zero command conflicts, multi-root selection and CP1252/LF preservation passed |
+| Product benchmark | PASS WITH CLAIM LIMITS | Seven Apache-2.0 synthetic cases reached 1.0 precision/recall and symbol/call recall; productivity uplift and market leadership remain `NOT_PROVEN` pending the documented human pilot |
+| Public CodeQL | PENDING VISIBILITY | Pinned CodeQL v4.36.0 `security-extended` workflow is present and automatically activates only when the repository is public |
 | Optional Hermes compatibility | PASS, NON-GATING | installed Hermes previously returned `Hermes ACP check OK` from an isolated temporary workspace and profile |
 | ADVPL/TLPP corpus exploration | INCONCLUSIVE FOR ACCURACY | 955 candidates traversed in about six seconds; recovered corpus contamination prevents valid precision/recall claims |
-| External product integrations | NOT RUN BY DESIGN | compiler, AppServer, RPO, Oracle, TDN and Dictionary remain unconfigured/fail-closed |
+| External product integrations | CONTRACT PASS / LIVE NOT RUN | TDN/Dictionary snapshots, Oracle allowlist, AI gateway, subagent and durable build contracts pass; real compiler, AppServer/RPO, customer Oracle and live provider remain unconfigured and fail-closed |
 
 ## Review corrections now covered by regression tests
 
@@ -55,6 +58,8 @@ npm run test:mutation
 npm run package:extension
 npm run test:vscode:host
 npm run test:vscode:minimum
+npm run test:vscode:tds
+npm run benchmark
 npm audit --audit-level=high
 node scripts/check.mjs
 node scripts/publication-check.mjs
@@ -65,4 +70,4 @@ The test, smoke, mutation and structural commands must exit zero. The developmen
 
 ## Honest boundary
 
-The CodeGraph remains lexical, review remains a deterministic pre-gate, and no AdvPL/TLPP compilation or external system integration is claimed. The VSIX is locally verified and fresh-installed but has not been published. Apache-2.0 is active, but this preparation must not be presented as a released alpha until the release audit reaches GO.
+The CodeGraph remains lexical, review remains a deterministic pre-gate, and no real AdvPL/TLPP compilation or customer-system integration is claimed. The VSIX is locally verified and fresh-installed but has not been published. Apache-2.0 is active, but this preparation must not be presented as a released preview until the release audit reaches GO.

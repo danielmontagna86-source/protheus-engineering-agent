@@ -105,8 +105,8 @@
 **Discovered:** 2026-09-07
 **Impact:** Blocker para release e visibilidade pública.
 **Workaround:** Manter o remoto privado e o gate de release em `NO-GO`.
-**Progress:** Repositório privado criado; `main` e o candidato anterior passaram a matriz Windows/Linux, Node.js 22/24, smoke, auditoria de dependências e mutação. O candidato `0.3.0` passou localmente no VS Code mínimo/atual e com TDS 2.0.16, multi-root e CP1252/LF. CI/OSV do commit final, inspeção assistiva/screenshots, AppServer homologado e evidência externa ainda precisam ser reconciliados.
-**Resolution:** Candidate CI/OSV, reconciliação do commit, artefatos/manifesto limpos, reprodução após download e aprovação nomeada registrados.
+**Progress:** Repositório privado criado; `main` e o candidato anterior passaram a matriz Windows/Linux, Node.js 22/24, smoke, auditoria de dependências e mutação. O candidato `0.3.0` passou localmente no VS Code mínimo/atual e com TDS 2.0.16, multi-root e CP1252/LF; a mutação alcançou 95.17% e agora quebra abaixo de 95%. CI/OSV do commit final, CodeQL após visibilidade pública, inspeção assistiva/screenshots, AppServer homologado e evidência externa ainda precisam ser reconciliados.
+**Resolution:** Candidate CI/OSV/CodeQL, reconciliação do commit, artefatos/manifesto limpos, reprodução após download e aprovação nomeada registrados.
 
 ## Resolved Blockers
 
@@ -147,7 +147,7 @@
 - [x] Escolher licença do produto: Apache-2.0.
 - [x] Escolher owner e slug do GitHub: `danielmontagna86-source/protheus-engineering-agent`.
 - [x] Executar fresh-install smoke local da extensão no VS Code mínimo e atual.
-- [ ] Executar e reconciliar a matriz CI/OSV no commit final do PR candidato.
+- [ ] Executar e reconciliar a matriz CI/OSV no commit final do PR candidato e CodeQL após tornar público.
 - [x] Executar coexistência automatizada com TDS, multi-root e CP1252/LF.
 - [ ] Executar UAT visual/acessível e capturar screenshots reais antes da publicação no Marketplace.
 

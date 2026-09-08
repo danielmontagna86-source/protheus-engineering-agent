@@ -72,7 +72,7 @@
 - **Done when:** The selected high-confidence rules have positive, negative, comment/string, case, and line-evidence tests; uncertain semantic rules remain explicitly deferred.
 - **Initial rule candidates:** CA2022, CA2023, CA2024, CA2025, CA2053, CA1002, CA1000, CA1003 `Type`, CA1004 `OutErr`.
 - **Tests:** One contract table plus focused edge cases for every enabled rule.
-- **Gate:** Review suite green and mutation score ≥80% overall, ≥60% break threshold.
+- **Gate:** Review suite green and mutation score ≥95% overall with a 95% breaking threshold.
 
 ### T-015 — Complete Marketplace-safe metadata and onboarding
 
@@ -178,7 +178,7 @@
 - **Status:** In progress; local diff review passed with accepted alpha limits and exact-commit archive/remote CI remain.
 - **Depends on:** T-040.
 - **Done when:** Diff review has no unresolved blocker/high finding; publication checker passes against an archive of exact HEAD; PR description and evidence match the commit.
-- **Gate:** Clean tracked tree, reviewed commit, remote CI/OSV green.
+- **Gate:** Clean tracked tree, reviewed commit, remote CI/OSV green, then public CodeQL green after visibility change.
 
 ### T-042 — Await explicit publication authorization
 
