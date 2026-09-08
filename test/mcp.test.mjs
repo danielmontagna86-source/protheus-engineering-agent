@@ -27,6 +27,26 @@ test('MCP handler initializes and lists the product tools', async () => {
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_dictionary_field'), true);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_bug_review'), true);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_subagent_run'), true);
+  assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_ai_task'), true);
+});
+
+test('MCP uses an injected provider-neutral AI gateway without making it a core dependency', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-ai-'));
+  const handle = createMcpHandler({
+    workspace,
+    aiGateway: {
+      async run(request, context) {
+        return { schemaVersion: 1, status: 'completed', instruction: request.instruction, environment: context.environment };
+      },
+    },
+  });
+  const response = await handle({
+    jsonrpc: '2.0', id: 44, method: 'tools/call',
+    params: { name: 'pea_ai_task', arguments: { instruction: 'Summarize', context: { source: 'data' } } },
+  });
+  const result = JSON.parse(response.result.content[0].text);
+  assert.equal(result.status, 'completed');
+  assert.equal(result.environment, 'production');
 });
 
 test('MCP runs only host-configured bounded subagent tools', async () => {

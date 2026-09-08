@@ -104,6 +104,18 @@ const TOOLS = Object.freeze([
       additionalProperties: false,
     },
   },
+  {
+    name: 'pea_ai_task',
+    description: 'Run a structured task through a host-configured governed AI provider.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        instruction: { type: 'string' }, context: { type: 'object' }, outputSchema: { type: 'object' },
+      },
+      required: ['instruction', 'context'],
+      additionalProperties: false,
+    },
+  },
 ]);
 
 const TOOL_ARGUMENTS = Object.freeze({
@@ -124,6 +136,11 @@ const TOOL_ARGUMENTS = Object.freeze({
     required: ['role', 'tool', 'input', 'parentId', 'depth'],
     nonStringRequired: ['input', 'depth'],
   }),
+  pea_ai_task: Object.freeze({
+    allowed: ['instruction', 'context', 'outputSchema'],
+    required: ['instruction', 'context'],
+    nonStringRequired: ['context'],
+  }),
 });
 
 function validateToolArguments(name, value) {
@@ -136,12 +153,15 @@ function validateToolArguments(name, value) {
   for (const key of contract.required) {
     if (contract.nonStringRequired?.includes(key)) {
       if (key === 'depth' && (!Number.isInteger(args[key]) || args[key] < 1)) throw new Error('depth is required');
-      if (key === 'input' && (!args[key] || typeof args[key] !== 'object' || Array.isArray(args[key]))) {
-        throw new Error('input is required');
+      if (['input', 'context'].includes(key) && (!args[key] || typeof args[key] !== 'object' || Array.isArray(args[key]))) {
+        throw new Error(`${key} is required`);
       }
     } else if (typeof args[key] !== 'string' || args[key].length === 0) throw new Error(`${key} is required`);
   }
   if (args.mutating !== undefined && typeof args.mutating !== 'boolean') throw new Error('mutating must be boolean');
+  if (args.outputSchema !== undefined && (!args.outputSchema || typeof args.outputSchema !== 'object' || Array.isArray(args.outputSchema))) {
+    throw new Error('outputSchema must be an object');
+  }
   return args;
 }
 
@@ -161,6 +181,7 @@ export function createMcpHandler(options) {
     dictionarySnapshotPath: options.dictionarySnapshotPath,
     subagentSupervisor: options.subagentSupervisor,
     subagentAllowedTools: options.subagentAllowedTools,
+    aiGateway: options.aiGateway,
   });
 
   return async function handle(request) {
@@ -213,6 +234,12 @@ export function createMcpHandler(options) {
           value = await runtime.runSubagent({
             role: args.role, tool: args.tool, input: args.input, mutating: args.mutating === true,
           }, { parentId: args.parentId, depth: args.depth });
+        } else if (name === 'pea_ai_task') {
+          value = await runtime.runAiTask({
+            instruction: args.instruction,
+            context: args.context,
+            outputSchema: args.outputSchema,
+          });
         }
         return { jsonrpc: '2.0', id, result: toolResult(value) };
       } catch (error) {

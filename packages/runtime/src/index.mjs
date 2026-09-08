@@ -55,6 +55,7 @@ export function createRuntime(options) {
   const context = createProjectContext({ workspace });
   const subagentSupervisor = options.subagentSupervisor;
   const subagentAllowedTools = Object.freeze([...(options.subagentAllowedTools ?? [])]);
+  const aiGateway = options.aiGateway;
 
   async function assertHermesBoundary() {
     await context.assertStateDirectorySafe();
@@ -134,6 +135,20 @@ export function createRuntime(options) {
         depth: subagentContext.depth,
         allowedTools: [...subagentAllowedTools],
         signal: subagentContext.signal,
+      });
+    },
+    runAiTask(request, aiContext = {}) {
+      if (!aiGateway || typeof aiGateway.run !== 'function') {
+        return {
+          schemaVersion: 1,
+          status: 'unavailable',
+          error: { code: 'AI_PROVIDER_UNAVAILABLE', message: 'No governed AI provider is configured' },
+        };
+      }
+      return aiGateway.run(request, {
+        environment,
+        grants: [...grants],
+        signal: aiContext.signal,
       });
     },
     readContext() {
