@@ -53,6 +53,8 @@ export function createRuntime(options) {
   }
   const integrations = options.integrations ?? createIntegrationRegistry(configuredAdapters);
   const context = createProjectContext({ workspace });
+  const subagentSupervisor = options.subagentSupervisor;
+  const subagentAllowedTools = Object.freeze([...(options.subagentAllowedTools ?? [])]);
 
   async function assertHermesBoundary() {
     await context.assertStateDirectorySafe();
@@ -118,6 +120,21 @@ export function createRuntime(options) {
         reviewFile(input.filePath),
       ]);
       return createBugReviewReport({ ...input, graph, sourceReport });
+    },
+    runSubagent(spec, subagentContext = {}) {
+      if (!subagentSupervisor || typeof subagentSupervisor.run !== 'function') {
+        return {
+          schemaVersion: 1,
+          status: 'unavailable',
+          error: { code: 'SUBAGENT_UNAVAILABLE', message: 'No governed subagent transport is configured' },
+        };
+      }
+      return subagentSupervisor.run(spec, {
+        parentId: subagentContext.parentId,
+        depth: subagentContext.depth,
+        allowedTools: [...subagentAllowedTools],
+        signal: subagentContext.signal,
+      });
     },
     readContext() {
       return context.read();

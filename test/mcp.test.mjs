@@ -26,6 +26,34 @@ test('MCP handler initializes and lists the product tools', async () => {
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_tdn_search'), true);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_dictionary_field'), true);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_bug_review'), true);
+  assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_subagent_run'), true);
+});
+
+test('MCP runs only host-configured bounded subagent tools', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-subagent-'));
+  const observed = [];
+  const handle = createMcpHandler({
+    workspace,
+    subagentAllowedTools: ['review:file'],
+    subagentSupervisor: {
+      async run(spec, context) {
+        observed.push({ spec, context });
+        return { schemaVersion: 1, status: 'completed', parentId: context.parentId, tool: spec.tool };
+      },
+    },
+  });
+  const response = await handle({
+    jsonrpc: '2.0', id: 43, method: 'tools/call',
+    params: {
+      name: 'pea_subagent_run',
+      arguments: { role: 'reviewer', tool: 'review:file', input: { path: 'a.prw' }, parentId: 'root', depth: 1 },
+    },
+  });
+  const result = JSON.parse(response.result.content[0].text);
+
+  assert.equal(response.result.isError, false);
+  assert.equal(result.status, 'completed');
+  assert.deepEqual(observed[0].context.allowedTools, ['review:file']);
 });
 
 test('MCP bug review returns source, impact and residual-risk evidence', async () => {

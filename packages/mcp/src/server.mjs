@@ -91,6 +91,19 @@ const TOOLS = Object.freeze([
       additionalProperties: false,
     },
   },
+  {
+    name: 'pea_subagent_run',
+    description: 'Run one host-configured bounded child task with parent, depth and tool evidence.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        role: { type: 'string' }, tool: { type: 'string' }, input: { type: 'object' },
+        parentId: { type: 'string' }, depth: { type: 'integer', minimum: 1 }, mutating: { type: 'boolean' },
+      },
+      required: ['role', 'tool', 'input', 'parentId', 'depth'],
+      additionalProperties: false,
+    },
+  },
 ]);
 
 const TOOL_ARGUMENTS = Object.freeze({
@@ -106,6 +119,11 @@ const TOOL_ARGUMENTS = Object.freeze({
   pea_bug_review: Object.freeze({
     allowed: ['title', 'path', 'targetSymbol'], required: ['title', 'path', 'targetSymbol'],
   }),
+  pea_subagent_run: Object.freeze({
+    allowed: ['role', 'tool', 'input', 'parentId', 'depth', 'mutating'],
+    required: ['role', 'tool', 'input', 'parentId', 'depth'],
+    nonStringRequired: ['input', 'depth'],
+  }),
 });
 
 function validateToolArguments(name, value) {
@@ -116,8 +134,14 @@ function validateToolArguments(name, value) {
   const unexpected = Object.keys(args).filter((key) => !contract.allowed.includes(key));
   if (unexpected.length > 0) throw new Error(`unexpected argument: ${unexpected[0]}`);
   for (const key of contract.required) {
-    if (typeof args[key] !== 'string' || args[key].length === 0) throw new Error(`${key} is required`);
+    if (contract.nonStringRequired?.includes(key)) {
+      if (key === 'depth' && (!Number.isInteger(args[key]) || args[key] < 1)) throw new Error('depth is required');
+      if (key === 'input' && (!args[key] || typeof args[key] !== 'object' || Array.isArray(args[key]))) {
+        throw new Error('input is required');
+      }
+    } else if (typeof args[key] !== 'string' || args[key].length === 0) throw new Error(`${key} is required`);
   }
+  if (args.mutating !== undefined && typeof args.mutating !== 'boolean') throw new Error('mutating must be boolean');
   return args;
 }
 
@@ -135,6 +159,8 @@ export function createMcpHandler(options) {
     grants: options.grants ?? [],
     tdnSnapshotPath: options.tdnSnapshotPath,
     dictionarySnapshotPath: options.dictionarySnapshotPath,
+    subagentSupervisor: options.subagentSupervisor,
+    subagentAllowedTools: options.subagentAllowedTools,
   });
 
   return async function handle(request) {
@@ -183,6 +209,10 @@ export function createMcpHandler(options) {
             validation: [],
             uncertainty: ['The CodeGraph is lexical; dynamic calls require additional evidence.'],
           });
+        } else if (name === 'pea_subagent_run') {
+          value = await runtime.runSubagent({
+            role: args.role, tool: args.tool, input: args.input, mutating: args.mutating === true,
+          }, { parentId: args.parentId, depth: args.depth });
         }
         return { jsonrpc: '2.0', id, result: toolResult(value) };
       } catch (error) {
