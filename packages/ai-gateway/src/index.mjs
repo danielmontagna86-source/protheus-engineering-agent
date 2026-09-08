@@ -57,9 +57,14 @@ export function createAiGateway(options = {}) {
       if (typeof authorize !== 'function') return fail('AI_CAPABILITY_DENIED', 'No capability authorizer is configured');
       if (!validRequest(request)) return fail('AI_REQUEST_INVALID', 'instruction and object context are required');
       if (context.signal?.aborted) return fail('AI_CANCELLED', 'AI request was cancelled');
-      const decision = await authorize(context.environment ?? 'local', 'ai:invoke', {
-        grants: context.grants ?? [], signal: context.signal, purpose: request.instruction.slice(0, 200),
-      });
+      let decision;
+      try {
+        decision = await authorize(context.environment ?? 'local', 'ai:invoke', {
+          grants: context.grants ?? [], signal: context.signal, purpose: request.instruction.slice(0, 200),
+        });
+      } catch {
+        return fail('AI_CAPABILITY_DENIED', 'Capability authorization failed');
+      }
       if (!decision?.allowed) return {
         ...fail('AI_CAPABILITY_DENIED', decision?.reason ?? 'AI invocation was denied'), decision,
       };

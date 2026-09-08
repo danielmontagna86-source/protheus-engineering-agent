@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
-import { lstat, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
 
 const MAX_TIMEOUT_MS = 30 * 60 * 1_000;
@@ -187,7 +187,12 @@ export function createJsonBuildStore(options = {}) {
       }
       const temp = `${path}.${process.pid}.${randomUUID()}.tmp`;
       await writeFile(temp, content, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
-      await rename(temp, path);
+      try {
+        await rename(temp, path);
+      } catch (error) {
+        await rm(temp, { force: true });
+        throw error;
+      }
     },
   };
 }

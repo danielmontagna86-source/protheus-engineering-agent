@@ -42,6 +42,14 @@ test('AI gateway fails closed without provider or capability approval', async ()
   const result = await denied.run({ instruction: 'x', context: {} }, { environment: 'production' });
   assert.equal(result.error.code, 'AI_CAPABILITY_DENIED');
   assert.equal(called, false);
+
+  const brokenAuthorizer = createAiGateway({
+    authorize: async () => { throw new Error('approval backend leaked details'); },
+    provider: { id: 'fake', async complete() { called = true; return {}; } },
+  });
+  const brokenResult = await brokenAuthorizer.run({ instruction: 'x', context: {} });
+  assert.equal(brokenResult.error.code, 'AI_CAPABILITY_DENIED');
+  assert.equal(brokenResult.error.message, 'Capability authorization failed');
 });
 
 test('AI gateway rejects oversized prompts and malformed provider responses', async () => {
