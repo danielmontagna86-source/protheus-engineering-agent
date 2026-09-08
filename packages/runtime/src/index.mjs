@@ -12,7 +12,7 @@ import {
   createIntegrationRegistry,
   createTdnSnapshotAdapter,
 } from '../../integrations/src/index.mjs';
-import { reviewSource } from '../../review/src/index.mjs';
+import { createBugReview as createBugReviewReport, reviewSource } from '../../review/src/index.mjs';
 
 function assertInside(workspace, candidate) {
   const rel = relative(workspace, candidate);
@@ -70,6 +70,24 @@ export function createRuntime(options) {
     }
   }
 
+  async function reviewFile(filePath) {
+    const absolute = resolve(filePath);
+    assertInside(workspace, absolute);
+    if (!ADVPL_EXTENSIONS.has(extname(absolute).toLowerCase())) {
+      throw new Error(`unsupported Protheus source extension: ${extname(absolute)}`);
+    }
+    const [resolvedWorkspace, resolvedSource] = await Promise.all([
+      realpathImpl(workspace),
+      realpathImpl(absolute),
+    ]);
+    assertInside(resolvedWorkspace, resolvedSource);
+    const decoded = decodeSource(await readFile(resolvedSource));
+    return {
+      ...reviewSource(decoded.text, { file: relative(workspace, absolute).replaceAll('\\', '/') }),
+      encoding: decoded.encoding,
+    };
+  }
+
   return {
     workspace,
     environment,
@@ -93,22 +111,13 @@ export function createRuntime(options) {
     invokeIntegration(name, operation, args) {
       return integrations.invoke(name, operation, args);
     },
-    async reviewFile(filePath) {
-      const absolute = resolve(filePath);
-      assertInside(workspace, absolute);
-      if (!ADVPL_EXTENSIONS.has(extname(absolute).toLowerCase())) {
-        throw new Error(`unsupported Protheus source extension: ${extname(absolute)}`);
-      }
-      const [resolvedWorkspace, resolvedSource] = await Promise.all([
-        realpathImpl(workspace),
-        realpathImpl(absolute),
+    reviewFile,
+    async createBugReview(input) {
+      const [graph, sourceReport] = await Promise.all([
+        indexWorkspace(workspace),
+        reviewFile(input.filePath),
       ]);
-      assertInside(resolvedWorkspace, resolvedSource);
-      const decoded = decodeSource(await readFile(resolvedSource));
-      return {
-        ...reviewSource(decoded.text, { file: relative(workspace, absolute).replaceAll('\\', '/') }),
-        encoding: decoded.encoding,
-      };
+      return createBugReviewReport({ ...input, graph, sourceReport });
     },
     readContext() {
       return context.read();

@@ -139,24 +139,88 @@ export function createBugReview(input) {
     .map((edge) => edge.from))]
     .sort((left, right) => left.localeCompare(right));
 
+  const changedFiles = [...new Set((input.changedFiles ?? []).map((item) => {
+    const value = typeof item === 'string' ? { path: item, status: 'modified' } : item;
+    const path = String(value?.path ?? '').replaceAll('\\', '/');
+    if (!path || path.startsWith('/') || /^[A-Za-z]:\//.test(path)
+      || path.split('/').includes('..')) throw new TypeError('changed file must be workspace-relative');
+    return JSON.stringify({ path, status: value?.status ?? 'modified' });
+  }))].map((item) => JSON.parse(item)).sort((left, right) => left.path.localeCompare(right.path));
+
+  const allowedValidationStatuses = new Set(['failed', 'not-run', 'passed']);
+  const checks = (input.validation ?? []).map((check) => {
+    if (typeof check?.name !== 'string' || !allowedValidationStatuses.has(check?.status)) {
+      throw new TypeError('validation checks require name and passed, failed or not-run status');
+    }
+    return { name: check.name, status: check.status, evidence: check.evidence ?? null };
+  });
+  const validationSummary = {
+    passed: checks.filter((check) => check.status === 'passed').length,
+    failed: checks.filter((check) => check.status === 'failed').length,
+    notRun: checks.filter((check) => check.status === 'not-run').length,
+    allPassed: checks.length > 0 && checks.every((check) => check.status === 'passed'),
+  };
+
+  const requestedBuild = input.buildEvidence ?? { status: 'not-run', reason: 'No build evidence supplied.' };
+  const compilerVerified = requestedBuild?.compiler?.exitCode === 0
+    && typeof requestedBuild.compiler.identity === 'string'
+    && requestedBuild.compiler.identity.length > 0;
+  const artifactVerified = /^[a-f0-9]{64}$/i.test(requestedBuild?.artifact?.sha256 ?? '')
+    && typeof requestedBuild?.artifact?.path === 'string'
+    && requestedBuild.artifact.path.length > 0;
+  const buildVerified = requestedBuild.status === 'completed' && compilerVerified && artifactVerified;
+  const build = {
+    ...requestedBuild,
+    status: requestedBuild.status === 'completed' && !buildVerified ? 'unverified' : requestedBuild.status,
+    verified: buildVerified,
+  };
+  const uncertaintyItems = [...new Set((input.uncertainty ?? []).map(String).filter(Boolean))];
+  const residualRisks = [];
+  if (!target) residualRisks.push({
+    code: 'TARGET_NOT_FOUND', severity: 'major', detail: 'The target symbol is absent from the lexical CodeGraph.',
+  });
+  if (validationSummary.failed > 0) residualRisks.push({
+    code: 'VALIDATION_FAILED', severity: 'critical', detail: `${validationSummary.failed} validation check(s) failed.`,
+  });
+  if (!validationSummary.allPassed) residualRisks.push({
+    code: 'VALIDATION_INCOMPLETE', severity: 'major', detail: 'Not every declared validation check passed.',
+  });
+  if (!buildVerified) residualRisks.push({
+    code: 'BUILD_NOT_VERIFIED', severity: 'major', detail: 'No completed compiler run and checksummed artifact prove the build.',
+  });
+  if (uncertaintyItems.length > 0) residualRisks.push({
+    code: 'OPEN_UNCERTAINTY', severity: 'minor', detail: `${uncertaintyItems.length} uncertainty item(s) remain open.`,
+  });
+
+  const evidence = [
+    {
+      type: 'source-review',
+      file: input.sourceReport.file,
+      findingCount: input.sourceReport.findings.length,
+    },
+    {
+      type: 'codegraph',
+      targetFound: Boolean(target),
+      callerCount: callers.length,
+    },
+  ];
+  if (changedFiles.length > 0) evidence.push({ type: 'changed-files', count: changedFiles.length });
+  if (checks.length > 0) evidence.push({ type: 'validation', ...validationSummary });
+  if (input.buildEvidence) evidence.push({ type: 'build', status: build.status, verified: build.verified });
+  for (const item of input.externalEvidence ?? []) evidence.push({ ...item });
+
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     title: input.title,
     status: target ? 'diagnosed' : 'needs-evidence',
     target: target ? { name: target.name, file: target.file, line: target.line } : null,
     impact: { callers, callerCount: callers.length },
     findings: input.sourceReport.findings,
-    evidence: [
-      {
-        type: 'source-review',
-        file: input.sourceReport.file,
-        findingCount: input.sourceReport.findings.length,
-      },
-      {
-        type: 'codegraph',
-        targetFound: Boolean(target),
-        callerCount: callers.length,
-      },
-    ],
+    changedFiles,
+    validation: { checks, summary: validationSummary },
+    build,
+    uncertainty: { items: uncertaintyItems, hasOpenQuestions: uncertaintyItems.length > 0 },
+    residualRisks,
+    evidence,
   };
 }

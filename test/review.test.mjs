@@ -247,18 +247,17 @@ test('bug review filters unresolved and unrelated edges, deduplicates callers an
     targetSymbol: 'SHAREDHELPER',
   });
 
-  assert.deepEqual(report, {
-    schemaVersion: 1,
-    title: 'Impact contract',
-    status: 'diagnosed',
-    target: { name: 'SharedHelper', file: 'helper.prw', line: 9 },
-    impact: { callers: ['Alpha', 'Zulu'], callerCount: 2 },
-    findings: [],
-    evidence: [
-      { type: 'source-review', file: 'helper.prw', findingCount: 0 },
-      { type: 'codegraph', targetFound: true, callerCount: 2 },
-    ],
-  });
+  assert.equal(report.schemaVersion, 2);
+  assert.equal(report.status, 'diagnosed');
+  assert.deepEqual(report.target, { name: 'SharedHelper', file: 'helper.prw', line: 9 });
+  assert.deepEqual(report.impact, { callers: ['Alpha', 'Zulu'], callerCount: 2 });
+  assert.deepEqual(report.changedFiles, []);
+  assert.equal(report.validation.summary.allPassed, false);
+  assert.equal(report.build.verified, false);
+  assert.deepEqual(report.evidence, [
+    { type: 'source-review', file: 'helper.prw', findingCount: 0 },
+    { type: 'codegraph', targetFound: true, callerCount: 2 },
+  ]);
 });
 
 test('bug review returns needs-evidence when the target symbol is absent', () => {
@@ -268,16 +267,77 @@ test('bug review returns needs-evidence when the target symbol is absent', () =>
     graph: { nodes: [], edges: [] },
   });
 
-  assert.deepEqual(report, {
-    schemaVersion: 1,
-    title: 'Missing target',
-    status: 'needs-evidence',
-    target: null,
-    impact: { callers: [], callerCount: 0 },
-    findings: [{ ruleId: 'CA1004' }],
-    evidence: [
-      { type: 'source-review', file: 'missing.prw', findingCount: 1 },
-      { type: 'codegraph', targetFound: false, callerCount: 0 },
+  assert.equal(report.schemaVersion, 2);
+  assert.equal(report.status, 'needs-evidence');
+  assert.equal(report.target, null);
+  assert.deepEqual(report.impact, { callers: [], callerCount: 0 });
+  assert.deepEqual(report.findings, [{ ruleId: 'CA1004' }]);
+  assert.deepEqual(report.residualRisks.map((risk) => risk.code), [
+    'TARGET_NOT_FOUND',
+    'VALIDATION_INCOMPLETE',
+    'BUILD_NOT_VERIFIED',
+  ]);
+});
+
+test('bug review reconciles changed files, validation, build proof, uncertainty and residual risk', () => {
+  const report = createBugReview({
+    title: 'Verified change',
+    targetSymbol: 'SharedHelper',
+    sourceReport: { file: 'src/helper.prw', findings: [] },
+    graph: {
+      nodes: [{ id: 'src/helper.prw#sharedhelper', name: 'SharedHelper', file: 'src/helper.prw', line: 2 }],
+      edges: [{
+        fromId: 'src/caller.prw#caller', from: 'Caller', toId: 'src/helper.prw#sharedhelper',
+        to: 'SharedHelper', file: 'src/caller.prw', line: 3, resolved: true,
+      }],
+    },
+    changedFiles: ['src/helper.prw', 'src/caller.prw', 'src/helper.prw'],
+    validation: [
+      { name: 'unit', status: 'passed', evidence: '12/12' },
+      { name: 'compile', status: 'not-run', evidence: 'AppServer unavailable' },
     ],
+    buildEvidence: { status: 'not-run', reason: 'No homologation server configured' },
+    externalEvidence: [{ type: 'tdn', sha256: 'a'.repeat(64), source: 'snapshot:v1' }],
+    uncertainty: ['Dynamic calls are not resolved.'],
   });
+
+  assert.equal(report.schemaVersion, 2);
+  assert.deepEqual(report.changedFiles, [
+    { path: 'src/caller.prw', status: 'modified' },
+    { path: 'src/helper.prw', status: 'modified' },
+  ]);
+  assert.deepEqual(report.validation.summary, { passed: 1, failed: 0, notRun: 1, allPassed: false });
+  assert.equal(report.build.verified, false);
+  assert.deepEqual(report.uncertainty.items, ['Dynamic calls are not resolved.']);
+  assert.deepEqual(report.residualRisks.map((risk) => risk.code), [
+    'VALIDATION_INCOMPLETE',
+    'BUILD_NOT_VERIFIED',
+    'OPEN_UNCERTAINTY',
+  ]);
+  assert.equal(report.evidence.some((item) => item.type === 'tdn'), true);
+});
+
+test('bug review only verifies a completed build with compiler and artifact evidence', () => {
+  const base = {
+    title: 'Build contract',
+    targetSymbol: 'Entry',
+    sourceReport: { file: 'entry.prw', findings: [] },
+    graph: { nodes: [{ id: 'entry.prw#entry', name: 'Entry', file: 'entry.prw', line: 1 }], edges: [] },
+    validation: [{ name: 'tests', status: 'passed', evidence: 'green' }],
+  };
+  const unproved = createBugReview({ ...base, buildEvidence: { status: 'completed' } });
+  const proved = createBugReview({
+    ...base,
+    buildEvidence: {
+      status: 'completed',
+      compiler: { exitCode: 0, identity: 'tds-cli@2.0.16' },
+      artifact: { sha256: 'b'.repeat(64), path: 'build/entry.ptm' },
+    },
+  });
+
+  assert.equal(unproved.build.status, 'unverified');
+  assert.equal(unproved.build.verified, false);
+  assert.equal(proved.build.status, 'completed');
+  assert.equal(proved.build.verified, true);
+  assert.equal(proved.residualRisks.some((risk) => risk.code === 'BUILD_NOT_VERIFIED'), false);
 });

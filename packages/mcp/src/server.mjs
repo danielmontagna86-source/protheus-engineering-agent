@@ -77,6 +77,20 @@ const TOOLS = Object.freeze([
       additionalProperties: false,
     },
   },
+  {
+    name: 'pea_bug_review',
+    description: 'Create one traceable bug report from source review, CodeGraph impact and residual risk.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        path: { type: 'string' },
+        targetSymbol: { type: 'string' },
+      },
+      required: ['title', 'path', 'targetSymbol'],
+      additionalProperties: false,
+    },
+  },
 ]);
 
 const TOOL_ARGUMENTS = Object.freeze({
@@ -89,6 +103,9 @@ const TOOL_ARGUMENTS = Object.freeze({
   pea_tdn_search: Object.freeze({ allowed: ['query', 'limit'], required: ['query'] }),
   pea_dictionary_table: Object.freeze({ allowed: ['name'], required: ['name'] }),
   pea_dictionary_field: Object.freeze({ allowed: ['table', 'name'], required: ['table', 'name'] }),
+  pea_bug_review: Object.freeze({
+    allowed: ['title', 'path', 'targetSymbol'], required: ['title', 'path', 'targetSymbol'],
+  }),
 });
 
 function validateToolArguments(name, value) {
@@ -157,6 +174,15 @@ export function createMcpHandler(options) {
           value = await runtime.invokeIntegration('dictionary', 'table', args);
         } else if (name === 'pea_dictionary_field') {
           value = await runtime.invokeIntegration('dictionary', 'field', args);
+        } else if (name === 'pea_bug_review') {
+          value = await runtime.createBugReview({
+            title: args.title,
+            filePath: args.path,
+            targetSymbol: args.targetSymbol,
+            changedFiles: [],
+            validation: [],
+            uncertainty: ['The CodeGraph is lexical; dynamic calls require additional evidence.'],
+          });
         }
         return { jsonrpc: '2.0', id, result: toolResult(value) };
       } catch (error) {

@@ -25,6 +25,29 @@ test('MCP handler initializes and lists the product tools', async () => {
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_write_memory'), true);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_tdn_search'), true);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_dictionary_field'), true);
+  assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_bug_review'), true);
+});
+
+test('MCP bug review returns source, impact and residual-risk evidence', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-bug-review-'));
+  const target = join(workspace, 'target.prw');
+  await writeFile(target, 'User Function Target()\nReturn\n');
+  await writeFile(join(workspace, 'caller.prw'), 'User Function Caller()\n    Target()\nReturn\n');
+  const handle = createMcpHandler({ workspace });
+
+  const response = await handle({
+    jsonrpc: '2.0', id: 42, method: 'tools/call',
+    params: {
+      name: 'pea_bug_review',
+      arguments: { title: 'Target regression', path: target, targetSymbol: 'Target' },
+    },
+  });
+  const report = JSON.parse(response.result.content[0].text);
+
+  assert.equal(response.result.isError, false);
+  assert.equal(report.schemaVersion, 2);
+  assert.deepEqual(report.impact.callers, ['Caller']);
+  assert.ok(report.residualRisks.some((risk) => risk.code === 'BUILD_NOT_VERIFIED'));
 });
 
 test('MCP exposes configured read-only TDN and Dictionary evidence', async () => {

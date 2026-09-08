@@ -103,11 +103,11 @@
 
 ### T-022 — Complete bug-review evidence pipeline
 
-- **Status:** Planned
+- **Status:** Complete; report schema v2 reconciles findings, impact, changed files, validation, build proof, external evidence, uncertainty and residual risks through runtime and MCP.
 - **Files:** `packages/review/src/*`, `packages/runtime/src/*`, tests, report schema docs.
 - **Depends on:** T-020, T-021.
 - **Done when:** One report reconciles findings, impact, changed files, tests, build evidence, uncertainty, and residual risk.
-- **Gate:** Golden contract fixtures and negative evidence tests.
+- **Gate:** Golden/negative report tests plus runtime and MCP integration tests pass; unproved completed builds are downgraded to unverified.
 
 ### T-023 — Implement supervised build contract
 

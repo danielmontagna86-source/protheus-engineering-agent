@@ -56,6 +56,26 @@ test('runtime configures read-only TDN and Dictionary snapshots without credenti
   assert.equal(dictionary.data.table.name, 'SE1');
 });
 
+test('runtime builds one traceable bug-review report from source and workspace impact', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-runtime-bug-review-'));
+  const helper = join(workspace, 'helper.prw');
+  await writeFile(helper, 'User Function SharedHelper()\nReturn\n');
+  await writeFile(join(workspace, 'caller.prw'), 'User Function Caller()\n    SharedHelper()\nReturn\n');
+  const runtime = createRuntime({ workspace });
+
+  const report = await runtime.createBugReview({
+    title: 'Shared helper investigation',
+    filePath: helper,
+    targetSymbol: 'SharedHelper',
+    changedFiles: ['helper.prw'],
+    validation: [{ name: 'unit', status: 'passed', evidence: 'green' }],
+  });
+
+  assert.equal(report.schemaVersion, 2);
+  assert.deepEqual(report.impact.callers, ['Caller']);
+  assert.deepEqual(report.changedFiles, [{ path: 'helper.prw', status: 'modified' }]);
+});
+
 test('runtime rejects a source whose resolved target escapes through a symlink', async () => {
   const workspace = await mkdtemp(join(tmpdir(), 'pea-runtime-link-'));
   const linkedSource = join(workspace, 'linked.prw');
