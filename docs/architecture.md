@@ -26,7 +26,7 @@ Runtime empacotado / CLI ------------- MCP stdio <---- hosts compatíveis
 2. Nenhum orquestrador externo é necessário ou dono do estado especializado do projeto.
 3. Memória e resultados externos entram no prompt como dados não confiáveis, delimitados e limitados.
 4. Toda capacidade mutável ou externa passa pela política do ambiente.
-5. `production` exige grant explícito para escrita, build e Oracle.
+5. `homologation` e `production` exigem grant explícito para escrita, build, Oracle e provedor de IA.
 6. Integrações ausentes falham fechadas e nunca acionam fallback pago/rede.
 7. CodeGraph e review são read-only no P0.
 8. Nenhum módulo assume que compilação, AppServer, RPO, Oracle ou TDN estão disponíveis.
@@ -66,14 +66,17 @@ TDS-VSCode permanece responsável por linguagem, LSP/DAP, compilação, depuraç
 
 ## Environment permissions
 
-| Capability | Development | Test | Production |
-|---|---|---|---|
-| workspace/context read | allow | allow | allow |
-| context write | allow | allow | explicit grant |
-| workspace write | explicit grant | undeclared | explicit grant |
-| build execute | explicit grant | undeclared | explicit grant |
-| Oracle read | undeclared | undeclared | explicit grant |
-| unknown capability | deny | deny | deny |
+| Capability | Local | Development | Test | Homologation | Production |
+|---|---|---|---|---|---|
+| workspace/context read | allow | allow | allow | allow | allow |
+| context write | allow | allow | allow | explicit grant | explicit grant |
+| workspace write | explicit grant | explicit grant | undeclared | explicit grant | explicit grant |
+| build execute | explicit grant | explicit grant | undeclared | explicit grant | explicit grant |
+| Oracle read | undeclared | undeclared | undeclared | explicit grant | explicit grant |
+| AI provider invoke | explicit grant | explicit grant | undeclared | explicit grant | explicit grant |
+| unknown capability | deny | deny | deny | deny | deny |
+
+The asynchronous permission broker correlates every approval, limits the purpose field and fails closed when the host has no approval handler, denies, times out, cancels or returns malformed evidence. Approval for one capability never grants another.
 
 ## Error handling
 
