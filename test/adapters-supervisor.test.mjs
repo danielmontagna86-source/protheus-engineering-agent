@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 import { createHermesAdapter } from '../packages/hermes-adapter/src/index.mjs';
 import {
@@ -7,7 +10,10 @@ import {
   createIntegrationRegistry,
   createTdnSnapshotAdapter,
 } from '../packages/integrations/src/index.mjs';
-import { createBuildSupervisor } from '../packages/build-supervisor/src/index.mjs';
+import {
+  createBuildSupervisor,
+  createProcessBuildRunner,
+} from '../packages/build-supervisor/src/index.mjs';
 import { decideCapability } from '../packages/policy/src/index.mjs';
 
 test('Hermes adapter exposes ACP launch and probes without mutating configuration', () => {
@@ -166,16 +172,125 @@ test('build supervisor blocks execution until the environment grant exists', asy
       return { exitCode: 0, output: 'ok' };
     },
   });
-  const plan = { steps: [{ id: 'compile', capability: 'build:execute' }] };
+  const plan = { mode: 'simulation', steps: [{ id: 'compile', capability: 'build:execute' }] };
 
   const blocked = await supervisor.runPlan(plan, { environment: 'production' });
   const completed = await supervisor.runPlan(plan, {
     environment: 'production',
     grants: ['build:execute'],
+    approval: { approvedBy: 'maintainer', approvedAt: '2026-09-07T12:00:00.000Z' },
   });
 
   assert.equal(blocked.status, 'blocked');
   assert.equal(executed.length, 1);
   assert.equal(completed.status, 'completed');
   assert.equal(completed.steps[0].status, 'completed');
+});
+
+test('build supervisor captures approval, command identity, bounded logs and compiler artifacts', async () => {
+  const supervisor = createBuildSupervisor({
+    decideCapability,
+    idFactory: () => 'build-001',
+    clock: (() => {
+      let now = 1_000;
+      return () => (now += 10);
+    })(),
+    runner: async () => ({
+      exitCode: 0,
+      stdout: 'compiled',
+      stderr: '',
+      compiler: { identity: 'tds-cli@2.0.16', version: '2.0.16' },
+      artifacts: [{ path: 'build/sample.ptm', sha256: 'a'.repeat(64) }],
+    }),
+  });
+
+  const run = await supervisor.runPlan({
+    mode: 'compiler',
+    steps: [{
+      id: 'compile',
+      capability: 'build:execute',
+      command: { executable: 'tds-cli', args: ['compile', 'sample.prw'] },
+      timeoutMs: 1_000,
+    }],
+  }, {
+    environment: 'production',
+    grants: ['build:execute'],
+    approval: { approvedBy: 'maintainer', approvedAt: '2026-09-07T12:00:00.000Z' },
+  });
+
+  assert.equal(run.id, 'build-001');
+  assert.equal(run.status, 'completed');
+  assert.equal(run.evidenceLevel, 'compiler-verified');
+  assert.equal(run.steps[0].decision.allowed, true);
+  assert.deepEqual(run.steps[0].command, { executable: 'tds-cli', args: ['compile', 'sample.prw'] });
+  assert.equal(run.steps[0].logs.stdout, 'compiled');
+  assert.equal(run.steps[0].result.compiler.identity, 'tds-cli@2.0.16');
+  assert.equal(run.steps[0].result.artifacts[0].sha256, 'a'.repeat(64));
+  assert.ok(run.durationMs >= 0);
+});
+
+test('build supervisor refuses unproved success and malformed runner output', async () => {
+  const unproved = createBuildSupervisor({
+    decideCapability,
+    runner: async () => ({ exitCode: 0, stdout: 'done' }),
+  });
+  const malformed = createBuildSupervisor({
+    decideCapability,
+    runner: async () => ({ exitCode: 'zero', stdout: { secret: true } }),
+  });
+  const plan = {
+    mode: 'compiler',
+    steps: [{ id: 'compile', capability: 'build:execute', command: { executable: 'compiler', args: [] } }],
+  };
+  const context = {
+    environment: 'production', grants: ['build:execute'],
+    approval: { approvedBy: 'maintainer', approvedAt: '2026-09-07T12:00:00.000Z' },
+  };
+
+  assert.equal((await unproved.runPlan(plan, context)).status, 'unverified');
+  const malformedRun = await malformed.runPlan(plan, context);
+  assert.equal(malformedRun.status, 'failed');
+  assert.equal(malformedRun.steps[0].error.code, 'BUILD_RESULT_INVALID');
+});
+
+test('build supervisor times out and cancels without claiming completion', async () => {
+  const supervisor = createBuildSupervisor({
+    decideCapability,
+    runner: async () => new Promise((resolve) => setTimeout(() => resolve({ exitCode: 0 }), 100)),
+  });
+  const plan = {
+    mode: 'simulation',
+    steps: [{ id: 'compile', capability: 'build:execute', timeoutMs: 5 }],
+  };
+  const timedOut = await supervisor.runPlan(plan, {
+    environment: 'development', grants: ['build:execute'],
+    approval: { approvedBy: 'maintainer', approvedAt: '2026-09-07T12:00:00.000Z' },
+  });
+  const controller = new AbortController();
+  controller.abort();
+  const cancelled = await supervisor.runPlan(plan, {
+    environment: 'development', grants: ['build:execute'], signal: controller.signal,
+  });
+
+  assert.equal(timedOut.status, 'timed-out');
+  assert.equal(timedOut.steps[0].status, 'timed-out');
+  assert.equal(cancelled.status, 'cancelled');
+  assert.equal(cancelled.steps.length, 0);
+});
+
+test('process build runner executes without a shell and hashes declared workspace artifacts', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-build-runner-'));
+  await writeFile(join(workspace, 'compiled.ptm'), 'verified artifact');
+  const runner = createProcessBuildRunner();
+
+  const result = await runner({
+    command: { executable: process.execPath, args: ['-e', 'process.stdout.write("compiler ok")'], identity: 'synthetic-node' },
+    artifacts: ['compiled.ptm'],
+  }, { workspace });
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.stdout, 'compiler ok');
+  assert.equal(result.compiler.identity, 'synthetic-node');
+  assert.match(result.artifacts[0].sha256, /^[a-f0-9]{64}$/);
+  assert.equal(result.artifacts[0].path, 'compiled.ptm');
 });

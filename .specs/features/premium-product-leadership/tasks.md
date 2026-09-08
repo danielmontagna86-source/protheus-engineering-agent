@@ -111,11 +111,11 @@
 
 ### T-023 — Implement supervised build contract
 
-- **Status:** Planned
+- **Status:** Complete for the product contract and safe process runner; live AppServer/RPO remains the separately authorized environment acceptance gate stated by this task.
 - **Files:** `packages/build-supervisor/src/*`, policy/integration tests, `docs/build-supervisor.md`.
 - **Depends on:** T-022.
 - **Done when:** Approval, environment, command identity, timeout, logs, compiler result, and artifacts are captured; simulation and denial are fully testable offline.
-- **Gate:** Unit, integration, timeout, denial, cancellation, and malformed-log tests. Real AppServer validation remains a separate authorized environment gate.
+- **Gate:** Unit/process integration, compiler-evidence, timeout, denial, named approval, cancellation and malformed-output tests pass. Real AppServer validation remains a separate authorized environment gate.
 
 ### T-024 — Verify TDS coexistence and first-value UX
 
