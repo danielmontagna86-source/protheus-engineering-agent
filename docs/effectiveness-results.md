@@ -1,7 +1,7 @@
 # Effectiveness results — synthetic baseline
 
-Date: 2026-09-07  
-Dataset: `pea-synthetic-benchmark-v1`  
+Date: 2026-09-07
+Dataset: `pea-synthetic-benchmark-v1`
 License: Apache-2.0 synthetic fixtures
 
 `npm run benchmark` completed five review cases and two CodeGraph cases with the following deterministic baseline:
