@@ -341,3 +341,74 @@ test('bug review only verifies a completed build with compiler and artifact evid
   assert.equal(proved.build.verified, true);
   assert.equal(proved.residualRisks.some((risk) => risk.code === 'BUILD_NOT_VERIFIED'), false);
 });
+
+test('bug review reports exact validation, build, uncertainty, risk and evidence contracts', () => {
+  const report = createBugReview({
+    title: 'Exact evidence',
+    targetSymbol: 'Entry',
+    sourceReport: { file: 'entry.prw', findings: [{ ruleId: 'CA1004', line: 2 }] },
+    graph: { nodes: [{ name: 'Entry', file: 'entry.prw', line: 1 }], edges: [] },
+    changedFiles: [{ path: 'entry.prw', status: 'added' }],
+    validation: [
+      { name: 'unit', status: 'passed', evidence: '10/10' },
+      { name: 'compile', status: 'failed' },
+      { name: 'uat', status: 'not-run', evidence: null },
+    ],
+    buildEvidence: {
+      status: 'completed', compiler: { exitCode: 0, identity: 'compiler@1' },
+      artifact: { sha256: 'c'.repeat(64), path: 'build/entry.ptm' },
+    },
+    uncertainty: ['', 'dynamic call', 'dynamic call'],
+    externalEvidence: [{ type: 'dictionary', snapshot: 'v1' }],
+  });
+
+  assert.deepEqual(report.validation, {
+    checks: [
+      { name: 'unit', status: 'passed', evidence: '10/10' },
+      { name: 'compile', status: 'failed', evidence: null },
+      { name: 'uat', status: 'not-run', evidence: null },
+    ],
+    summary: { passed: 1, failed: 1, notRun: 1, allPassed: false },
+  });
+  assert.deepEqual(report.build, {
+    status: 'completed', compiler: { exitCode: 0, identity: 'compiler@1' },
+    artifact: { sha256: 'c'.repeat(64), path: 'build/entry.ptm' }, verified: true,
+  });
+  assert.deepEqual(report.uncertainty, { items: ['dynamic call'], hasOpenQuestions: true });
+  assert.deepEqual(report.residualRisks, [
+    { code: 'VALIDATION_FAILED', severity: 'critical', detail: '1 validation check(s) failed.' },
+    { code: 'VALIDATION_INCOMPLETE', severity: 'major', detail: 'Not every declared validation check passed.' },
+    { code: 'OPEN_UNCERTAINTY', severity: 'minor', detail: '1 uncertainty item(s) remain open.' },
+  ]);
+  assert.deepEqual(report.evidence, [
+    { type: 'source-review', file: 'entry.prw', findingCount: 1 },
+    { type: 'codegraph', targetFound: true, callerCount: 0 },
+    { type: 'changed-files', count: 1 },
+    { type: 'validation', passed: 1, failed: 1, notRun: 1, allPassed: false },
+    { type: 'build', status: 'completed', verified: true },
+    { type: 'dictionary', snapshot: 'v1' },
+  ]);
+});
+
+test('bug review rejects malformed validation and never verifies partial compiler evidence', () => {
+  const base = {
+    title: 'Strict evidence', targetSymbol: 'Entry',
+    sourceReport: { file: 'entry.prw', findings: [] },
+    graph: { nodes: [{ name: 'Entry', file: 'entry.prw', line: 1 }], edges: [] },
+    validation: [{ name: 'tests', status: 'passed' }],
+  };
+  for (const validation of [[{ status: 'passed' }], [{ name: 'x', status: 'unknown' }]]) {
+    assert.throws(() => createBugReview({ ...base, validation }), /validation checks require/);
+  }
+  for (const buildEvidence of [
+    { status: 'completed', compiler: { exitCode: 1, identity: 'compiler' }, artifact: { sha256: 'd'.repeat(64), path: 'x' } },
+    { status: 'completed', compiler: { exitCode: 0, identity: '' }, artifact: { sha256: 'd'.repeat(64), path: 'x' } },
+    { status: 'completed', compiler: { exitCode: 0, identity: 'compiler' }, artifact: { sha256: `x${'d'.repeat(64)}`, path: 'x' } },
+    { status: 'completed', compiler: { exitCode: 0, identity: 'compiler' }, artifact: { sha256: 'd'.repeat(64), path: '' } },
+  ]) {
+    const report = createBugReview({ ...base, buildEvidence });
+    assert.equal(report.build.status, 'unverified');
+    assert.equal(report.build.verified, false);
+    assert.equal(report.residualRisks.at(-1).code, 'BUILD_NOT_VERIFIED');
+  }
+});

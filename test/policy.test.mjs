@@ -118,21 +118,71 @@ test('permission broker correlates approved requests without broadening grants',
 
 test('permission broker fails closed on missing, malformed, timed-out and cancelled approval', async () => {
   const absent = createPermissionBroker();
-  assert.equal((await absent.authorize('production', 'oracle:read')).reason, 'approval-handler-unavailable');
+  assert.deepEqual(await absent.authorize('production', 'oracle:read'), {
+    allowed: false, reason: 'approval-handler-unavailable', requiresApproval: true,
+  });
 
   const malformed = createPermissionBroker({ requestApproval: async () => ({ approved: 'yes' }) });
-  assert.equal((await malformed.authorize('production', 'oracle:read')).reason, 'approval-response-invalid');
+  assert.deepEqual(await malformed.authorize('production', 'oracle:read'), {
+    allowed: false, reason: 'approval-response-invalid', requiresApproval: true,
+  });
 
   const timedOut = createPermissionBroker({
     timeoutMs: 5,
     requestApproval: async () => new Promise(() => {}),
   });
-  assert.equal((await timedOut.authorize('production', 'oracle:read')).reason, 'approval-timeout');
+  assert.deepEqual(await timedOut.authorize('production', 'oracle:read'), {
+    allowed: false, reason: 'approval-timeout', requiresApproval: true,
+  });
 
   const controller = new AbortController();
   controller.abort();
   const cancelled = createPermissionBroker({ requestApproval: async () => ({ approved: true }) });
-  assert.equal((await cancelled.authorize('production', 'oracle:read', { signal: controller.signal })).reason, 'approval-cancelled');
+  assert.deepEqual(await cancelled.authorize('production', 'oracle:read', { signal: controller.signal }), {
+    allowed: false, reason: 'approval-cancelled', requiresApproval: true,
+  });
+});
+
+test('permission broker validates configuration, denial evidence and handler failures', async () => {
+  for (const timeoutMs of [0, 300_001, 1.5]) {
+    assert.throws(() => createPermissionBroker({ timeoutMs }), /between 1 and 300000/);
+  }
+  const denied = createPermissionBroker({ requestApproval: async () => ({ approved: false }) });
+  assert.deepEqual(await denied.authorize('production', 'oracle:read'), {
+    allowed: false, reason: 'approval-denied', requiresApproval: true,
+  });
+  const failed = createPermissionBroker({ requestApproval: async () => { throw new Error('private detail'); } });
+  assert.deepEqual(await failed.authorize('production', 'oracle:read'), {
+    allowed: false, reason: 'approval-handler-failed', requiresApproval: true,
+  });
+  for (const response of [
+    { approved: true, approvedBy: '', approvedAt: '2026-09-07T12:00:00.000Z' },
+    { approved: true, approvedBy: 'owner', approvedAt: '' },
+    { approved: true, approvedBy: 'owner', approvedAt: 'invalid' },
+  ]) {
+    const invalid = createPermissionBroker({ requestApproval: async () => response });
+    assert.equal((await invalid.authorize('production', 'oracle:read')).reason, 'approval-response-invalid');
+  }
+});
+
+test('permission broker bounds purpose and observes cancellation after request starts', async () => {
+  let observed;
+  let release;
+  const broker = createPermissionBroker({
+    requestApproval: async (request) => {
+      observed = request;
+      return new Promise((resolve) => { release = resolve; });
+    },
+  });
+  const controller = new AbortController();
+  const pending = broker.authorize('production', 'ai:invoke', {
+    signal: controller.signal, purpose: 'x'.repeat(700),
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  controller.abort();
+  assert.equal((await pending).reason, 'approval-cancelled');
+  assert.equal(observed.purpose.length, 500);
+  release({ approved: false });
 });
 
 test('permission broker never prompts for undeclared capabilities or already granted access', async () => {
