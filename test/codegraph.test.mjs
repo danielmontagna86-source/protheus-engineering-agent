@@ -124,6 +124,68 @@ test('workspace index leaves duplicate global targets ambiguous', async () => {
   assert.equal(graph.edges[0].targetFile, null);
 });
 
+test('workspace index explains callers, dependencies, unresolved and ambiguous targets', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pea-graph-impact-'));
+  await writeFile(join(root, 'entry.prw'), [
+    'User Function Entry()',
+    '    Known()',
+    '    Missing()',
+    '    Duplicate()',
+    'Return',
+  ].join('\n'));
+  await writeFile(join(root, 'known.prw'), 'User Function Known()\nReturn\n');
+  await writeFile(join(root, 'duplicate-one.prw'), 'User Function Duplicate()\nReturn\n');
+  await writeFile(join(root, 'duplicate-two.tlpp'), 'User Function Duplicate()\nReturn\n');
+
+  const graph = await indexWorkspace(root);
+  const entry = graph.nodes.find((node) => node.name === 'Entry');
+  const known = graph.nodes.find((node) => node.name === 'Known');
+
+  assert.equal(graph.analysis.parser, 'lexical');
+  assert.ok(graph.analysis.limitations.some((item) => /dynamic/i.test(item)));
+  assert.deepEqual(
+    graph.analysis.dependencies.find((item) => item.symbolId === entry.id).targets,
+    [{ symbolId: known.id, name: 'Known', file: 'known.prw', line: 2 }],
+  );
+  assert.deepEqual(
+    graph.analysis.callers.find((item) => item.symbolId === known.id).sources,
+    [{ symbolId: entry.id, name: 'Entry', file: 'entry.prw', line: 2 }],
+  );
+  assert.deepEqual(graph.analysis.unresolvedTargets, [{
+    callerId: entry.id,
+    caller: 'Entry',
+    callee: 'Missing',
+    file: 'entry.prw',
+    line: 3,
+  }]);
+  assert.deepEqual(graph.analysis.ambiguousTargets, [{
+    callerId: entry.id,
+    caller: 'Entry',
+    callee: 'Duplicate',
+    file: 'entry.prw',
+    line: 4,
+    candidates: [
+      { symbolId: 'duplicate-one.prw#duplicate', name: 'Duplicate', file: 'duplicate-one.prw', line: 1 },
+      { symbolId: 'duplicate-two.tlpp#duplicate', name: 'Duplicate', file: 'duplicate-two.tlpp', line: 1 },
+    ],
+  }]);
+});
+
+test('workspace impact evidence is deterministic regardless of source discovery order', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pea-graph-deterministic-'));
+  await writeFile(join(root, 'z-entry.prw'), 'User Function Zed()\n    Alpha()\nReturn\n');
+  await writeFile(join(root, 'a-target.prw'), 'User Function Alpha()\nReturn\n');
+
+  const first = await indexWorkspace(root);
+  const second = await indexWorkspace(root);
+
+  assert.deepEqual(first.analysis, second.analysis);
+  assert.deepEqual(first.analysis.dependencies.map((item) => item.symbolId), [
+    'a-target.prw#alpha',
+    'z-entry.prw#zed',
+  ]);
+});
+
 test('source decoding falls back to Windows-1252 without corrupting accents', () => {
   const bytes = Buffer.from([
     ...Buffer.from('// Fun'),

@@ -1,7 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { extname, join, relative, resolve } from 'node:path';
 
-import { resolveCallTarget } from './resolve.mjs';
+import { eligibleCallTargets, resolveCallTarget } from './resolve.mjs';
 
 export const ADVPL_EXTENSIONS = Object.freeze(new Set([
   '.prw', '.prg', '.prx', '.tlpp', '.ppx', '.ppp', '.apw', '.aph',
@@ -185,25 +185,90 @@ export async function indexWorkspace(workspacePath) {
   }
 
   const byCanonical = new Map();
+  const byId = new Map();
   for (const node of nodes) {
     const candidates = byCanonical.get(node.canonical) ?? [];
     candidates.push(node);
     byCanonical.set(node.canonical, candidates);
+    byId.set(node.id, node);
   }
   const edges = rawCalls.map((call) => {
     const candidates = byCanonical.get(call.calleeCanonical) ?? [];
     const { target, resolution, candidateCount } = resolveCallTarget(call, candidates);
+    const callerId = `${call.file}#${call.callerCanonical}`;
     return {
       from: call.caller,
+      fromId: callerId,
       to: target?.name ?? call.callee,
+      toId: target?.id ?? null,
       file: call.file,
       line: call.line,
       resolved: Boolean(target),
       targetFile: target?.file ?? null,
       resolution,
       candidateCount,
+      candidateTargets: eligibleCallTargets(call, candidates)
+        .map((candidate) => ({
+          symbolId: candidate.id,
+          name: candidate.name,
+          file: candidate.file,
+          line: candidate.line,
+        }))
+        .sort((left, right) => left.symbolId.localeCompare(right.symbolId)),
     };
   });
+
+  const orderedNodes = [...nodes].sort((left, right) => left.id.localeCompare(right.id));
+  const dependencies = orderedNodes.map((node) => ({
+    symbolId: node.id,
+    name: node.name,
+    file: node.file,
+    targets: edges
+      .filter((edge) => edge.resolved && edge.fromId === node.id)
+      .map((edge) => ({
+        symbolId: edge.toId,
+        name: edge.to,
+        file: edge.targetFile,
+        line: edge.line,
+      }))
+      .sort((left, right) => left.symbolId.localeCompare(right.symbolId) || left.line - right.line),
+  }));
+  const callers = orderedNodes.map((node) => ({
+    symbolId: node.id,
+    name: node.name,
+    file: node.file,
+    sources: edges
+      .filter((edge) => edge.resolved && edge.toId === node.id)
+      .map((edge) => {
+        const caller = byId.get(edge.fromId);
+        return {
+          symbolId: edge.fromId,
+          name: caller?.name ?? edge.from,
+          file: edge.file,
+          line: edge.line,
+        };
+      })
+      .sort((left, right) => left.symbolId.localeCompare(right.symbolId) || left.line - right.line),
+  }));
+  const unresolvedTargets = edges
+    .filter((edge) => edge.resolution === 'unresolved')
+    .map((edge) => ({
+      callerId: edge.fromId,
+      caller: edge.from,
+      callee: edge.to,
+      file: edge.file,
+      line: edge.line,
+    }));
+  const ambiguousTargets = edges
+    .filter((edge) => edge.resolution === 'ambiguous')
+    .map((edge) => ({
+      callerId: edge.fromId,
+      caller: edge.from,
+      callee: edge.to,
+      file: edge.file,
+      line: edge.line,
+      candidates: edge.candidateTargets,
+    }));
 
   return {
     schemaVersion: 1,
@@ -212,5 +277,16 @@ export async function indexWorkspace(workspacePath) {
     encodings,
     nodes,
     edges,
+    analysis: {
+      parser: 'lexical',
+      limitations: [
+        'Dynamic, macro, object-message and preprocessor-generated calls are not resolved.',
+        'Method overloads, inheritance and framework symbols require external semantic evidence.',
+      ],
+      callers,
+      dependencies,
+      unresolvedTargets,
+      ambiguousTargets,
+    },
   };
 }

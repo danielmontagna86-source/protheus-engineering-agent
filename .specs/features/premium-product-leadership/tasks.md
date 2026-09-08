@@ -87,11 +87,11 @@
 
 ### T-020 — Strengthen CodeGraph and impact evidence
 
-- **Status:** Planned
+- **Status:** Complete; test-first impact evidence added with deterministic callers, dependencies, ambiguity, unresolved targets and explicit lexical limits.
 - **Files:** `packages/codegraph-advpl/src/*`, `packages/review/src/index.mjs`, CodeGraph/review tests, `docs/codegraph.md`.
 - **Depends on:** T-014.
 - **Done when:** Callers, dependencies, ambiguity, unresolved targets, and limitations are explicit; large-fixture budget passes.
-- **Gate:** Unit/property fixtures plus performance budget.
+- **Gate:** Unit/determinism fixtures and the existing 5,000-symbol sub-second performance budget pass.
 
 ### T-021 — Implement versioned read-only TDN and Dictionary adapters
 
