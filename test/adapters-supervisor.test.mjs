@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -13,6 +14,7 @@ import {
 } from '../packages/integrations/src/index.mjs';
 import {
   createBuildSupervisor,
+  createJsonBuildStore,
   createProcessBuildRunner,
 } from '../packages/build-supervisor/src/index.mjs';
 import { decideCapability } from '../packages/policy/src/index.mjs';
@@ -370,4 +372,88 @@ test('process build runner executes without a shell and hashes declared workspac
   assert.equal(result.compiler.identity, 'synthetic-node');
   assert.match(result.artifacts[0].sha256, /^[a-f0-9]{64}$/);
   assert.equal(result.artifacts[0].path, 'compiled.ptm');
+});
+
+test('durable build resumes without repeating completed idempotent steps', async () => {
+  const snapshots = new Map();
+  const store = {
+    async load(key) { return snapshots.get(key) ?? null; },
+    async save(key, value) { snapshots.set(key, structuredClone(value)); },
+  };
+  const executed = [];
+  const plan = { mode: 'simulation', steps: [
+    { id: 'one', idempotencyKey: 'compile-one', capability: 'build:execute' },
+    { id: 'two', idempotencyKey: 'compile-two', capability: 'build:execute' },
+  ] };
+  const first = createBuildSupervisor({
+    decideCapability,
+    store,
+    idFactory: () => 'durable-build',
+    runner: async (step) => { executed.push(step.id); return { exitCode: 0, output: step.id }; },
+  });
+  const paused = await first.runPlan(plan, {
+    environment: 'development', grants: ['build:execute'],
+    approval: { approvedBy: 'maintainer', approvedAt: '2026-09-07T12:00:00.000Z' },
+    idempotencyKey: 'run-001', pauseAfterStep: 'one',
+  });
+  assert.equal(paused.status, 'paused');
+
+  const afterRestart = createBuildSupervisor({
+    decideCapability,
+    store,
+    runner: async (step) => { executed.push(step.id); return { exitCode: 0, output: step.id }; },
+  });
+  const resumed = await afterRestart.runPlan(plan, {
+    environment: 'development', grants: ['build:execute'],
+    approval: { approvedBy: 'maintainer', approvedAt: '2026-09-07T12:00:00.000Z' },
+    idempotencyKey: 'run-001',
+  });
+  assert.equal(resumed.status, 'completed');
+  assert.equal(resumed.steps[0].replayed, true);
+  assert.deepEqual(executed, ['one', 'two']);
+
+  const replay = await afterRestart.runPlan(plan, {
+    environment: 'development', grants: ['build:execute'], idempotencyKey: 'run-001',
+  });
+  assert.equal(replay.replayed, true);
+  assert.deepEqual(executed, ['one', 'two']);
+});
+
+test('durable build blocks changed plans and unknown in-flight outcomes', async () => {
+  const plan = { mode: 'simulation', steps: [
+    { id: 'one', idempotencyKey: 'compile-one', capability: 'build:execute' },
+  ] };
+  const planHash = createHash('sha256').update(JSON.stringify(plan)).digest('hex');
+  const store = {
+    async load() {
+      return {
+        schemaVersion: 1, id: 'existing', mode: 'simulation', status: 'running', environment: 'development',
+        planHash, startedAt: '2026-09-07T12:00:00.000Z', durationMs: 0,
+        steps: [{ id: 'one', idempotencyKey: 'compile-one', status: 'running' }],
+      };
+    },
+    async save() {},
+  };
+  const supervisor = createBuildSupervisor({
+    decideCapability, store, runner: async () => ({ exitCode: 0 }),
+  });
+  const unknown = await supervisor.runPlan(plan, {
+    environment: 'development', grants: ['build:execute'], idempotencyKey: 'run-unknown',
+  });
+  assert.equal(unknown.status, 'blocked');
+  assert.equal(unknown.error.code, 'BUILD_STEP_OUTCOME_UNKNOWN');
+
+  const changed = await supervisor.runPlan({ ...plan, steps: [...plan.steps, { id: 'two', idempotencyKey: 'two' }] }, {
+    environment: 'development', grants: ['build:execute'], idempotencyKey: 'run-unknown',
+  });
+  assert.equal(changed.error.code, 'BUILD_PLAN_CHANGED');
+});
+
+test('JSON build store persists bounded checkpoints without using keys as paths', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'pea-build-store-'));
+  const first = createJsonBuildStore({ directory });
+  await first.save('../unsafe-key', { schemaVersion: 1, status: 'paused' });
+  const second = createJsonBuildStore({ directory });
+  assert.deepEqual(await second.load('../unsafe-key'), { schemaVersion: 1, status: 'paused' });
+  assert.equal(await second.load('missing'), null);
 });

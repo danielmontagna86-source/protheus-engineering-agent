@@ -1,11 +1,12 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { lstat, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
 
 const MAX_TIMEOUT_MS = 30 * 60 * 1_000;
 const DEFAULT_TIMEOUT_MS = 2 * 60 * 1_000;
 const DEFAULT_MAX_LOG_BYTES = 256 * 1_024;
+const MAX_STORE_BYTES = 2 * 1_024 * 1_024;
 
 class BuildContractError extends Error {
   constructor(code, message) {
@@ -132,6 +133,65 @@ function assertWorkspaceRelative(workspace, candidate) {
   return { absolute, relative: rel.replaceAll('\\', '/') };
 }
 
+export function createJsonBuildStore(options = {}) {
+  if (typeof options.directory !== 'string' || options.directory.length === 0) {
+    throw new TypeError('build store directory is required');
+  }
+  const directory = resolve(options.directory);
+  const maxBytes = options.maxBytes ?? MAX_STORE_BYTES;
+  if (!Number.isInteger(maxBytes) || maxBytes < 1) throw new TypeError('build store maxBytes is invalid');
+
+  async function ensureDirectory() {
+    try {
+      const stat = await lstat(directory);
+      if (stat.isSymbolicLink() || !stat.isDirectory()) {
+        throw new BuildContractError('BUILD_STORE_UNSAFE', 'build store must be a real directory');
+      }
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error;
+      await mkdir(directory, { recursive: true });
+      const stat = await lstat(directory);
+      if (stat.isSymbolicLink() || !stat.isDirectory()) {
+        throw new BuildContractError('BUILD_STORE_UNSAFE', 'build store must be a real directory');
+      }
+    }
+  }
+
+  function fileFor(key) {
+    if (typeof key !== 'string' || key.length < 1 || key.length > 200) throw new TypeError('build store key is invalid');
+    return resolve(directory, `${createHash('sha256').update(key).digest('hex')}.json`);
+  }
+
+  return {
+    async load(key) {
+      await ensureDirectory();
+      const path = fileFor(key);
+      try {
+        const stat = await lstat(path);
+        if (stat.isSymbolicLink() || !stat.isFile() || stat.size > maxBytes) {
+          throw new BuildContractError('BUILD_STORE_UNSAFE', 'build checkpoint is unsafe or oversized');
+        }
+        return JSON.parse(await readFile(path, 'utf8'));
+      } catch (error) {
+        if (error?.code === 'ENOENT') return null;
+        if (error instanceof SyntaxError) throw new BuildContractError('BUILD_STORE_INVALID', 'build checkpoint is invalid JSON');
+        throw error;
+      }
+    },
+    async save(key, value) {
+      await ensureDirectory();
+      const path = fileFor(key);
+      const content = JSON.stringify(value);
+      if (Buffer.byteLength(content) > maxBytes) {
+        throw new BuildContractError('BUILD_STORE_TOO_LARGE', 'build checkpoint exceeds store limit');
+      }
+      const temp = `${path}.${process.pid}.${randomUUID()}.tmp`;
+      await writeFile(temp, content, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
+      await rename(temp, path);
+    },
+  };
+}
+
 export function createProcessBuildRunner(options = {}) {
   const execFileImpl = options.execFileImpl ?? execFile;
   const readFileImpl = options.readFileImpl ?? readFile;
@@ -186,6 +246,10 @@ export function createBuildSupervisor(options) {
   const clock = options.clock ?? Date.now;
   const idFactory = options.idFactory ?? randomUUID;
   const maxLogBytes = options.maxLogBytes ?? DEFAULT_MAX_LOG_BYTES;
+  const store = options.store;
+  if (store && (typeof store.load !== 'function' || typeof store.save !== 'function')) {
+    throw new TypeError('build store requires load and save functions');
+  }
 
   return {
     async runPlan(plan, context = {}) {
@@ -193,18 +257,51 @@ export function createBuildSupervisor(options) {
       const environment = context.environment ?? 'development';
       const grants = context.grants ?? [];
       const startedAt = clock();
+      const idempotencyKey = context.idempotencyKey;
+      if (idempotencyKey !== undefined && (typeof idempotencyKey !== 'string' || idempotencyKey.length < 1 || idempotencyKey.length > 200)) {
+        throw new TypeError('idempotencyKey must be a non-empty string up to 200 characters');
+      }
+      if (idempotencyKey && !store) throw new TypeError('durable build requires a store');
+      if (idempotencyKey && plan.steps.some((step) => typeof step.idempotencyKey !== 'string' || step.idempotencyKey.length < 1)) {
+        throw new TypeError('every durable build step requires an idempotencyKey');
+      }
+      const planHash = createHash('sha256').update(JSON.stringify(plan)).digest('hex');
+      const loaded = idempotencyKey ? await store.load(idempotencyKey) : null;
+      if (loaded && loaded.planHash !== planHash) {
+        return { ...loaded, status: 'blocked', error: { code: 'BUILD_PLAN_CHANGED', message: 'stored plan hash differs from requested plan' } };
+      }
+      if (loaded?.status === 'completed') return { ...loaded, replayed: true };
+      const unknownStep = loaded?.steps?.find((step) => step.status === 'running');
+      if (unknownStep) {
+        return {
+          ...loaded,
+          status: 'blocked',
+          error: { code: 'BUILD_STEP_OUTCOME_UNKNOWN', message: `step outcome requires human reconciliation: ${unknownStep.id}` },
+        };
+      }
+      const previousSteps = loaded?.steps ?? [];
       const run = {
         schemaVersion: 1,
-        id: idFactory(),
+        id: loaded?.id ?? idFactory(),
         mode,
         status: 'running',
         evidenceLevel: 'none',
         environment,
         approval: context.approval ?? null,
-        startedAt: new Date(startedAt).toISOString(),
+        startedAt: loaded?.startedAt ?? new Date(startedAt).toISOString(),
         durationMs: 0,
         steps: [],
+        ...(idempotencyKey ? { idempotencyKey, planHash } : {}),
       };
+
+      async function saveRun() {
+        if (!idempotencyKey) return;
+        try {
+          await store.save(idempotencyKey, run);
+        } catch {
+          throw new BuildContractError('BUILD_CHECKPOINT_FAILED', 'durable build checkpoint could not be saved');
+        }
+      }
 
       if (context.signal?.aborted) {
         run.status = 'cancelled';
@@ -216,6 +313,11 @@ export function createBuildSupervisor(options) {
         if (context.signal?.aborted) {
           run.status = 'cancelled';
           break;
+        }
+        const previous = previousSteps.find((item) => item.id === step.id && item.status === 'completed');
+        if (previous) {
+          run.steps.push({ ...previous, replayed: true });
+          continue;
         }
         const decision = options.decideCapability(
           environment,
@@ -241,6 +343,7 @@ export function createBuildSupervisor(options) {
         const stepStartedAt = clock();
         const record = {
           id: step.id,
+          ...(idempotencyKey ? { idempotencyKey: step.idempotencyKey } : {}),
           status: 'running',
           decision,
           command: commandIdentity(step.command),
@@ -250,6 +353,7 @@ export function createBuildSupervisor(options) {
         };
         run.steps.push(record);
         try {
+          await saveRun();
           const raw = await executeBounded(
             (stepSignal) => options.runner(step, { ...context, signal: stepSignal }),
             record.timeoutMs,
@@ -267,6 +371,13 @@ export function createBuildSupervisor(options) {
           else record.status = 'completed';
           if (record.status !== 'completed') {
             run.status = record.status;
+            await saveRun();
+            break;
+          }
+          await saveRun();
+          if (context.pauseAfterStep === step.id) {
+            run.status = 'paused';
+            await saveRun();
             break;
           }
         } catch (error) {
@@ -276,6 +387,7 @@ export function createBuildSupervisor(options) {
             : (code === 'BUILD_CANCELLED' ? 'cancelled' : 'failed');
           record.error = { code, message: String(error?.message ?? error) };
           run.status = record.status;
+          try { await saveRun(); } catch { /* The checkpoint error is already represented below. */ }
           break;
         } finally {
           record.durationMs = Math.max(0, clock() - stepStartedAt);
@@ -287,6 +399,7 @@ export function createBuildSupervisor(options) {
         run.evidenceLevel = mode === 'compiler' ? 'compiler-verified' : 'simulation';
       }
       run.durationMs = Math.max(0, clock() - startedAt);
+      await saveRun();
       return run;
     },
   };

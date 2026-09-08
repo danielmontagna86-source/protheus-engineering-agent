@@ -33,3 +33,12 @@ relative to the declared workspace and are hashed after a successful process exi
 
 The product deliberately has no default deploy step. A live Protheus compiler/AppServer test is
 an environment acceptance gate and cannot be replaced by the simulation suite.
+
+## Durable resume
+
+For durable workflows, provide a run idempotency key, a per-step idempotency key and a run store.
+The included JSON store hashes keys into filenames, bounds checkpoint size and rejects symlinked
+state. Completed steps are replayed as evidence instead of executed again after restart. A changed
+plan is blocked. A step found in `running` state has an unknown outcome and is never retried
+silently; it requires human reconciliation. `pauseAfterStep` creates a resumable checkpoint only
+after a completed boundary.
