@@ -34,6 +34,9 @@ Em andamento. Já entregue na preparação pública:
 - Skills/Rules live, limitadas e tratadas como dados não confiáveis;
 - contexto unificado exposto no runtime, CLI, MCP e comando fino do VS Code;
 - specs persistentes, governança, auditor de publicação e CI localmente validada.
+- CodeGraph explicável, bug review rastreável e benchmark sintético reproduzível;
+- snapshots TDN/Dictionary versionados e supervisor de build com evidência verificável;
+- coexistência real com TDS 2.0.16, workspace multi-root e arquivo CP1252/LF validada.
 
 Próximos itens:
 
@@ -44,10 +47,10 @@ Próximos itens:
 - parser incremental com gramática validada para ADVPL/TLPP;
 - fixtures mínimas e evals derivados de exemplos ADVPL/TLPP validados, com checagem de assinaturas e sem copiar fontes GPL para o produto Apache-2.0;
 - persistência versionada e locking entre processos;
-- TDN MCP e Dictionary com proveniência/cache;
+- ampliar TDN/Dictionary para conectores autenticados sem perder proveniência/cache;
 - adapter Protheus IA Lab para RAG/evals;
-- compilação supervisionada com workspace/ambiente allowlist;
-- bug review com tracers independentes e aprovação humana.
+- executar compilação supervisionada em AppServer/RPO de homologação fornecido;
+- executar piloto humano descrito em `docs/effectiveness-methodology.md`.
 
 Critérios de aceite:
 

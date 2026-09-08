@@ -36,6 +36,7 @@
     "verify:release": "node scripts/verify-release.mjs",
     "check": "node scripts/check.mjs",
     "smoke": "node scripts/smoke.mjs",
+    "benchmark": "node benchmark/run.mjs",
     "publication:check": "node scripts/publication-check.mjs",
     "publication:release-check": "node scripts/publication-check.mjs --release",
     "validate": "node --test && node scripts/check.mjs && node scripts/publication-check.mjs",
