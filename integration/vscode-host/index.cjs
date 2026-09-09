@@ -61,7 +61,7 @@ async function run() {
   assert.match(context.hermes.mcp.args[0], /dist[\\/]mcp-stdio\.mjs$/);
   assert.deepEqual(
     context.hermes.mcp.env.find((item) => item.name === 'PEA_ENVIRONMENT'),
-    { name: 'PEA_ENVIRONMENT', value: 'production' },
+    { name: 'PEA_ENVIRONMENT', value: 'development' },
   );
 
   const journal = await execute('pea.addJournalEntry', {
