@@ -86,12 +86,14 @@ export async function verifyRelease() {
   const source = artifacts.find((item) => item.path.endsWith('-source.zip'));
   const vsix = artifacts.find((item) => item.path.endsWith('.vsix'));
   const sbom = artifacts.find((item) => item.path.endsWith('.cdx.json'));
+  let sourceVerified = false;
   if (source) {
     const report = await verifySourceArchive(artifactPath(root, source.path), product.version, {
       root,
       commit: manifest.commit,
     });
     errors.push(...report.errors);
+    sourceVerified = report.status === 'PASS';
   } else {
     errors.push('source archive is missing');
   }
@@ -100,6 +102,7 @@ export async function verifyRelease() {
     const report = await verifyVsix(originalPath, product.version, { commit: manifest.commit });
     errors.push(...report.errors);
     try {
+      if (!sourceVerified) throw new Error('source archive did not pass provenance and safety verification');
       await rebuildVsixFromSourceArchive({
         sourcePath: artifactPath(root, source.path),
         version: product.version,

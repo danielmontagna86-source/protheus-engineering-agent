@@ -153,6 +153,7 @@ export async function rebuildVsixFromSourceArchive({
   version,
   commit,
   expectedSha256,
+  maxCompressedBytes = 50 * 1024 * 1024,
   installDependencies = installCleanDependencies,
   packageProduct = packageExtension,
 }) {
@@ -160,6 +161,10 @@ export async function rebuildVsixFromSourceArchive({
   const prefix = `protheus-engineering-agent-v${version}/`;
   const checkout = join(temporaryRoot, prefix.slice(0, -1));
   try {
+    const sourceState = await lstat(sourcePath);
+    if (!sourceState.isFile() || sourceState.isSymbolicLink() || sourceState.size > maxCompressedBytes) {
+      throw new Error(`clean-rebuild source archive is unsafe or exceeds ${maxCompressedBytes} compressed bytes`);
+    }
     const entries = await readZipArchive(await readFile(sourcePath), {
       maxEntries: 5_000,
       maxEntryBytes: 20 * 1024 * 1024,

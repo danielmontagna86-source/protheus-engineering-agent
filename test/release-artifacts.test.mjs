@@ -90,9 +90,11 @@ async function sourceArchive(path, extraEntries = []) {
 test('VSIX reproducibility is checked in an isolated source-archive checkout', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pea-isolated-rebuild-test-'));
   const source = join(root, 'source.zip');
+  const linkedSource = join(root, 'linked-source');
   const expectedBytes = Buffer.from('isolated rebuilt vsix');
   const expectedSha256 = (await import('node:crypto')).createHash('sha256').update(expectedBytes).digest('hex');
   await sourceArchive(source);
+  await symlink(root, linkedSource, process.platform === 'win32' ? 'junction' : 'dir');
 
   const installDependencies = async (checkout) => {
     assert.notEqual(checkout, root);
@@ -132,6 +134,29 @@ test('VSIX reproducibility is checked in an isolated source-archive checkout', a
         packageProduct,
       }),
       /does not match/,
+    );
+    await assert.rejects(
+      rebuildVsixFromSourceArchive({
+        sourcePath: source,
+        version,
+        commit: 'a'.repeat(40),
+        expectedSha256,
+        maxCompressedBytes: 1,
+        installDependencies,
+        packageProduct,
+      }),
+      /unsafe or exceeds/,
+    );
+    await assert.rejects(
+      rebuildVsixFromSourceArchive({
+        sourcePath: linkedSource,
+        version,
+        commit: 'a'.repeat(40),
+        expectedSha256,
+        installDependencies,
+        packageProduct,
+      }),
+      /unsafe or exceeds/,
     );
   } finally {
     await rm(root, { recursive: true, force: true });
