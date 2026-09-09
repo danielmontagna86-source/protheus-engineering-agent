@@ -6,25 +6,26 @@ import { build } from 'esbuild';
 import { assertNoLinkPath } from './path-safety.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const extensionRoot = join(root, 'apps', 'vscode-extension');
-const extensionDist = join(extensionRoot, 'dist');
-const stageRoot = join(root, 'dist', 'vscode-extension');
 
 function assertBuildPath(path, expected) {
   if (resolve(path) !== resolve(expected)) throw new Error(`refusing unexpected build path: ${path}`);
 }
 
-export async function buildExtension({ releaseCommit } = {}) {
-  assertBuildPath(extensionDist, join(root, 'apps', 'vscode-extension', 'dist'));
-  assertBuildPath(stageRoot, join(root, 'dist', 'vscode-extension'));
-  await assertNoLinkPath(root, extensionDist);
-  await assertNoLinkPath(root, stageRoot);
+export async function buildExtension({ releaseCommit, productRoot = root } = {}) {
+  const buildRoot = resolve(productRoot);
+  const extensionRoot = join(buildRoot, 'apps', 'vscode-extension');
+  const extensionDist = join(extensionRoot, 'dist');
+  const stageRoot = join(buildRoot, 'dist', 'vscode-extension');
+  assertBuildPath(extensionDist, join(buildRoot, 'apps', 'vscode-extension', 'dist'));
+  assertBuildPath(stageRoot, join(buildRoot, 'dist', 'vscode-extension'));
+  await assertNoLinkPath(buildRoot, extensionDist);
+  await assertNoLinkPath(buildRoot, stageRoot);
   await rm(extensionDist, { recursive: true, force: true });
   await rm(stageRoot, { recursive: true, force: true });
   await mkdir(extensionDist, { recursive: true });
 
   const common = {
-    absWorkingDir: root,
+    absWorkingDir: buildRoot,
     bundle: true,
     platform: 'node',
     format: 'esm',
@@ -35,12 +36,12 @@ export async function buildExtension({ releaseCommit } = {}) {
   };
   await build({
     ...common,
-    entryPoints: [join(root, 'packages', 'runtime', 'src', 'cli.mjs')],
+    entryPoints: [join(buildRoot, 'packages', 'runtime', 'src', 'cli.mjs')],
     outfile: join(extensionDist, 'runtime-cli.mjs'),
   });
   await build({
     ...common,
-    entryPoints: [join(root, 'packages', 'runtime', 'src', 'cli.mjs')],
+    entryPoints: [join(buildRoot, 'packages', 'runtime', 'src', 'cli.mjs')],
     outfile: join(extensionDist, 'runtime-cli.cjs'),
     format: 'cjs',
     banner: {
@@ -50,7 +51,7 @@ export async function buildExtension({ releaseCommit } = {}) {
   });
   await build({
     ...common,
-    entryPoints: [join(root, 'packages', 'mcp', 'src', 'stdio.mjs')],
+    entryPoints: [join(buildRoot, 'packages', 'mcp', 'src', 'stdio.mjs')],
     outfile: join(extensionDist, 'mcp-stdio.mjs'),
   });
 
@@ -64,18 +65,18 @@ export async function buildExtension({ releaseCommit } = {}) {
   await cp(join(extensionRoot, 'sample-workspace'), join(stageRoot, 'sample-workspace'), { recursive: true });
   await mkdir(join(stageRoot, 'skills', 'protheus-evidence-review'), { recursive: true });
   await cp(
-    join(root, '.agents', 'skills', 'protheus-evidence-review', 'SKILL.md'),
+    join(buildRoot, '.agents', 'skills', 'protheus-evidence-review', 'SKILL.md'),
     join(stageRoot, 'skills', 'protheus-evidence-review', 'SKILL.md'),
   );
-  await cp(join(root, 'LICENSE.md'), join(stageRoot, 'LICENSE.md'));
-  await cp(join(root, 'CHANGELOG.md'), join(stageRoot, 'CHANGELOG.md'));
-  await cp(join(root, 'THIRD_PARTY_NOTICES.md'), join(stageRoot, 'THIRD_PARTY_NOTICES.md'));
+  await cp(join(buildRoot, 'LICENSE.md'), join(stageRoot, 'LICENSE.md'));
+  await cp(join(buildRoot, 'CHANGELOG.md'), join(stageRoot, 'CHANGELOG.md'));
+  await cp(join(buildRoot, 'THIRD_PARTY_NOTICES.md'), join(stageRoot, 'THIRD_PARTY_NOTICES.md'));
   await mkdir(join(stageRoot, 'third-party-licenses'), { recursive: true });
   await cp(
-    join(root, 'node_modules', '@modelcontextprotocol', 'server', 'LICENSE'),
+    join(buildRoot, 'node_modules', '@modelcontextprotocol', 'server', 'LICENSE'),
     join(stageRoot, 'third-party-licenses', 'model-context-protocol.txt'),
   );
-  await cp(join(root, 'node_modules', 'zod', 'LICENSE'), join(stageRoot, 'third-party-licenses', 'zod.txt'));
+  await cp(join(buildRoot, 'node_modules', 'zod', 'LICENSE'), join(stageRoot, 'third-party-licenses', 'zod.txt'));
 
   const manifest = JSON.parse(await readFile(join(extensionRoot, 'package.json'), 'utf8'));
   delete manifest.private;

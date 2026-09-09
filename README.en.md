@@ -66,7 +66,8 @@ The extension delegates to its bundled runtime. It complements TDS-VSCode and do
 ```sh
 npm run validate
 npm run smoke
-npm run package:extension
+npm run build:release
+npm run verify:release
 npm run test:vscode:host
 npm run test:vscode:minimum
 npm run test:vscode:tds
@@ -75,6 +76,6 @@ npm run benchmark:large
 npm run publication:release-check
 ```
 
-The product is licensed under [Apache-2.0](LICENSE.md). `validate` is the complete local gate, while `smoke` exercises the critical CLI/MCP path in under five minutes. The TDS UAT covers coexistence, multi-root routing and CP1252/LF preservation. The synthetic benchmark does not prove productivity. The release audit remains blocked until real CI, review, exact artifacts and external approval are complete.
+The product is licensed under [Apache-2.0](LICENSE.md). `validate` is the complete local gate, while `smoke` exercises the critical CLI/MCP path in under five minutes. `build:release` requires a clean tree, `verify:release` rebuilds the VSIX from source and requires byte identity, and `publication:release-check` always runs that verifier before evaluating GO. The TDS UAT covers coexistence, multi-root routing and CP1252/LF preservation. The synthetic benchmark does not prove productivity. The release audit remains blocked until real CI, review, exact artifacts and external approval are complete.
 
 See the [validation report](docs/validation-report.md) and [publication plan](docs/publication-plan.md) for current evidence and open gates.

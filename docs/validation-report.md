@@ -8,7 +8,7 @@
 
 | Gate | Result | Evidence |
 |---|---|---|
-| Full automated suite | PASS | 297 tests passed, 0 failed, 0 skipped in the fresh local run |
+| Full automated suite | PASS | 299 tests passed, 0 failed, 0 skipped in the fresh local run |
 | Source/manifests | PASS | 57 source files and 16 manifests syntax/structure checked |
 | Development publication audit | PASS | 219 publishable files, 0 findings after mutation cleanup |
 | Critical-path smoke | PASS | doctor, index, review, source MCP and bundled MCP passed in 884 ms |

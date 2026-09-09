@@ -18,6 +18,7 @@ import { validateReleaseManifest } from '../scripts/verify-release.mjs';
 import { verifyVsix } from '../scripts/verify-vsix.mjs';
 import { npmSbomInvocation } from '../scripts/build-release.mjs';
 import { completeProductionSbom, normalizeSbomDocument, writeReleaseOutput } from '../scripts/build-release.mjs';
+import { selectPackageCommit } from '../scripts/package-extension.mjs';
 import { createZipBuffer, readZipArchive } from '../scripts/zip.mjs';
 
 const version = '0.3.0';
@@ -39,6 +40,17 @@ test('SBOM invocation uses the active npm CLI for portable Windows execution', (
     '--omit=dev',
   ]);
   assert.equal(invocation.shell, false);
+});
+
+test('development packaging stamps provenance only for an exact clean commit', () => {
+  const head = 'a'.repeat(40);
+  assert.equal(selectPackageCommit({ status: '', head }), head);
+  assert.equal(selectPackageCommit({ status: ' M source.mjs', head }), undefined);
+  assert.equal(selectPackageCommit({ requestedCommit: 'b'.repeat(40), status: ' M source.mjs', head }), 'b'.repeat(40));
+  assert.throws(
+    () => selectPackageCommit({ requestedCommit: 'not-a-commit', status: '', head }),
+    /exact lowercase Git SHA/,
+  );
 });
 
 async function sourceArchive(path, extraEntries = []) {

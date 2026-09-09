@@ -130,7 +130,8 @@ plan/                         plano executável por fases
 ```sh
 npm run validate
 npm run smoke
-npm run package:extension
+npm run build:release
+npm run verify:release
 npm run test:vscode:host
 npm run test:vscode:minimum
 npm run test:vscode:tds
@@ -139,7 +140,7 @@ npm run benchmark:large
 npm run publication:release-check
 ```
 
-`validate` é o gate determinístico do código-fonte. `smoke` comprova o caminho crítico CLI/MCP em menos de cinco minutos. Os smokes instalam o VSIX em perfil isolado no VS Code atual e no mínimo 1.95.3; o UAT TDS também valida coexistência, multi-root e preservação CP1252/LF. O benchmark mede somente fixtures sintéticas e não sustenta promessa de produtividade. O gate de release permanece bloqueado sem evidências do commit candidato, CI, revisões, artefatos e aprovação.
+`validate` é o gate determinístico do código-fonte. `smoke` comprova o caminho crítico CLI/MCP em menos de cinco minutos. `build:release` só aceita árvore limpa e `verify:release` refaz o VSIX a partir do fonte para exigir igualdade byte a byte; `publication:release-check` sempre executa essa verificação antes de avaliar o GO. Os smokes instalam o VSIX em perfil isolado no VS Code atual e no mínimo 1.95.3; o UAT TDS também valida coexistência, multi-root e preservação CP1252/LF. O benchmark mede somente fixtures sintéticas e não sustenta promessa de produtividade. O gate de release permanece bloqueado sem evidências do commit candidato, CI, revisões, artefatos e aprovação.
 
 ## Limites atuais
 

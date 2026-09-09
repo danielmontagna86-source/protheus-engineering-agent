@@ -41,9 +41,9 @@
     "benchmark:large": "node benchmark/large-repository.mjs ci",
     "benchmark:large:release": "node benchmark/large-repository.mjs release",
     "publication:check": "node scripts/publication-check.mjs",
-    "publication:release-check": "node scripts/publication-check.mjs --release",
+    "publication:release-check": "npm run verify:release && node scripts/publication-check.mjs --release",
     "validate": "node --test && node scripts/check.mjs && node scripts/publication-check.mjs",
-    "validate:release-candidate": "npm run validate && npm run benchmark && npm run smoke && npm run package:extension && npm run test:vscode:host && npm run test:vscode:minimum && npm run test:vscode:tds && npm audit --audit-level=moderate && npm run test:mutation",
+    "validate:release-candidate": "npm run validate && npm run benchmark && npm run smoke && npm run build:release && npm run verify:release && npm run test:vscode:host && npm run test:vscode:minimum && npm run test:vscode:tds && npm audit --audit-level=moderate && npm run test:mutation",
     "doctor": "node packages/runtime/src/cli.mjs doctor",
     "mcp": "node packages/mcp/src/stdio.mjs"
   },

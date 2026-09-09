@@ -18,7 +18,7 @@
 
 | Gate | Required proof | Current status |
 |---|---|---|
-| G0 baseline integrity | lint/type/build/tests, configured mutation >=95%, `git diff --check` | Fresh local pass: 297 tests, 57 source files/16 manifests, 219-file publication audit, 95.40% mutation and clean diff check; exact committed rerun remains |
+| G0 baseline integrity | lint/type/build/tests, configured mutation >=95%, `git diff --check` | Fresh local pass: 299 tests, 57 source files/16 manifests, 219-file publication audit, 95.40% mutation and clean diff check; exact committed rerun remains |
 | G1 premium P0 | PC-010..PC-019 and installed offline journey | Automated implementation and installed journey complete; human timed/accessibility and public Action checks remain |
 | G2 semantic P1 | PC-020..PC-026, corpus accuracy and performance | Declared contract/corpus and Windows performance gate complete; Linux and live-provider evidence remain |
 | G3 Tier 0 virtualization | zero-network success/error matrix | PASS for deterministic offline contracts |

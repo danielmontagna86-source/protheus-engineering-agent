@@ -8,7 +8,7 @@ Repository implementation is ready for an exact-commit candidate. Stable 1.0 pub
 
 | Gate | Result |
 |---|---|
-| Automated suite | PASS — 297 tests, 0 failed, 0 skipped |
+| Automated suite | PASS — 299 tests, 0 failed, 0 skipped |
 | Structural check | PASS — 57 source files and 16 manifests |
 | Development publication audit | PASS — 219 publishable files, no finding |
 | Dependency audit | PASS — 0 known vulnerabilities |

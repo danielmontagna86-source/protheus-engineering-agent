@@ -953,6 +953,13 @@ test('repository CI has a least-privilege cross-platform matrix', async () => {
   assert.match(workflow, /xvfb-run -a npm run test:vscode:minimum/);
 });
 
+test('the documented release gate cannot skip exact source rebuild verification', async () => {
+  const manifest = JSON.parse(await readFile(join(process.cwd(), 'package.json'), 'utf8'));
+
+  assert.match(manifest.scripts['publication:release-check'], /^npm run verify:release && /);
+  assert.match(manifest.scripts['validate:release-candidate'], /npm run build:release && npm run verify:release/);
+});
+
 test('public product metadata declares the canonical brand and repository', async () => {
   const productRoot = new URL('..', import.meta.url);
   const manifest = JSON.parse(await (await import('node:fs/promises')).readFile(
