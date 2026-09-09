@@ -56,8 +56,8 @@ Nothing in this track is packaged as a user feature or required by the VSIX/runt
 
 ### SL-210 — Validate through the official analyzer lane
 
-- **Status:** FAIL on 2026-09-09; the pinned official image returned a malformed empty diagnostic record
-- **Files:** analyzer adapter, environment config, CI workflow, evidence schema, docs
+- **Status:** Partial; the 2026-09-09 direct rerun established the image's blank clean-result sentinel and a complete failing diagnostic. There is no product analyzer adapter or analyzer-parity claim; timeout/cancellation adapter evidence remains open.
+- **Files:** test-only internal-lab evidence and docs; no analyzer adapter is packaged in the product
 - **Depends on:** SL-200, PC-018
 - **Tests:** clean/failing source, includes, config, JSON, exit mapping, timeout, cancellation, output limit and digest mismatch.
 - **Gate:** full official image digest, bounded resources and redacted evidence.

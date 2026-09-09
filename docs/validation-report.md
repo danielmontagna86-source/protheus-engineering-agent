@@ -8,10 +8,10 @@
 
 | Gate | Result | Evidence |
 |---|---|---|
-| Full automated suite | PASS | 303 tests passed, 0 failed, 0 skipped in the fresh local run |
+| Full automated suite | PASS | 304 tests passed, 0 failed, 0 skipped in the fresh local run |
 | Source/manifests | PASS | 57 source files and 16 manifests syntax/structure checked |
 | Development publication audit | PASS | 219 publishable files, 0 findings after mutation cleanup |
-| Critical-path smoke | PASS | doctor, index, review, source MCP and bundled MCP passed in 884 ms |
+| Critical-path smoke | PASS | doctor, index, review, source MCP and bundled MCP passed in 921 ms |
 | Mutation testing | PASS | 870 mutants: 822 killed, 8 timeout, 40 survived, 0 errors; 95.40% overall; breaking threshold 95% |
 | Dependency audit | PASS | 0 known vulnerabilities after lockfile resolution |
 | MCP stdio process | PASS | real child process initialized and listed tools using newline-delimited JSON-RPC |

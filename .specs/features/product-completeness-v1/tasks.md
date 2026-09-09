@@ -96,7 +96,7 @@
 
 ### PC-018 — Complete supervised build surfaces
 
-- **Status:** Implemented; deterministic adapter matrix complete, official analyzer lane currently fails its output contract
+- **Status:** Implemented; deterministic adapter matrix complete. The official analyzer image was direct-cross-checked for its clean sentinel and one failing diagnostic, but no product adapter or analyzer-parity claim exists.
 - **Files:** build adapter package, runtime/CLI/MCP/VS Code integrations, tests and user documentation
 - **Depends on:** PC-010, PC-016
 - **Done when:** prepare/run/status/cancel/evidence are consistent without a Docker prerequisite; official analyzer validation remains an internal QA lane.

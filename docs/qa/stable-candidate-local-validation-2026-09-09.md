@@ -8,12 +8,12 @@ Repository implementation is ready for an exact-commit candidate. Stable 1.0 pub
 
 | Gate | Result |
 |---|---|
-| Automated suite | PASS — 303 tests, 0 failed, 0 skipped |
+| Automated suite | PASS — 304 tests, 0 failed, 0 skipped |
 | Structural check | PASS — 57 source files and 16 manifests |
 | Development publication audit | PASS — 219 publishable files, no finding |
 | Dependency audit | PASS — 0 known vulnerabilities |
 | Mutation | PASS — 870 mutants; 822 killed, 8 timeout, 40 survived, 0 errors; 95.40% against a 95% gate |
-| Critical CLI/MCP smoke | PASS — source and bundled MCP paths, 884 ms |
+| Critical CLI/MCP smoke | PASS — source and bundled MCP paths, 921 ms |
 | Installed VSIX / current VS Code | PASS — VS Code 1.136.2; 19 commands registered; 7 invocations across 5 core commands |
 | Installed VSIX / minimum VS Code | PASS — VS Code 1.95.3; same registration and core journey |
 | Package lifecycle | PASS locally — isolated install 0.2.0-alpha.1, upgrade to 0.3.0, uninstall, reinstall and rollback on VS Code 1.136.2 |

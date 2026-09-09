@@ -88,4 +88,4 @@ Repository work can reach the 1.0 RC without installing Protheus locally. Stable
 
 ## Current decision
 
-The P0/P1 repository implementation is complete for its declared automated contracts and is undergoing final exact-candidate verification. Stable promotion remains `NO-GO`: the official analyzer lane failed its output contract, and lawful AppServer/RPO/database homologation, lifecycle Linux/remote coverage, assistive/human UAT, representative pilot, public CI/CodeQL/attestations, legal review and named publication authorization remain external gates.
+The P0/P1 repository implementation is complete for its declared automated contracts and the exact-candidate CI is green. Stable promotion remains `NO-GO`: the official analyzer image was only direct-cross-checked for clean/failing output and no product adapter or analyzer-parity claim is made; lawful AppServer/RPO/database homologation, lifecycle Linux/remote coverage, assistive/human UAT, representative pilot, public CI/CodeQL/attestations, legal review and named publication authorization remain external gates.
