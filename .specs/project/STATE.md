@@ -1,7 +1,7 @@
 # State
 
 **Last Updated:** 2026-09-09
-**Current Work:** Final local verification of the Stable 1.0 repository candidate; external promotion gates remain NO-GO
+**Current Work:** Internal Docker QA evidence reconciled with the Stable 1.0 candidate; external promotion gates remain NO-GO
 
 ---
 
@@ -143,7 +143,7 @@
 **Discovered:** 2026-09-07
 **Impact:** Blocker para release e visibilidade pública.
 **Workaround:** Manter o remoto privado e o gate de release em `NO-GO`.
-**Progress:** Repositório privado criado; `main` e o candidato anterior passaram a matriz Windows/Linux, Node.js 22/24, smoke, auditoria de dependências e mutação. O candidato atual passou localmente no VS Code 1.95.3/1.136.2 e com TDS 2.1.2, multi-root e CP1252/LF; a bateria atual tem 239 testes e a mutação intermediária alcançou 95.36% com gate de 95%. O analyzer oficial devolveu saída malformada e falhou fechado. CI/OSV do commit final, CodeQL após visibilidade pública, ciclo upgrade/rollback, inspeção assistiva/screenshots, AppServer homologado e evidência externa ainda precisam ser reconciliados.
+**Progress:** O candidato atual `956b669` passou a matriz CI Windows/Linux, Node.js 22/24, OSV e secret scan; a suíte local passou 304 testes. A repetição Docker interna usou apenas imagens oficiais EngPro: o analyzer tem um sentinela vazio documentado para resultado limpo e diagnóstico completo para falha; o PostgreSQL passou `pg_isready`, leitura SX2/SX3 e negação de escrita em contêiner não-root/read-only. Isso não é prova de AppServer, RPO, driver ao vivo nem homologação. CodeQL público, ciclo de lifecycle Linux/remoto, UAT assistivo/screenshots, AppServer homologado, piloto e evidência externa continuam pendentes.
 **Resolution:** Candidate CI/OSV/CodeQL, reconciliação do commit, artefatos/manifesto limpos, reprodução após download e aprovação nomeada registrados.
 
 ## Resolved Blockers

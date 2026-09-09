@@ -18,12 +18,12 @@
 
 | Gate | Required proof | Current status |
 |---|---|---|
-| G0 baseline integrity | lint/type/build/tests, configured mutation >=95%, `git diff --check` | Fresh local pass: 303 tests, 57 source files/16 manifests, 219-file publication audit, 95.40% mutation and clean diff check |
+| G0 baseline integrity | lint/type/build/tests, configured mutation >=95%, `git diff --check` | Current candidate CI passed on Windows/Linux and Node 22/24; local suite passed 304 tests and structural check passed. Exact release evidence still must be rebuilt after future release-only changes. |
 | G1 premium P0 | PC-010..PC-019 and installed offline journey | Automated implementation and installed journey complete; human timed/accessibility and public Action checks remain |
 | G2 semantic P1 | PC-020..PC-026, corpus accuracy and performance | Declared contract/corpus and Windows performance gate complete; Linux and live-provider evidence remain |
 | G3 Tier 0 virtualization | zero-network success/error matrix | PASS for deterministic offline contracts |
-| G4 official analyzer | pinned-digest clean/failing/cancel/timeout parity | FAIL — pinned image returned a malformed empty diagnostic record on 2026-09-09 |
-| G5 official Postgres | loopback/read-only/named-query/teardown evidence | PARTIAL — isolated health/SX2/SX3/read/write-denial/teardown passed; live dialect product gate remains |
+| G4 official analyzer | pinned-digest clean/failing/cancel/timeout parity | PARTIAL — 2026-09-09 direct lab rerun proved the image's blank clean-result sentinel and a complete failing diagnostic. The product has no analyzer adapter/parity claim; timeout/cancel adapter evidence remains. |
+| G5 official Postgres | loopback/read-only/named-query/teardown evidence | PARTIAL — 2026-09-09 direct lab rerun passed `pg_isready`, SX2/SX3 reads, write denial and teardown under a non-root/read-only container. A live driver/dialect product gate remains. |
 | G6 licensed AppServer | compile success/error + RPO/TDS/CP1252 evidence | BLOCKED — licensed environment/artifacts required |
 | G7 package lifecycle | actual VSIX install/upgrade/uninstall/rollback on supported matrix | PARTIAL — isolated install/upgrade/uninstall/reinstall/rollback passed on Windows VS Code 1.136.2, and clean install passed on 1.95.3; Linux/remote repetition remains |
 | G8 UX/accessibility | pt-BR/en, keyboard, screen reader, contrast, zoom, three-user first value | PARTIAL — automated localization/host journey passed; assistive and human UAT not run |

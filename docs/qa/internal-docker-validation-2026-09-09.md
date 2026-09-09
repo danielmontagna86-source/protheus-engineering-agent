@@ -1,49 +1,51 @@
 # Internal Docker QA evidence — 2026-09-09
 
-**Scope:** maintainer-only validation. Docker is not installed, configured or required by the VSIX, runtime, sample, GitHub Action or user journeys.
+**Scope:** maintainer-only validation. Docker is not installed, configured or required by the VSIX, runtime, sample, GitHub Action or normal developer journey.
 
-## Environment
+## Admission decision
 
-- Windows x64 host; Docker Desktop 4.89.0; Engine 29.7.2, Linux/amd64.
-- No community image was pulled or executed.
-- Only project-authored Apache-2.0 sample code and the data already distributed in the official database image were used.
+The owner-provided community images remain excluded from execution:
+
+- `folegini/Protheus_Docker` and `endersonmaia/totvs-protheus-docker`: rejected as obsolete historical references with no acceptable license detected in the reviewed repositories.
+- `juliansantosinfo/*`: quarantined. Its scripts may inform research, but no image containing unverified Protheus artifacts is pulled, executed, shipped or used as release evidence.
+
+The following direct checks used only first-party EngPro images pinned by full digest, project-authored Apache-2.0 fixtures and the database data already distributed by the official image. No customer source, RPO, dictionary, long-lived credential, network, published host port or persistent test container was used.
 
 ## Tier 1 — official ADVPL/TLPP analyzer
 
 Image: `totvsengpro/advpl-tlpp-code-analyzer@sha256:de6f533f64f524dc1f9c205f5bfee030237db3672c55c264f15c6ab6717f861b`.
 
-The container ran with no network, two CPU maximum, 3 GiB memory, 256 PID maximum, all Linux capabilities dropped and `no-new-privileges`. The source was the packaged `sample-review.prw`; the container was removed after the artifacts were copied.
+The source is copied into a disposable directory before mounting it at `/tmp`. The container runs with no network, two CPUs, 3 GiB memory, 256 PIDs, all Linux capabilities dropped and `no-new-privileges`.
 
-Observed result:
+| Fixture | Exit | Observed contract | Decision |
+|---|---:|---|---|
+| `sample-review.prw` | 0 | The image emits one all-empty diagnostic object for a clean result. It is a clean sentinel, not a usable finding. | PASS as a documented image-specific normalization rule. |
+| `malformed.prw` | 1 | `ERROR`, line `3`, rule `CA0000` and a non-empty precompiler message are present. | PASS as positive failing evidence. |
 
-- container exit `0`, no OOM, analyzer version `2.0.9 Release Abril 2026`;
-- ADVPL precompilation reported success;
-- `output.json` SHA-256 `43d8059f49d6446c2e0cfee328acabbb02ca2dc078c6131b651e038b19d5e818`;
-- `execution.log` SHA-256 `7a7f38934f306645df42b939c3971e547ea9ae8bb618509af516b27fe1b6eb0b`;
-- the JSON contained one diagnostic object whose `severity`, `line`, `rule` and `message` were all empty.
+The earlier malformed result was traced to a read-only mount at `/tmp`: the image's Java process creates temporary files there. A direct workspace mount remains forbidden; only a disposable copy is writable. This is an environment constraint, not a product defect.
 
-Decision: **FAIL / NOT ADMITTED AS RELEASE EVIDENCE.** A successful process exit is insufficient because the result schema is semantically malformed. The official analyzer lane remains open until a pinned image produces meaningful clean/failing JSON, timeout/cancellation evidence and a validated adapter mapping. This result does not block the Docker-free deterministic product, but it blocks any claim of analyzer parity.
-
-Official usage and JSON-output contract: [TOTVS EngPro ADVPL/TLPP Code Analyzer](https://hub.docker.com/r/totvsengpro/advpl-tlpp-code-analyzer).
+**Claim boundary:** the result validates the official analyzer image's clean/failing contract only. It does not create a compiler-equivalence, analyzer-parity, AppServer or production claim. Timeout/cancellation evidence remains planned before any optional adapter is admitted.
 
 ## Tier 2 — official Protheus-shaped PostgreSQL
 
 Image: `totvsengpro/postgres-dev@sha256:6c42c5fcb9f08cb1834ab17498693e7f435bb2b6da2841713285d253a8654f95`.
 
-The disposable validation container used user `999:999`, no network or host port, one CPU maximum, 2 GiB memory, 128 PID maximum, read-only root filesystem, a bounded socket `tmpfs`, all capabilities dropped and `no-new-privileges`. Health was `healthy`; the container and anonymous data volume were removed after testing.
+The current direct run passed with no Docker network and no published port. It used user `999:999`, one CPU, 2 GiB memory, 128 PIDs, a read-only root filesystem, capability drop and `no-new-privileges`. Writable `tmpfs` paths were explicitly owned by `999:999`; otherwise the image cannot create its PostgreSQL socket. The image declares no Docker healthcheck, so readiness is proved with `pg_isready` rather than an assumed `healthy` status.
 
-Observed result:
+- PostgreSQL `15.2`, database `protheus`, 126 public tables.
+- `public.sx2990` and `public.sx3990` were readable through a fresh least-privilege role: 10,814 SX2-shaped rows and 177,368 SX3-shaped rows.
+- `UPDATE public.sx2990 ...` failed with `permission denied for table sx2990` under that role.
+- Test containers and their anonymous volumes were removed after the run.
 
-- PostgreSQL `15.2`; database `protheus`; 126 non-system tables;
-- `public.sx2990` and `public.sx3990` were present with expected SX2/SX3-shaped columns;
-- bounded SX2 and SX3 reads passed through an ephemeral least-privilege role;
-- an `UPDATE` under that role failed with `permission denied for table sx2990`;
-- no customer data, external credential, host port or network access was used.
+**Decision:** PASS for isolated database-fixture/read-denial evidence; PARTIAL for a product database dialect, because no host-supplied PostgreSQL driver is supported or claimed by the VSIX.
 
-Decision: **PASS for isolated database-environment and read-denial proof; PARTIAL for the product dialect gate.** The generic named-query adapter's allowlist/bind/timeout/redaction behavior passes deterministic tests, while an actual host-supplied PostgreSQL driver has not yet been released and exercised end to end. PostgreSQL therefore remains unavailable by default and outside the stable support claim.
+## Remaining execution plan without owner input
 
-Official development-image scope: [TOTVS EngPro PostgreSQL](https://hub.docker.com/r/totvsengpro/postgres-dev).
+1. Re-run Tier 1 on each release candidate with the two fixed fixtures, full digests, disposable source copy and captured output/log hashes.
+2. Re-run Tier 2 with `pg_isready`, ephemeral role, read-only SX2/SX3 query and write-denial check; record container identity, commit and teardown.
+3. Keep Tier 0 deterministic tests as the blocking normal path and prove the installed VSIX on a no-Docker profile.
+4. Do not execute Tier Q community images. Their admission remains a legal/provenance/security decision, not a test shortcut.
 
-## Claim boundary
+## Gates that cannot be manufactured
 
-Neither result is AppServer, RPO, DBAccess, License Server or production homologation evidence. Tier 3 remains external because lawful user-owned artifacts and authorized connectivity are unavailable. These containers are internal QA only and are intentionally absent from product installation and standard CI.
+Tier 3 requires legitimate AppServer, RPO, dictionary/includes, License Server/DBAccess and an approved private test environment. Docker does not remove those entitlement requirements. The missing artifacts therefore remain an honest external stable-release gate rather than a reason to use a community image.
