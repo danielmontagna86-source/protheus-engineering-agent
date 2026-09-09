@@ -298,6 +298,9 @@ test('in-process runtime aborts the underlying operation on timeout', async () =
 test('extension exposes read-only deterministic language model tools without requiring a model provider', async () => {
   const fake = fakeVscode();
   const calls = [];
+  const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
+  const source = join(workspace, 'source.prw');
+  fake.api.workspace.workspaceFolders = [{ uri: { fsPath: workspace } }];
   extension.createExtension(fake.api, {
     cliPath: 'cli.mjs',
     execFile(_command, args, options, callback) {
@@ -312,12 +315,12 @@ test('extension exposes read-only deterministic language model tools without req
   ]);
   const token = { isCancellationRequested: false, onCancellationRequested() { return { dispose() {} }; } };
   const result = await fake.languageModelTools.get('pea_reviewFile').invoke({
-    input: { path: 'C:\\workspace\\source.prw' },
+    input: { path: source },
   }, token);
 
   assert.equal(JSON.parse(result.content[0].value).command, 'review');
   assert.deepEqual(calls[0].args.slice(-3), [
-    'review', 'C:\\workspace\\source.prw', 'C:\\workspace',
+    'review', source, workspace,
   ]);
 });
 
@@ -341,6 +344,10 @@ test('language model tools fail closed when runtime output exceeds their bounded
 test('language model change review forwards one bounded explicit repository root', async () => {
   const fake = fakeVscode();
   const calls = [];
+  const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
+  const repository = join(workspace, 'nested');
+  const outside = process.platform === 'win32' ? 'D:\\outside' : '/outside';
+  fake.api.workspace.workspaceFolders = [{ uri: { fsPath: workspace } }];
   extension.createExtension(fake.api, {
     cliPath: 'cli.mjs',
     execFile(_command, args, _options, callback) {
@@ -351,13 +358,13 @@ test('language model change review forwards one bounded explicit repository root
   }).activate({ subscriptions: [] });
 
   await fake.languageModelTools.get('pea_reviewChanges').invoke({
-    input: { scope: 'working-tree', repository: 'C:\\workspace\\nested' },
+    input: { scope: 'working-tree', repository },
   }, {});
   assert.deepEqual(calls[0], [
-    'review-changes', 'C:\\workspace', 'working-tree', '--repository=C:\\workspace\\nested',
+    'review-changes', workspace, 'working-tree', `--repository=${repository}`,
   ]);
   await assert.rejects(fake.languageModelTools.get('pea_reviewChanges').invoke({
-    input: { scope: 'working-tree', repository: 'D:\\outside' },
+    input: { scope: 'working-tree', repository: outside },
   }, {}), /inside the selected workspace/);
 });
 
@@ -474,6 +481,8 @@ test('changed-files command delegates one explicit SCM scope to the runtime', as
 test('changed-files command resolves an ambiguous workspace through an explicit repository choice', async () => {
   const fake = fakeVscode();
   const calls = [];
+  const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
+  fake.api.workspace.workspaceFolders = [{ uri: { fsPath: workspace } }];
   extension.createExtension(fake.api, {
     cliPath: 'cli.mjs',
     execFile(_command, args, _options, callback) {
@@ -493,7 +502,7 @@ test('changed-files command resolves an ambiguous workspace through an explicit 
   await fake.handlers.get('pea.reviewChanges')();
 
   assert.deepEqual(calls.map((args) => args[0]), ['review-changes', 'repositories', 'review-changes']);
-  assert.equal(calls[2].at(-1), '--repository=C:\\workspace\\one');
+  assert.equal(calls[2].at(-1), `--repository=${join(workspace, 'one')}`);
   assert.match(fake.quickPicks.at(-1).options.placeHolder, /Git repository/i);
 });
 
@@ -893,12 +902,14 @@ test('package lifecycle harness proves install, upgrade, uninstall, reinstall an
 
 test('in-process runtime runner does not depend on the VS Code Electron executable', async () => {
   const loads = [];
-  const runner = extension.createInProcessCliRunner('C:\\extension\\dist\\runtime-cli.cjs', {
+  const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
+  const cliPath = join(workspace, 'extension', 'dist', 'runtime-cli.cjs');
+  const runner = extension.createInProcessCliRunner(cliPath, {
     loadModule(modulePath) {
       loads.push(modulePath);
       return {
         async runCli(argv, io) {
-          assert.deepEqual(argv, ['doctor', 'C:\\workspace']);
+          assert.deepEqual(argv, ['doctor', workspace]);
           io.stdout.write('{"ok":true}');
           return 0;
         },
@@ -906,10 +917,10 @@ test('in-process runtime runner does not depend on the VS Code Electron executab
     },
   });
 
-  const output = await runner(['doctor', 'C:\\workspace'], 'C:\\workspace');
+  const output = await runner(['doctor', workspace], workspace);
 
   assert.equal(output, '{"ok":true}');
-  assert.deepEqual(loads, ['C:\\extension\\dist\\runtime-cli.cjs']);
+  assert.deepEqual(loads, [cliPath]);
 });
 
 test('in-process runtime runner preserves runtime errors', async () => {
