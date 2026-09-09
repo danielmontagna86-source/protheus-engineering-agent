@@ -20,11 +20,12 @@ export function selectPackageCommit({ requestedCommit, status, head }) {
 
 export async function packageExtension({ commit, outputPath, productRoot = root } = {}) {
   const packageRoot = resolve(productRoot);
-  const selectedCommit = selectPackageCommit({
-    requestedCommit: commit,
-    status: git(packageRoot, ['status', '--porcelain=v1', '--untracked-files=all']),
-    head: git(packageRoot, ['rev-parse', 'HEAD']),
-  });
+  const selectedCommit = commit === undefined
+    ? selectPackageCommit({
+      status: git(packageRoot, ['status', '--porcelain=v1', '--untracked-files=all']),
+      head: git(packageRoot, ['rev-parse', 'HEAD']),
+    })
+    : selectPackageCommit({ requestedCommit: commit });
   const build = await buildExtension({ releaseCommit: selectedCommit, productRoot: packageRoot });
   const artifacts = join(packageRoot, 'release-artifacts');
   const artifact = outputPath ? resolve(outputPath) : join(artifacts, `protheus-engineering-agent-v${build.version}.vsix`);

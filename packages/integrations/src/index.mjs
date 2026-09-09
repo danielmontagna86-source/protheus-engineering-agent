@@ -80,7 +80,8 @@ async function withTimeout(factory, timeoutMs, integration, parentSignal) {
   });
 }
 
-async function readSnapshotBytes(snapshotPath, maxBytes = DEFAULT_MAX_SNAPSHOT_BYTES) {
+async function readSnapshotBytes(snapshotPath, maxBytes = DEFAULT_MAX_SNAPSHOT_BYTES, signal) {
+  if (signal?.aborted) throw new IntegrationError('INTEGRATION_CANCELLED', 'snapshot read was cancelled');
   const stat = await lstat(snapshotPath);
   if (stat.isSymbolicLink() || !stat.isFile()) throw new IntegrationError('INTEGRATION_FILE_UNSAFE', 'snapshot must be a regular file');
   if (stat.size > maxBytes) {
@@ -88,7 +89,8 @@ async function readSnapshotBytes(snapshotPath, maxBytes = DEFAULT_MAX_SNAPSHOT_B
   }
   const handle = await open(snapshotPath, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
   try {
-    const bytes = await handle.readFile();
+    if (signal?.aborted) throw new IntegrationError('INTEGRATION_CANCELLED', 'snapshot read was cancelled');
+    const bytes = await handle.readFile({ signal });
     if (bytes.length > maxBytes) {
       throw new IntegrationError('INTEGRATION_FILE_TOO_LARGE', `snapshot exceeds ${maxBytes} bytes`);
     }
@@ -109,7 +111,7 @@ async function lstatIfPresent(path) {
 
 export function createJsonFileLoader(snapshotPath, options = {}) {
   const path = requiredString(snapshotPath, 'snapshotPath');
-  return async () => JSON.parse((await readSnapshotBytes(path, options.maxBytes)).toString('utf8'));
+  return async ({ signal } = {}) => JSON.parse((await readSnapshotBytes(path, options.maxBytes, signal)).toString('utf8'));
 }
 
 function createSnapshotAdapter(options) {

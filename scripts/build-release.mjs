@@ -1,6 +1,7 @@
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { createHash, randomUUID } from 'node:crypto';
-import { join, relative, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -9,11 +10,13 @@ import { packageExtension } from './package-extension.mjs';
 import {
   createReleaseEvidenceTemplate,
   git,
+  resolveLockDependencyPath,
   sha256,
   verifySbom,
   verifySourceArchive,
 } from './release-artifacts.mjs';
 import { assertNoLinkPath } from './path-safety.mjs';
+import { readZipArchive } from './zip.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
@@ -36,6 +39,16 @@ export function npmSbomInvocation({
     args: sbomArgs,
     shell: platform === 'win32',
   };
+}
+
+export function npmCiInvocation({
+  platform = process.platform,
+  npmExecPath = process.env.npm_execpath,
+  nodeExecutable = process.execPath,
+} = {}) {
+  const args = ['ci', '--no-audit', '--no-fund'];
+  if (npmExecPath) return { command: nodeExecutable, args: [npmExecPath, ...args], shell: false };
+  return { command: platform === 'win32' ? 'npm.cmd' : 'npm', args, shell: platform === 'win32' };
 }
 
 function canonicalize(value) {
@@ -84,7 +97,7 @@ export function completeProductionSbom(document, lock) {
     }
     return component;
   };
-  const components = new Map(productionPackages.map((item) => [`${item.name}@${item.version}`, componentFor(item)]));
+  const components = new Map(productionPackages.map((item) => [item.packagePath, componentFor(item)]));
   const ensureNode = (ref) => {
     let node = completed.dependencies.find((candidate) => candidate?.ref === ref);
     if (!node) {
@@ -95,12 +108,12 @@ export function completeProductionSbom(document, lock) {
     return node;
   };
   for (const item of productionPackages) {
-    const component = components.get(`${item.name}@${item.version}`);
+    const component = components.get(item.packagePath);
     const node = ensureNode(component['bom-ref']);
     for (const dependencyName of item.dependencies) {
-      const dependency = productionPackages.find((candidate) => candidate.name === dependencyName);
-      if (!dependency) continue;
-      const dependencyRef = components.get(`${dependency.name}@${dependency.version}`)['bom-ref'];
+      const dependencyPath = resolveLockDependencyPath(lock.packages ?? {}, item.packagePath, dependencyName);
+      if (!dependencyPath) continue;
+      const dependencyRef = components.get(dependencyPath)['bom-ref'];
       if (!node.dependsOn.includes(dependencyRef)) node.dependsOn.push(dependencyRef);
     }
     node.dependsOn.sort();
@@ -110,9 +123,9 @@ export function completeProductionSbom(document, lock) {
     const rootNode = ensureNode(rootRef);
     const rootDependencies = lock.packages?.['']?.dependencies ?? {};
     for (const name of Object.keys(rootDependencies)) {
-      const dependency = productionPackages.find((candidate) => candidate.name === name);
-      if (!dependency) continue;
-      const dependencyRef = components.get(`${dependency.name}@${dependency.version}`)['bom-ref'];
+      const dependencyPath = resolveLockDependencyPath(lock.packages ?? {}, '', name);
+      if (!dependencyPath) continue;
+      const dependencyRef = components.get(dependencyPath)['bom-ref'];
       if (!rootNode.dependsOn.includes(dependencyRef)) rootNode.dependsOn.push(dependencyRef);
     }
     rootNode.dependsOn.sort();
@@ -120,6 +133,77 @@ export function completeProductionSbom(document, lock) {
   completed.components.sort((left, right) => String(left['bom-ref']).localeCompare(String(right['bom-ref'])));
   completed.dependencies.sort((left, right) => String(left.ref).localeCompare(String(right.ref)));
   return completed;
+}
+
+async function installCleanDependencies(checkout) {
+  const invocation = npmCiInvocation();
+  const result = spawnSync(invocation.command, invocation.args, {
+    cwd: checkout,
+    encoding: 'utf8',
+    maxBuffer: 20 * 1024 * 1024,
+    windowsHide: true,
+    shell: invocation.shell,
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(`clean npm ci failed: ${String(result.stderr || result.stdout).trim()}`);
+}
+
+export async function rebuildVsixFromSourceArchive({
+  sourcePath,
+  version,
+  commit,
+  expectedSha256,
+  installDependencies = installCleanDependencies,
+  packageProduct = packageExtension,
+}) {
+  const temporaryRoot = await mkdtemp(join(tmpdir(), 'pea-release-rebuild-'));
+  const prefix = `protheus-engineering-agent-v${version}/`;
+  const checkout = join(temporaryRoot, prefix.slice(0, -1));
+  try {
+    const entries = await readZipArchive(await readFile(sourcePath), {
+      maxEntries: 5_000,
+      maxEntryBytes: 20 * 1024 * 1024,
+      maxUncompressedBytes: 100 * 1024 * 1024,
+    });
+    for (const entry of entries) {
+      const name = entry.name.replaceAll('\\', '/');
+      if (!name.startsWith(prefix) || name.split('/').includes('..') || (entry.mode & 0o170000) === 0o120000) {
+        throw new Error(`unsafe clean-rebuild source entry: ${name}`);
+      }
+      const repositoryPath = name.slice(prefix.length);
+      if (!repositoryPath) continue;
+      const target = resolve(checkout, repositoryPath);
+      const rel = relative(checkout, target);
+      if (rel === '..' || rel.startsWith(`..${process.platform === 'win32' ? '\\' : '/'}`) || isAbsolute(rel)) {
+        throw new Error(`clean-rebuild entry escapes checkout: ${name}`);
+      }
+      if (entry.isDirectory) {
+        await mkdir(target, { recursive: true });
+      } else {
+        await mkdir(dirname(target), { recursive: true });
+        await writeFile(target, entry.data, { flag: 'wx' });
+      }
+    }
+    await installDependencies(checkout);
+    const rebuilt = await packageProduct({ productRoot: checkout, commit });
+    if (rebuilt?.status !== 'PASS' || typeof rebuilt.path !== 'string') {
+      throw new Error('clean rebuild did not return a successful VSIX result');
+    }
+    const rebuiltPath = resolve(rebuilt.path);
+    const rebuiltRel = relative(checkout, rebuiltPath);
+    if (rebuiltRel === '..' || rebuiltRel.startsWith(`..${process.platform === 'win32' ? '\\' : '/'}`) || isAbsolute(rebuiltRel)) {
+      throw new Error('clean rebuild returned an artifact outside its isolated checkout');
+    }
+    const state = await lstat(rebuiltPath);
+    if (!state.isFile() || state.isSymbolicLink()) throw new Error('clean rebuild did not return a regular VSIX');
+    const actualSha256 = await sha256(rebuiltPath);
+    if (actualSha256 !== expectedSha256) {
+      throw new Error(`clean source rebuild SHA-256 ${actualSha256} does not match ${expectedSha256}`);
+    }
+    return { status: 'PASS', sha256: actualSha256, isolated: true, lockedInstall: true };
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
 }
 
 export async function writeReleaseOutput(productRoot, path, contents) {
@@ -174,13 +258,17 @@ export async function buildRelease() {
     commit,
   ], { cwd: root, encoding: 'utf8', windowsHide: true });
   if (archive.status !== 0) throw new Error(`git archive failed: ${String(archive.stderr).trim()}`);
+  const sourceVerification = await verifySourceArchive(source, version, { root, commit });
+  if (sourceVerification.status !== 'PASS') throw new Error(sourceVerification.errors.join('; '));
 
   const vsix = await packageExtension({ commit });
-  const firstVsixBytes = await readFile(vsix.path);
-  const reproducedVsix = await packageExtension({ commit });
-  if (!firstVsixBytes.equals(await readFile(reproducedVsix.path))) {
-    throw new Error('VSIX packaging is not byte-reproducible from the clean source tree');
-  }
+  const vsixSha256 = await sha256(vsix.path);
+  await rebuildVsixFromSourceArchive({
+    sourcePath: source,
+    version,
+    commit,
+    expectedSha256: vsixSha256,
+  });
   const npmInvocation = npmSbomInvocation();
   const sbomResult = spawnSync(npmInvocation.command, npmInvocation.args, {
     cwd: root,
@@ -202,8 +290,6 @@ export async function buildRelease() {
     { name: 'pea:package-lock:sha256', value: createHash('sha256').update(lockBytes).digest('hex') },
   ].sort((left, right) => left.name.localeCompare(right.name));
   await writeReleaseOutput(root, sbom, `${JSON.stringify(sbomDocument, null, 2)}\n`);
-  const sourceVerification = await verifySourceArchive(source, version, { root, commit });
-  if (sourceVerification.status !== 'PASS') throw new Error(sourceVerification.errors.join('; '));
   const sbomVerification = await verifySbom(sbom, version, { root });
   if (sbomVerification.status !== 'PASS') throw new Error(sbomVerification.errors.join('; '));
 

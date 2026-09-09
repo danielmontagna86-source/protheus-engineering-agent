@@ -240,7 +240,7 @@ export async function verifySbom(path, version, { root } = {}) {
           if (!component || typeof component['bom-ref'] !== 'string') {
             errors.push(`SBOM does not reconcile production package ${item.name}@${item.version} with package-lock.json`);
           } else {
-            matchedComponents.set(`${item.name}@${item.version}`, component);
+            matchedComponents.set(item.packagePath, component);
             const dependencyNode = document.dependencies.find((candidate) => candidate?.ref === component['bom-ref']);
             if (!dependencyNode || !Array.isArray(dependencyNode.dependsOn)) {
               errors.push(`SBOM dependency graph is missing production package ${item.name}@${item.version}`);
@@ -250,21 +250,19 @@ export async function verifySbom(path, version, { root } = {}) {
         const rootRef = document.metadata?.component?.['bom-ref'];
         const rootNode = document.dependencies.find((candidate) => candidate?.ref === rootRef);
         for (const name of Object.keys(manifest.dependencies ?? {})) {
-          const versionFromLock = lock.packages?.[`node_modules/${name}`]?.version;
-          const component = matchedComponents.get(`${name}@${versionFromLock}`);
-          if (!versionFromLock || !component || !rootNode?.dependsOn?.includes(component['bom-ref'])) {
+          const dependencyPath = resolveLockDependencyPath(lock.packages ?? {}, '', name);
+          const component = matchedComponents.get(dependencyPath);
+          if (!dependencyPath || !component || !rootNode?.dependsOn?.includes(component['bom-ref'])) {
             errors.push(`SBOM root graph does not reconcile production dependency ${name} with package-lock.json`);
           }
         }
         for (const item of productionPackages) {
-          const component = matchedComponents.get(`${item.name}@${item.version}`);
+          const component = matchedComponents.get(item.packagePath);
           const dependencyNode = document.dependencies.find((candidate) => candidate?.ref === component?.['bom-ref']);
           for (const dependencyName of item.dependencies) {
-            const candidates = productionPackages.filter((candidate) => candidate.name === dependencyName);
-            if (candidates.length > 0 && !candidates.some((candidate) => {
-              const dependency = matchedComponents.get(`${candidate.name}@${candidate.version}`);
-              return dependencyNode?.dependsOn?.includes(dependency?.['bom-ref']);
-            })) {
+            const dependencyPath = resolveLockDependencyPath(lock.packages ?? {}, item.packagePath, dependencyName);
+            const dependency = matchedComponents.get(dependencyPath);
+            if (dependencyPath && !dependencyNode?.dependsOn?.includes(dependency?.['bom-ref'])) {
               errors.push(`SBOM graph omits ${item.name}@${item.version} dependency ${dependencyName}`);
             }
           }
@@ -275,4 +273,16 @@ export async function verifySbom(path, version, { root } = {}) {
     }
   }
   return { status: errors.length === 0 ? 'PASS' : 'FAIL', path: resolve(path), errors };
+}
+
+export function resolveLockDependencyPath(packages, parentPath, dependencyName) {
+  let current = parentPath;
+  while (current) {
+    const candidate = `${current}/node_modules/${dependencyName}`;
+    if (packages[candidate]?.dev !== true && typeof packages[candidate]?.version === 'string') return candidate;
+    const ancestor = current.lastIndexOf('/node_modules/');
+    current = ancestor === -1 ? '' : current.slice(0, ancestor);
+  }
+  const topLevel = `node_modules/${dependencyName}`;
+  return packages[topLevel]?.dev !== true && typeof packages[topLevel]?.version === 'string' ? topLevel : null;
 }

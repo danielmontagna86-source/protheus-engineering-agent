@@ -8,7 +8,7 @@ The first controlled public channel is a GitHub source release with an installab
 
 1. Confirm Apache-2.0 consistency in both manifests, `LICENSE.md` and contribution guidance. Completed.
 2. Use the canonical GitHub URL `https://github.com/danielmontagna86-source/protheus-engineering-agent`.
-3. Run `npm run validate`, `npm run smoke`, `npm run build:release`, `npm run verify:release` and finally `npm run publication:release-check`; the last command repeats `verify:release` by design so a GO cannot bypass the independent VSIX rebuild.
+3. Run `npm run validate`, `npm run smoke`, `npm run build:release`, `npm run verify:release` and finally `npm run publication:release-check`; the last command repeats `verify:release` by design so a GO cannot bypass the isolated source-archive rebuild with a clean locked dependency install.
 4. Initialize a fresh Git repository from this product tree; do not import history, caches, credentials, `.pea`, or the LionCodeLabs/Hermes repositories.
 5. Create the GitHub repository as private, push a preparation branch, and open a draft pull request. Completed on 2026-09-07.
 6. Confirm all four CI matrix jobs on GitHub: Windows/Linux and Node.js 22/24. Completed for current `main` commit `14ef868` in [run 34151775373](https://github.com/danielmontagna86-source/protheus-engineering-agent/actions/runs/34151775373).

@@ -16,8 +16,14 @@ import {
 import { assertNoLinkPath } from '../scripts/path-safety.mjs';
 import { validateReleaseManifest } from '../scripts/verify-release.mjs';
 import { verifyVsix } from '../scripts/verify-vsix.mjs';
-import { npmSbomInvocation } from '../scripts/build-release.mjs';
-import { completeProductionSbom, normalizeSbomDocument, writeReleaseOutput } from '../scripts/build-release.mjs';
+import {
+  completeProductionSbom,
+  normalizeSbomDocument,
+  npmCiInvocation,
+  npmSbomInvocation,
+  rebuildVsixFromSourceArchive,
+  writeReleaseOutput,
+} from '../scripts/build-release.mjs';
 import { selectPackageCommit } from '../scripts/package-extension.mjs';
 import { createZipBuffer, readZipArchive } from '../scripts/zip.mjs';
 
@@ -38,6 +44,23 @@ test('SBOM invocation uses the active npm CLI for portable Windows execution', (
     '--sbom-format',
     'cyclonedx',
     '--omit=dev',
+  ]);
+  assert.equal(invocation.shell, false);
+});
+
+test('clean rebuild installation uses the active npm CLI and the immutable lockfile', () => {
+  const invocation = npmCiInvocation({
+    platform: 'win32',
+    npmExecPath: 'C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js',
+    nodeExecutable: 'C:\\Program Files\\nodejs\\node.exe',
+  });
+
+  assert.equal(invocation.command, 'C:\\Program Files\\nodejs\\node.exe');
+  assert.deepEqual(invocation.args, [
+    'C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js',
+    'ci',
+    '--no-audit',
+    '--no-fund',
   ]);
   assert.equal(invocation.shell, false);
 });
@@ -63,6 +86,57 @@ async function sourceArchive(path, extraEntries = []) {
   ].map(([name, contents]) => ({ name: `${prefix}${name}`, data: Buffer.from(contents) }));
   await writeFile(path, await createZipBuffer(entries));
 }
+
+test('VSIX reproducibility is checked in an isolated source-archive checkout', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pea-isolated-rebuild-test-'));
+  const source = join(root, 'source.zip');
+  const expectedBytes = Buffer.from('isolated rebuilt vsix');
+  const expectedSha256 = (await import('node:crypto')).createHash('sha256').update(expectedBytes).digest('hex');
+  await sourceArchive(source);
+
+  const installDependencies = async (checkout) => {
+    assert.notEqual(checkout, root);
+    await mkdir(join(checkout, 'node_modules'), { recursive: true });
+    await writeFile(join(checkout, 'node_modules', '.clean-install'), 'locked');
+  };
+  const packageProduct = async ({ productRoot, commit }) => {
+    assert.equal(commit, 'a'.repeat(40));
+    assert.equal(await readFile(join(productRoot, 'node_modules', '.clean-install'), 'utf8'), 'locked');
+    const path = join(productRoot, 'release-artifacts', 'rebuilt.vsix');
+    await mkdir(join(productRoot, 'release-artifacts'), { recursive: true });
+    await writeFile(path, expectedBytes);
+    return { status: 'PASS', path };
+  };
+
+  try {
+    assert.deepEqual(await rebuildVsixFromSourceArchive({
+      sourcePath: source,
+      version,
+      commit: 'a'.repeat(40),
+      expectedSha256,
+      installDependencies,
+      packageProduct,
+    }), {
+      status: 'PASS',
+      sha256: expectedSha256,
+      isolated: true,
+      lockedInstall: true,
+    });
+    await assert.rejects(
+      rebuildVsixFromSourceArchive({
+        sourcePath: source,
+        version,
+        commit: 'a'.repeat(40),
+        expectedSha256: 'f'.repeat(64),
+        installDependencies,
+        packageProduct,
+      }),
+      /does not match/,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 async function vsixArchive(path, extraEntries = [], manifestExtras = {}) {
   const entries = [
@@ -265,6 +339,30 @@ test('SBOM completion adds every production lock package and excludes dev-only p
   assert.deepEqual(
     completed.dependencies.find((item) => item.ref === `protheus-engineering-agent@${version}`).dependsOn,
     ['runtime@1.0.0'],
+  );
+});
+
+test('SBOM dependency edges follow npm nested resolution when package versions coexist', () => {
+  const completed = completeProductionSbom({
+    bomFormat: 'CycloneDX', specVersion: '1.5',
+    metadata: { component: { 'bom-ref': `protheus-engineering-agent@${version}`, name: 'protheus-engineering-agent', version } },
+    components: [], dependencies: [],
+  }, {
+    packages: {
+      '': { dependencies: { parent: '1.0.0', shared: '1.0.0' } },
+      'node_modules/parent': { version: '1.0.0', dependencies: { shared: '2.0.0' } },
+      'node_modules/shared': { version: '1.0.0' },
+      'node_modules/parent/node_modules/shared': { version: '2.0.0' },
+    },
+  });
+
+  assert.deepEqual(
+    completed.dependencies.find((item) => item.ref === 'parent@1.0.0').dependsOn,
+    ['shared@2.0.0'],
+  );
+  assert.deepEqual(
+    completed.dependencies.find((item) => item.ref === `protheus-engineering-agent@${version}`).dependsOn,
+    ['parent@1.0.0', 'shared@1.0.0'],
   );
 });
 

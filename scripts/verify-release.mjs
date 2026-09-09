@@ -1,11 +1,10 @@
-import { lstat, readFile, rm } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
+import { lstat, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { artifactPath, git, sha256, verifySbom, verifySourceArchive } from './release-artifacts.mjs';
 import { verifyVsix } from './verify-vsix.mjs';
-import { packageExtension } from './package-extension.mjs';
+import { rebuildVsixFromSourceArchive } from './build-release.mjs';
 import { assertNoLinkPath } from './path-safety.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -100,16 +99,15 @@ export async function verifyRelease() {
     const originalPath = artifactPath(root, vsix.path);
     const report = await verifyVsix(originalPath, product.version, { commit: manifest.commit });
     errors.push(...report.errors);
-    const rebuildPath = join(root, 'release-artifacts', `.verify-${randomUUID()}.vsix`);
     try {
-      const rebuilt = await packageExtension({ commit: manifest.commit, outputPath: rebuildPath });
-      if (rebuilt.status !== 'PASS' || await sha256(rebuildPath) !== vsix.sha256) {
-        errors.push('VSIX does not byte-match a clean rebuild from the current exact source commit');
-      }
+      await rebuildVsixFromSourceArchive({
+        sourcePath: artifactPath(root, source.path),
+        version: product.version,
+        commit: manifest.commit,
+        expectedSha256: vsix.sha256,
+      });
     } catch (error) {
       errors.push(`VSIX source rebuild failed: ${error.message}`);
-    } finally {
-      await rm(rebuildPath, { force: true });
     }
   } else {
     errors.push('VSIX artifact is missing');

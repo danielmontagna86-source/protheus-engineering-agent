@@ -9,6 +9,7 @@ import { createHermesAdapter } from '../packages/hermes-adapter/src/index.mjs';
 import {
   createDictionarySnapshotAdapter,
   createIntegrationRegistry,
+  createJsonFileLoader,
   createReadOnlyNamedQueryAdapter,
   createOracleReadOnlyAdapter,
   createTdnSnapshotAdapter,
@@ -226,6 +227,13 @@ test('integration cancellation reaches snapshot loaders and database drivers', a
   const databaseResult = await databaseResultPromise;
   assert.equal(databaseSignal.aborted, true);
   assert.equal(databaseResult.error.code, 'INTEGRATION_CANCELLED');
+});
+
+test('JSON snapshot file loading observes cancellation before filesystem I/O', async () => {
+  const controller = new AbortController();
+  controller.abort();
+  const load = createJsonFileLoader(join(tmpdir(), 'snapshot-that-must-not-be-opened.json'));
+  await assert.rejects(load({ signal: controller.signal }), (error) => error.code === 'INTEGRATION_CANCELLED');
 });
 
 test('integration timeout aborts the underlying database driver', async () => {
