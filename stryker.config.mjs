@@ -21,7 +21,7 @@ const config = {
     low: 90,
     break: 95,
   },
-  concurrency: 4,
+  concurrency: 12,
   timeoutMS: 10_000,
 };
 
