@@ -1,6 +1,6 @@
 # Validation Report
 
-**Date:** 2026-09-07
+**Date:** 2026-09-09
 **Environment:** Windows, Node.js 22.23.2
 **Decision:** executable development MVP PASS; public release NO-GO.
 
@@ -8,11 +8,11 @@
 
 | Gate | Result | Evidence |
 |---|---|---|
-| Full automated suite | PASS | 170 tests passed, 0 failed, 0 skipped in three consecutive runs |
-| Source/manifests | PASS | 47 JavaScript source files and 3 manifests syntax/structure checked |
-| Development publication audit | PENDING FINAL COMMIT | Active tree rejects old locked `.stryker-tmp` state as designed. Exact-commit archive audit runs after the final commit without weakening the auditor or killing unrelated processes. |
-| Critical-path smoke | PASS | doctor, index, review and MCP passed in 496 ms |
-| Mutation testing | PASS | 870 mutants: 820 killed, 8 timeout, 42 survived, 0 errors; 95.17% overall, 99.07% policy, 94.27% review, 88.89% CodeGraph resolver; breaking threshold 95% |
+| Full automated suite | PASS | 294 tests passed, 0 failed, 0 skipped in the fresh local run |
+| Source/manifests | PASS | 57 source files and 16 manifests syntax/structure checked |
+| Development publication audit | PASS | 219 publishable files, 0 findings after mutation cleanup |
+| Critical-path smoke | PASS | doctor, index, review, source MCP and bundled MCP passed in 884 ms |
+| Mutation testing | PASS | 870 mutants: 822 killed, 8 timeout, 40 survived, 0 errors; 95.40% overall; breaking threshold 95% |
 | Dependency audit | PASS | 0 known vulnerabilities after lockfile resolution |
 | MCP stdio process | PASS | real child process initialized and listed tools using newline-delimited JSON-RPC |
 | Standalone core contract | PASS | CLI/MCP, live Skills/Rules and Electron-as-Node propagation covered without requiring Hermes |
@@ -21,8 +21,9 @@
 | Release publication audit | BLOCKED AS DESIGNED | candidate CI/OSV, clean-commit manifest, final reviews, downloaded-asset reproduction and named approval remain missing |
 | `actionlint` | NOT RUN | executable is not installed in this environment |
 | GitHub Actions live matrix | PASS ON BASE | latest `main` [run 34151775373](https://github.com/danielmontagna86-source/protheus-engineering-agent/actions/runs/34151775373); candidate branch matrix and OSV remain pending |
-| Packaged VSIX fresh install | PASS LOCALLY | v0.3.0 was installed and exercised without Hermes on VS Code 1.95.3 and 1.133.0; final-commit hash is regenerated after this report update |
-| Official TDS coexistence | PASS LOCALLY | TDS 2.0.16 activated beside the packaged extension; zero command conflicts, multi-root selection and CP1252/LF preservation passed |
+| Packaged VSIX fresh install | PASS LOCALLY | v0.3.0 installed without Hermes on VS Code 1.95.3 and 1.136.2; all 19 public commands registered and 7 invocations across 5 core commands passed |
+| Package lifecycle | PASS LOCALLY | isolated 0.2.0-alpha.1 install, 0.3.0 upgrade, uninstall, reinstall and rollback passed on VS Code 1.136.2 |
+| Official TDS coexistence | PASS LOCALLY | TDS 2.1.2 activated beside the packaged extension; zero command conflicts, multi-root selection and CP1252/LF preservation passed |
 | Product benchmark | PASS WITH CLAIM LIMITS | Seven Apache-2.0 synthetic cases reached 1.0 precision/recall and symbol/call recall; productivity uplift and market leadership remain `NOT_PROVEN` pending the documented human pilot |
 | Public CodeQL | PENDING VISIBILITY | Pinned CodeQL v4.36.0 `security-extended` workflow is present and automatically activates only when the repository is public |
 | Optional Hermes compatibility | PASS, NON-GATING | installed Hermes previously returned `Hermes ACP check OK` from an isolated temporary workspace and profile |
@@ -46,6 +47,9 @@
 - `DbEval` is treated as a callback function rather than an open-ended loop block, preventing CA1003 scope leakage into following lines.
 - The release gate requires planned-version alignment, fresh installation, three checksummed artifacts, and evidence bound to the exact checksummed release manifest and commit.
 - MCP server version is derived from the product manifest.
+- Stable gates require typed, checksummed, gate-specific receipts tied to the exact commit and release manifest; generic text or URLs cannot close a gate.
+- Source archives byte-match the declared commit, VSIX packaging is byte-reproduced, and the CycloneDX SBOM reconciles the exact lockfile.
+- Integration cancellation is honored before a warm snapshot-cache return.
 
 ## Reproduce
 
@@ -60,7 +64,7 @@ npm run test:vscode:host
 npm run test:vscode:minimum
 npm run test:vscode:tds
 npm run benchmark
-npm audit --audit-level=high
+npm audit --audit-level=moderate
 node scripts/check.mjs
 node scripts/publication-check.mjs
 node scripts/publication-check.mjs --release

@@ -49,7 +49,7 @@ export function validateReleaseManifest(manifest) {
   if (!paths.some((path) => path.endsWith('-source.zip'))) errors.push('source archive is missing from release manifest');
   if (!paths.some((path) => path.endsWith('.vsix'))) errors.push('VSIX is missing from release manifest');
   if (!paths.some((path) => path.endsWith('.cdx.json'))) errors.push('CycloneDX SBOM is missing from release manifest');
-  for (const key of ['publication', 'sourceArchive', 'vsix', 'sbom']) {
+  for (const key of ['publication', 'sourceArchive', 'vsix', 'vsixReproducible', 'sbom', 'sbomLockfile']) {
     if (manifest.verification?.[key] !== 'PASS') {
       errors.push(`release manifest verification ${key} must be PASS`);
     }
@@ -86,7 +86,10 @@ export async function verifyRelease() {
   const vsix = artifacts.find((item) => item.path.endsWith('.vsix'));
   const sbom = artifacts.find((item) => item.path.endsWith('.cdx.json'));
   if (source) {
-    const report = await verifySourceArchive(artifactPath(root, source.path), product.version);
+    const report = await verifySourceArchive(artifactPath(root, source.path), product.version, {
+      root,
+      commit: manifest.commit,
+    });
     errors.push(...report.errors);
   } else {
     errors.push('source archive is missing');
@@ -98,7 +101,7 @@ export async function verifyRelease() {
     errors.push('VSIX artifact is missing');
   }
   if (sbom) {
-    const report = await verifySbom(artifactPath(root, sbom.path), product.version);
+    const report = await verifySbom(artifactPath(root, sbom.path), product.version, { root });
     errors.push(...report.errors);
   } else {
     errors.push('CycloneDX SBOM artifact is missing');

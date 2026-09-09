@@ -1,15 +1,16 @@
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { lstat, readFile } from 'node:fs/promises';
 import { basename, isAbsolute, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-import AdmZip from 'adm-zip';
+import { readZipArchive, writeZipArchive } from './zip.mjs';
 
 const forbiddenArchivePatterns = [
   /(?:^|\/)\.git(?:\/|$)/i,
   /(?:^|\/)\.pea(?:\/|$)/i,
   /(?:^|\/)node_modules(?:\/|$)/i,
+  /(?:^|\/)(?:\.vscode-test|coverage|dist)(?:\/|$)/i,
   /(?:^|\/)release-artifacts(?:\/|$)/i,
   /(?:^|\/)\.stryker-tmp(?:\/|$)/i,
   /(?:^|\/)\.worktrees(?:\/|$)/i,
@@ -17,22 +18,37 @@ const forbiddenArchivePatterns = [
 ];
 
 const NORMALIZED_ZIP_TIME = new Date('2000-01-01T00:00:00.000Z');
+const PUBLIC_COMMAND_IDS = Object.freeze([
+  'pea.doctor', 'pea.indexWorkspace', 'pea.openContext', 'pea.addMemoryEntry',
+  'pea.addJournalEntry', 'pea.promoteJournalEntry', 'pea.expireMemory', 'pea.importSnapshot',
+  'pea.searchTdn', 'pea.searchDictionary', 'pea.prepareBuild', 'pea.runBuild',
+  'pea.buildStatus', 'pea.cancelBuild', 'pea.buildEvidence', 'pea.reviewActiveFile',
+  'pea.reviewChanges', 'pea.refreshEngineeringCenter', 'pea.openSampleWorkspace',
+]);
+const STABLE_GATE_IDS = Object.freeze([
+  'g0BaselineIntegrity', 'g1PremiumP0', 'g2SemanticP1', 'g3Tier0Virtualization',
+  'g4OfficialAnalyzer', 'g5OfficialPostgres', 'g6LicensedAppserver',
+  'g7PackageLifecycle', 'g8UxAccessibility', 'g9SecuritySupplyChain',
+  'g10CompatibilitySupport', 'g11EffectivenessClaims', 'g12ExactRelease',
+  'g13PublicationAuthorization',
+]);
 
 export function createReleaseEvidenceTemplate({ version, commit, artifacts, manifest }) {
-  return {
+  const evidence = {
     schemaVersion: 1,
     version,
     status: 'NO-GO',
     commit,
-    ci: { passed: false, url: null },
+    ci: { passed: false, evidence: null },
     codeReview: { passed: false },
-    securityReview: { passed: false },
-    codeScanning: { passed: false, url: null },
-    vscodeSmoke: { passed: false, versions: [], commands: 4, isolated: true },
+    securityReview: { passed: false, evidence: null },
+    codeScanning: { passed: false, evidence: null },
+    vscodeSmoke: { passed: false, versions: [], commands: 0, commandIds: [], isolated: true },
     freshInstall: {
       passed: false,
       versions: [],
-      commands: 4,
+      commands: 0,
+      commandIds: [],
       isolated: true,
       vsixSha256: null,
     },
@@ -41,17 +57,21 @@ export function createReleaseEvidenceTemplate({ version, commit, artifacts, mani
     releaseManifest: manifest,
     approvedBy: null,
   };
+  if (Number.parseInt(version.split('.')[0], 10) >= 1) {
+    evidence.stableGates = Object.fromEntries(STABLE_GATE_IDS.map((id) => [id, { passed: false, evidence: null }]));
+  }
+  return evidence;
 }
 
 export async function normalizeZipArchive(path) {
-  const source = new AdmZip(await readFile(path));
-  const normalized = new AdmZip();
-  const entries = source.getEntries().sort((left, right) => left.entryName.localeCompare(right.entryName));
-  for (const entry of entries) {
-    normalized.addFile(entry.entryName, entry.getData(), entry.comment, entry.isDirectory ? 0o755 : 0o644);
-    normalized.getEntry(entry.entryName).header.time = NORMALIZED_ZIP_TIME;
-  }
-  normalized.writeZip(path);
+  const entries = await readZipArchive(await readFile(path));
+  await writeZipArchive(path, entries
+    .sort((left, right) => left.name.localeCompare(right.name))
+    .map((entry) => ({
+      ...entry,
+      mtime: NORMALIZED_ZIP_TIME,
+      mode: entry.isDirectory ? 0o40755 : 0o100644,
+    })));
 }
 
 export function git(root, args) {
@@ -77,12 +97,26 @@ export function artifactPath(root, repositoryPath) {
   return absolute;
 }
 
-export async function verifySourceArchive(path, version) {
-  const bytes = await readFile(path);
-  let zip;
+export async function verifySourceArchive(path, version, { root, commit } = {}) {
+  let fileState;
   try {
-    zip = new AdmZip(bytes);
-    zip.getEntries();
+    fileState = await lstat(path);
+  } catch (error) {
+    return {
+      status: 'FAIL', path: resolve(path), file: basename(path), entries: 0,
+      compressedBytes: 0, errors: [`source archive is unavailable: ${error.message}`],
+    };
+  }
+  if (!fileState.isFile() || fileState.isSymbolicLink() || fileState.size > 50 * 1024 * 1024) {
+    return {
+      status: 'FAIL', path: resolve(path), file: basename(path), entries: 0,
+      compressedBytes: fileState.size, errors: ['source archive is unsafe or exceeds the 50 MiB compressed budget'],
+    };
+  }
+  const bytes = await readFile(path);
+  let entries;
+  try {
+    entries = await readZipArchive(bytes);
   } catch (error) {
     return {
       status: 'FAIL',
@@ -93,10 +127,18 @@ export async function verifySourceArchive(path, version) {
       errors: [`invalid source archive: ${error.message}`],
     };
   }
-  const entries = zip.getEntries().filter((entry) => !entry.isDirectory);
-  const names = entries.map((entry) => entry.entryName.replaceAll('\\', '/'));
+  const files = entries.filter((entry) => !entry.isDirectory);
+  const names = files.map((entry) => entry.name.replaceAll('\\', '/'));
   const prefix = `protheus-engineering-agent-v${version}/`;
   const errors = [];
+  if (new Set(names.map((name) => name.toLowerCase())).size !== names.length) {
+    errors.push('duplicate or case-colliding source archive entries are not allowed');
+  }
+  for (const entry of entries) {
+    if ((entry.mode & 0o170000) === 0o120000) {
+      errors.push(`source archive symbolic link is not allowed: ${entry.name}`);
+    }
+  }
   for (const required of ['README.md', 'LICENSE.md', 'package.json', 'package-lock.json']) {
     if (!names.includes(`${prefix}${required}`)) errors.push(`source archive missing ${required}`);
   }
@@ -109,29 +151,52 @@ export async function verifySourceArchive(path, version) {
       errors.push(`forbidden source archive entry: ${name}`);
     }
   }
-  const packageEntry = zip.getEntry(`${prefix}package.json`);
+  const packageEntry = files.find((entry) => entry.name === `${prefix}package.json`);
   if (packageEntry) {
     try {
-      const manifest = JSON.parse(packageEntry.getData().toString('utf8'));
+      const manifest = JSON.parse(packageEntry.data.toString('utf8'));
       if (manifest.version !== version) errors.push(`source archive version ${manifest.version} does not match ${version}`);
     } catch (error) {
       errors.push(`invalid source archive package manifest: ${error.message}`);
+    }
+  }
+  if (root || commit) {
+    if (!root || !/^[0-9a-f]{40}$/i.test(commit ?? '')) {
+      errors.push('source archive provenance requires a repository root and exact 40-character commit');
+    } else {
+      const reproduced = spawnSync('git', [
+        'archive', '--format=zip', `--prefix=${prefix}`, commit,
+      ], {
+        cwd: root,
+        encoding: null,
+        maxBuffer: 60 * 1024 * 1024,
+        windowsHide: true,
+      });
+      if (reproduced.error || reproduced.status !== 0) {
+        errors.push('source archive could not be reproduced from the declared commit');
+      } else if (!Buffer.from(reproduced.stdout).equals(bytes)) {
+        errors.push('source archive does not byte-match git archive of the declared commit');
+      }
     }
   }
   return {
     status: errors.length === 0 ? 'PASS' : 'FAIL',
     path: resolve(path),
     file: basename(path),
-    entries: entries.length,
+    entries: files.length,
     compressedBytes: bytes.length,
     errors,
   };
 }
 
-export async function verifySbom(path, version) {
+export async function verifySbom(path, version, { root } = {}) {
   const errors = [];
   let document;
   try {
+    const fileState = await lstat(path);
+    if (!fileState.isFile() || fileState.isSymbolicLink() || fileState.size > 10 * 1024 * 1024) {
+      return { status: 'FAIL', path: resolve(path), errors: ['CycloneDX SBOM is unsafe or exceeds the 10 MiB input budget'] };
+    }
     document = JSON.parse(await readFile(path, 'utf8'));
   } catch (error) {
     return { status: 'FAIL', path: resolve(path), errors: [`invalid CycloneDX SBOM: ${error.message}`] };
@@ -143,6 +208,32 @@ export async function verifySbom(path, version) {
   }
   if (document.metadata?.component?.version !== version) {
     errors.push(`SBOM product version does not match ${version}`);
+  }
+  if (root) {
+    try {
+      const [manifest, lockBytes] = await Promise.all([
+        readFile(resolve(root, 'package.json'), 'utf8').then(JSON.parse),
+        readFile(resolve(root, 'package-lock.json')),
+      ]);
+      const lock = JSON.parse(lockBytes.toString('utf8'));
+      const lockHash = createHash('sha256').update(lockBytes).digest('hex');
+      const properties = document.metadata?.properties ?? [];
+      if (!properties.some((item) => item?.name === 'pea:package-lock:sha256' && item.value === lockHash)) {
+        errors.push('SBOM is not bound to the exact package-lock.json SHA-256');
+      }
+      if (!Array.isArray(document.components) || !Array.isArray(document.dependencies)) {
+        errors.push('SBOM must declare CycloneDX components and dependency relationships');
+      } else {
+        for (const name of Object.keys(manifest.dependencies ?? {})) {
+          const versionFromLock = lock.packages?.[`node_modules/${name}`]?.version;
+          if (!versionFromLock || !document.components.some((item) => item?.name === name && item.version === versionFromLock)) {
+            errors.push(`SBOM does not reconcile production dependency ${name} with package-lock.json`);
+          }
+        }
+      }
+    } catch (error) {
+      errors.push(`SBOM lockfile reconciliation failed: ${error.message}`);
+    }
   }
   return { status: errors.length === 0 ? 'PASS' : 'FAIL', path: resolve(path), errors };
 }

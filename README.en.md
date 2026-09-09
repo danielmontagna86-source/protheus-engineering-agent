@@ -4,7 +4,7 @@ A standalone VS Code extension for ADVPL/TLPP engineering, backed by an open reu
 
 > Independent community project in alpha stage. It is not affiliated with, sponsored by, or maintained by TOTVS, the Protheus brand, or the Hermes Agent project. All trademarks belong to their respective owners.
 
-[Português](README.md) · [Positioning](docs/brand-positioning.md) · [Architecture](docs/architecture.md) · [Rules](docs/rules.md) · [Skills](docs/skills.md) · [Premium research](docs/research/premium-product-leadership-review.md) · [Roadmap](docs/roadmap.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
+[Português](README.md) · [Get started](docs/getting-started.en.md) · [Public contract](docs/public-contract.md) · [Compatibility](docs/compatibility.md) · [Limitations](docs/limitations.md) · [Roadmap](docs/roadmap.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
 
 The primary path requires only the VSIX. It does not require Hermes, an AI account, a model, Python, Oracle, TDN, or AppServer. The deterministic runtime ships inside the extension.
 
@@ -12,15 +12,15 @@ The primary path requires only the VSIX. It does not require Hermes, an AI accou
 
 - local ADVPL/TLPP symbols, calls, callers, dependencies, ambiguity, and unresolved-target evidence;
 - deterministic pre-review and traceable bug review with source and impact evidence;
-- bounded, atomic Project Memory and Journal with cross-instance write locking;
+- attributed, bounded, atomic Project Memory and Journal with reviewed promotion, hashes, expiry, corruption recovery, and cross-instance locking;
 - deny-by-default local/development/test/homologation/production policy and approval broker;
 - supervised build evidence with durable idempotent resume;
-- versioned TDN/Dictionary snapshots and allowlisted read-only Oracle contracts;
+- licensed/provenanced TDN/Dictionary snapshot onboarding with freshness and SHA-256, plus named read-only Oracle/PostgreSQL adapter contracts;
 - bounded MCP subagents and a governed provider-neutral optional AI gateway;
 - stdio MCP server for portable runtime capabilities;
 - standard project Skills, local Rules, and commit-pinned providers, all bounded and treated as untrusted data;
 - an experimental, optional Hermes adapter outside the critical path and release gate;
-- a thin VS Code extension with four orchestration commands.
+- a thin VS Code extension with native Engineering Center, deterministic commands, Language Model Tools, and a portable skill.
 
 External adapters are implemented but inactive until a host supplies trusted configuration, authorization and credentials where applicable. No live compiler/AppServer/RPO, Oracle driver or AI provider is embedded, and simulation never counts as compiler proof.
 
@@ -33,7 +33,7 @@ npm ci
 npm run validate
 ```
 
-The runtime itself has no mandatory npm runtime dependencies and can also be called directly:
+The domain runtime remains decoupled; the MCP server uses the packaged official SDK. The CLI can also be called directly:
 
 ```sh
 node packages/runtime/src/cli.mjs doctor .
@@ -57,7 +57,7 @@ The process defaults to the `production` policy. Project Memory writes require a
 
 Run `npm ci`, open this repository in VS Code, and start `Run Protheus Engineering Agent Extension`. Its pre-launch task builds the self-contained runtime before opening the Extension Development Host. To produce the audited GitHub Release package, run `npm run package:extension`; the VSIX is written under `release-artifacts/`.
 
-Open an ADVPL/TLPP workspace and run the four `Protheus Agent` commands from the command palette. Active-file review keeps the machine-readable JSON in the Output channel and publishes findings to native Problems diagnostics. `npm run test:vscode:host` installs the VSIX and exercises all four commands in an isolated current VS Code instance; `npm run test:vscode:minimum` repeats it on the supported 1.95.3 baseline.
+Open an ADVPL/TLPP workspace and use Engineering Center or the `Protheus Agent` commands. Active-file review keeps machine-readable JSON in Output and publishes findings to native Problems. Memory/Journal, authorized snapshot onboarding, Git-change review, and supervised-build state use native VS Code flows. `npm run test:vscode:host` installs the VSIX in an isolated current VS Code instance; `npm run test:vscode:minimum` repeats the supported 1.95.3 baseline.
 
 The extension delegates to its bundled runtime. It complements TDS-VSCode and does not replace VS Code language, compiler, debugger, editor, terminal, explorer, Git, diff, or chat surfaces.
 
@@ -71,6 +71,7 @@ npm run test:vscode:host
 npm run test:vscode:minimum
 npm run test:vscode:tds
 npm run benchmark
+npm run benchmark:large
 npm run publication:release-check
 ```
 

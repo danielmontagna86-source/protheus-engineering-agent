@@ -10,7 +10,7 @@ This document separates completed engineering from actions that require the prod
 - minimum/current VS Code plus installed official TDS coexistence UAT;
 - dependency audit, mutation testing and publication-tree audit;
 - reproducible VSIX, source ZIP, CycloneDX SBOM, SHA-256 manifest and verification;
-- CI/OSV checks on the candidate pull request and a pinned CodeQL workflow that activates automatically after public visibility.
+- pinned CI, dependency-review, OSV, full-history secret-scan, CodeQL and artifact-attestation workflows; exact public executions remain external.
 
 ## Owner actions that cannot be manufactured by the build
 
@@ -27,4 +27,4 @@ Live Oracle access needs a customer-owned driver, secret handling and an approve
 
 ## Safe publication order
 
-Merge the reviewed candidate, build artifacts from the exact clean merge commit, change visibility, restore protection, obtain a green CodeQL run, complete the external evidence, create the immutable `v0.3.0` tag and GitHub Release, download every asset and verify it again, then submit the same VSIX to Marketplace as a pre-release. If any hash or downloaded check differs, stop and rebuild under a new candidate commit; never rewrite a consumed tag.
+Merge the reviewed candidate, build artifacts from the exact clean merge commit, change visibility, restore protection, obtain green CI/dependency/secret/CodeQL runs and a verified provenance attestation, complete the typed gate receipts, create the immutable version tag and GitHub Release, download every asset and verify it again, then submit that same verified VSIX to Marketplace in the approved channel. If any hash or downloaded check differs, stop and rebuild under a new candidate commit; never rewrite a consumed tag.

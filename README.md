@@ -4,7 +4,7 @@ Extensão VS Code autônoma para engenharia ADVPL/TLPP, com runtime aberto e reu
 
 > Projeto comunitário independente, em estágio alpha. Não é afiliado, patrocinado ou mantido pela TOTVS, pela marca Protheus ou pelo projeto Hermes Agent. As marcas pertencem aos seus respectivos titulares.
 
-[English](README.en.md) · [Posicionamento](docs/brand-positioning.md) · [Arquitetura](docs/architecture.md) · [Regras](docs/rules.md) · [Skills](docs/skills.md) · [Pesquisa premium](docs/research/premium-product-leadership-review.md) · [Roadmap](docs/roadmap.md) · [Segurança](SECURITY.md) · [Como contribuir](CONTRIBUTING.md)
+[English](README.en.md) · [Começar](docs/getting-started.md) · [Contrato público](docs/public-contract.md) · [Compatibilidade](docs/compatibility.md) · [Limites](docs/limitations.md) · [Roadmap](docs/roadmap.md) · [Segurança](SECURITY.md) · [Como contribuir](CONTRIBUTING.md)
 
 O caminho principal exige somente o VSIX: não exige Hermes, conta de IA, modelo, Python, Oracle, TDN ou AppServer. O runtime determinístico é empacotado junto da extensão.
 
@@ -12,16 +12,16 @@ O caminho principal exige somente o VSIX: não exige Hermes, conta de IA, modelo
 
 - indexação local de símbolos, chamadas, callers, dependências, ambiguidades e alvos não resolvidos;
 - pre-review determinístico e bug review rastreável com evidência de arquivo/linha/impacto;
-- Project Memory e Journal locais, limitados, atômicos e protegidos contra gravação concorrente;
+- Project Memory e Journal locais, atribuídos, limitados e atômicos, com promoção revisada, hashes, expiração e recuperação de corrupção;
 - política `local/development/test/homologation/production` com deny-by-default e broker de aprovação;
 - supervisor de build injetável com evidência de compilador/artefato e retomada idempotente;
-- snapshots TDN/Dictionary versionados e Oracle read-only por consulta nomeada, todos fail-closed;
+- onboarding de snapshots TDN/Dictionary com licença/proveniência, freshness, SHA-256 e atualização atômica; adapters Oracle/PostgreSQL read-only por consulta nomeada;
 - subagentes MCP limitados por tool, profundidade, concorrência, timeout, checkpoint e diff;
 - gateway de IA neutro, opt-in, estruturado, com redaction e sem telemetria;
 - servidor MCP stdio para as capacidades portáveis do runtime;
 - Skills em caminhos padrão do ecossistema, Rules locais e provedores fixados por commit, todos limitados e tratados como dados não confiáveis;
 - adaptador experimental e opcional para Hermes, fora do caminho crítico e do gate de release;
-- extensão VS Code fina com quatro comandos, sem UI de terminal/explorer/Git própria.
+- extensão VS Code fina com Central de Engenharia, comandos determinísticos, Language Model Tools e skill portável, sem UI de terminal/explorer/Git própria.
 
 As integrações são contratos prontos, mas continuam inativas até o host fornecer configuração, autorização e, quando aplicável, credenciais. O compilador/AppServer/RPO real e um driver Oracle real não estão embutidos. O produto nunca transforma simulação em prova de compilação.
 
@@ -34,7 +34,7 @@ npm ci
 npm run validate
 ```
 
-O runtime em si não possui dependências npm obrigatórias e também pode ser chamado diretamente:
+O runtime de domínio continua desacoplado; o servidor MCP usa o SDK oficial empacotado. A CLI também pode ser chamada diretamente:
 
 ```sh
 node packages/runtime/src/cli.mjs doctor .
@@ -90,12 +90,16 @@ npm run package:extension
 code --install-extension release-artifacts/protheus-engineering-agent-v0.3.0.vsix
 ```
 
-No workspace ADVPL/TLPP, use a paleta:
+No workspace ADVPL/TLPP, use a Central de Engenharia ou a paleta para:
 
 - `Protheus Agent: Doctor`
 - `Protheus Agent: Index Workspace`
 - `Protheus Agent: Show Engineering Context`
 - `Protheus Agent: Review Active ADVPL/TLPP File`
+- `Protheus Agent: Review Git Changes`
+- registrar, promover e expirar Memory/Journal;
+- importar snapshots TDN/Dictionary autorizados;
+- preparar, executar, consultar, cancelar e inspecionar evidência de build supervisionado.
 
 A extensão apenas chama o runtime empacotado, preserva o JSON auditável no Output Channel e publica os findings no painel nativo Problems. Ela complementa o TDS-VSCode e não substitui editor, linguagem, compilador, debugger, terminal, explorer, Git, diff ou chat do VS Code.
 
@@ -131,6 +135,7 @@ npm run test:vscode:host
 npm run test:vscode:minimum
 npm run test:vscode:tds
 npm run benchmark
+npm run benchmark:large
 npm run publication:release-check
 ```
 
@@ -138,9 +143,9 @@ npm run publication:release-check
 
 ## Limites atuais
 
-- O CodeGraph usa uma análise léxica deliberadamente pequena, não uma gramática completa.
+- O CodeGraph usa parser léxico tolerante incremental com IR versionada e corpus legal declarado, não uma gramática completa nem equivalência ao compilador.
 - O review é um pre-gate determinístico; não substitui compilação, análise oficial, testes funcionais ou revisão humana.
-- A extensão ainda não implementa um cliente ACP de chat; o preview distribuível contém quatro comandos determinísticos e o MCP governado.
+- A extensão não implementa chat próprio; usa comandos, superfícies nativas, Language Model Tools, skill portável e MCP governado.
 - TDN/Dictionary foram exercitados com snapshots; Oracle/build/IA foram exercitados com adapters sintéticos e processos locais, não com infraestrutura de cliente.
 - Integrações externas permanecem fail-closed, não recebem credenciais implicitamente e exigem validação no ambiente homologado do adotante.
 - Ganho de produtividade e liderança de mercado não são alegações aprovadas; exigem o piloto humano publicado em `docs/effectiveness-methodology.md`.

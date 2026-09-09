@@ -1,16 +1,36 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { performance } from 'node:perf_hooks';
 
 import {
+  createIncrementalParser,
   decodeSource,
   indexWorkspace,
   parseAdvplSource,
 } from '../packages/codegraph-advpl/src/index.mjs';
 import { eligibleCallTargets, resolveCallTarget } from '../packages/codegraph-advpl/src/resolve.mjs';
+
+const productRoot = dirname(dirname(fileURLToPath(import.meta.url)));
+
+test('project-authored parser corpus matches its licensed conformance manifest', async () => {
+  const corpusRoot = join(productRoot, 'packages', 'codegraph-advpl', 'grammar-corpus');
+  const manifest = JSON.parse(await readFile(join(corpusRoot, 'corpus.json'), 'utf8'));
+
+  assert.equal(manifest.license, 'Apache-2.0');
+  assert.equal(manifest.origin, 'project-authored-synthetic-fixtures');
+  for (const fixture of manifest.cases) {
+    const source = await readFile(join(corpusRoot, fixture.file), 'utf8');
+    const ir = parseAdvplSource(source, { file: fixture.file });
+    assert.match(source, /SPDX-License-Identifier: Apache-2\.0/);
+    assert.deepEqual(ir.symbols.map((symbol) => symbol.name), fixture.symbols, fixture.file);
+    assert.deepEqual(ir.calls.map((call) => call.callee), fixture.calls, fixture.file);
+    assert.deepEqual([...new Set(ir.diagnostics.map((item) => item.code))], fixture.diagnostics, fixture.file);
+  }
+});
 
 test('call resolver defaults to an unresolved result with no candidates', () => {
   assert.deepEqual(eligibleCallTargets({ file: 'entry.prw' }), []);
@@ -61,12 +81,65 @@ test('parser finds functions and real calls without matching comments or strings
 
   const graph = parseAdvplSource(source, { file: 'sample.prw' });
 
+  assert.equal(graph.schemaVersion, 2);
+  assert.equal(graph.parser, 'tolerant-lexical-v2');
   assert.deepEqual(graph.symbols.map((item) => item.name), ['EntryPoint', 'Helper']);
   assert.deepEqual(graph.symbols.map((item) => item.line), [2, 8]);
   assert.deepEqual(graph.calls.map((item) => [item.caller, item.callee]), [
     ['EntryPoint', 'Helper'],
   ]);
   assert.deepEqual(graph.calls.map((item) => item.line), [5]);
+});
+
+test('tolerant parser represents class methods and unsupported dynamic constructs explicitly', () => {
+  const source = [
+    '#define CALL(name) name()',
+    'Class InvoiceService',
+    '    Method Calculate(nValue)',
+    'EndClass',
+    '',
+    'Method Calculate(nValue) Class InvoiceService',
+    '    &("DynamicCall")()',
+    'Return nValue',
+    '',
+    'User Function Broken(',
+  ].join('\n');
+
+  const ir = parseAdvplSource(source, { file: 'invoice.tlpp' });
+  const methods = ir.symbols.filter((symbol) => symbol.name === 'Calculate');
+  const [method] = methods;
+
+  assert.equal(methods.length, 1, 'class prototypes must not duplicate method implementations');
+  assert.equal(method.kind, 'method');
+  assert.equal(method.owner, 'InvoiceService');
+  assert.equal(method.id, 'invoice.tlpp#invoiceservice.calculate');
+  assert.equal(method.confidence, 'high');
+  assert.ok(ir.diagnostics.some((item) => item.code === 'PREPROCESSOR_SEMANTICS_UNRESOLVED'));
+  assert.ok(ir.diagnostics.some((item) => item.code === 'DYNAMIC_CALL_UNRESOLVED'));
+  assert.ok(ir.diagnostics.some((item) => item.code === 'INCOMPLETE_DECLARATION'));
+  assert.equal(ir.complete, false);
+});
+
+test('incremental parser reuses unchanged IR and invalidates only changed content', () => {
+  let parses = 0;
+  const parser = createIncrementalParser({
+    parse(source, options) {
+      parses += 1;
+      return parseAdvplSource(source, options);
+    },
+  });
+
+  const first = parser.parse('entry.prw', 'User Function Entry()\nReturn\n');
+  const reused = parser.parse('entry.prw', 'User Function Entry()\nReturn\n');
+  const changed = parser.parse('entry.prw', 'User Function Entry()\n    Helper()\nReturn\n');
+  parser.invalidate('entry.prw');
+  parser.parse('entry.prw', 'User Function Entry()\n    Helper()\nReturn\n');
+
+  assert.equal(parses, 3);
+  assert.equal(first.cache.reused, false);
+  assert.equal(reused.cache.reused, true);
+  assert.equal(changed.cache.reused, false);
+  assert.equal(changed.calls[0].callee, 'Helper');
 });
 
 test('workspace index resolves case-insensitive calls across source files', async () => {
@@ -105,6 +178,16 @@ test('workspace index excludes TDS generated sources under .vscode', async () =>
 
   assert.deepEqual(graph.files, ['entry.prw']);
   assert.deepEqual(graph.nodes.map((node) => node.name), ['Entry']);
+});
+
+test('workspace index fails closed at explicit file and byte limits', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pea-graph-limits-'));
+  await writeFile(join(root, 'one.prw'), 'User Function One()\nReturn\n');
+  await writeFile(join(root, 'two.prw'), 'User Function Two()\nReturn\n');
+
+  await assert.rejects(indexWorkspace(root, { maxFiles: 1 }), /source file limit/);
+  await assert.rejects(indexWorkspace(root, { maxSourceBytes: 8 }), /per-file source byte limit/);
+  await assert.rejects(indexWorkspace(root, { maxTotalSourceBytes: 30 }), /aggregate source byte limit/);
 });
 
 test('workspace index resolves duplicate static helpers to the caller file', async () => {
@@ -172,7 +255,7 @@ test('workspace index explains callers, dependencies, unresolved and ambiguous t
   const entry = graph.nodes.find((node) => node.name === 'Entry');
   const known = graph.nodes.find((node) => node.name === 'Known');
 
-  assert.equal(graph.analysis.parser, 'lexical');
+  assert.equal(graph.analysis.parser, 'tolerant-lexical-v2');
   assert.ok(graph.analysis.limitations.some((item) => /dynamic/i.test(item)));
   assert.deepEqual(
     graph.analysis.dependencies.find((item) => item.symbolId === entry.id).targets,

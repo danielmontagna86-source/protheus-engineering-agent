@@ -28,7 +28,7 @@ async function assertStateDirectorySafe(workspace) {
   if (!state.isDirectory()) throw new Error('state path is not a directory');
 }
 
-async function assertSkillRootSafe(workspace, relativeRoot) {
+async function assertResourceRootSafe(workspace, relativeRoot) {
   const segments = relativeRoot.split('/');
   for (let index = 1; index <= segments.length; index += 1) {
     const candidate = join(workspace, ...segments.slice(0, index));
@@ -39,8 +39,8 @@ async function assertSkillRootSafe(workspace, relativeRoot) {
       if (error?.code === 'ENOENT') return false;
       throw error;
     }
-    if (state.isSymbolicLink()) throw new Error('skill root must not be a symlink');
-    if (!state.isDirectory()) throw new Error('skill root is not a directory');
+    if (state.isSymbolicLink()) throw new Error('resource root must not be a symlink');
+    if (!state.isDirectory()) throw new Error('resource root is not a directory');
   }
   return true;
 }
@@ -89,7 +89,7 @@ async function discoverSkillCandidates(workspace) {
   ];
   const claimedNames = new Set();
   for (const rootDefinition of roots) {
-    if (!await assertSkillRootSafe(workspace, rootDefinition.relative)) continue;
+    if (!await assertResourceRootSafe(workspace, rootDefinition.relative)) continue;
     const root = join(workspace, ...rootDefinition.relative.split('/'));
     const entries = (await listDirectory(root)).sort((left, right) => left.name.localeCompare(right.name));
     for (const entry of entries) {
@@ -109,6 +109,7 @@ async function discoverSkillCandidates(workspace) {
 }
 
 async function discoverRuleCandidates(workspace) {
+  if (!await assertResourceRootSafe(workspace, '.pea/rules')) return [];
   const root = join(workspace, '.pea', 'rules');
   const candidates = [];
   for (const entry of await listDirectory(root)) {

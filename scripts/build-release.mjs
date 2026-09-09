@@ -1,4 +1,5 @@
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { join, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -36,13 +37,47 @@ export function npmSbomInvocation({
   };
 }
 
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]));
+  }
+  return value;
+}
+
+export function normalizeSbomDocument(value) {
+  const document = structuredClone(value);
+  delete document.serialNumber;
+  if (document.metadata) delete document.metadata.timestamp;
+  return canonicalize(document);
+}
+
+export async function writeReleaseOutput(productRoot, path, contents) {
+  const expectedRoot = resolve(productRoot, 'release-artifacts');
+  const target = resolve(path);
+  const rel = relative(expectedRoot, target);
+  if (!rel || rel === '..' || rel.startsWith(`..${process.platform === 'win32' ? '\\' : '/'}`)) {
+    throw new Error('release output must stay inside release-artifacts');
+  }
+  await assertNoLinkPath(productRoot, target);
+  const temporary = `${target}.${process.pid}.${randomUUID()}.tmp`;
+  await writeFile(temporary, contents, { encoding: 'utf8', flag: 'wx' });
+  try {
+    await rm(target, { force: true });
+    await rename(temporary, target);
+  } catch (error) {
+    await rm(temporary, { force: true });
+    throw error;
+  }
+}
+
 export async function buildRelease() {
   const dirty = git(root, ['status', '--porcelain=v1', '--untracked-files=all']);
   if (dirty) throw new Error('release artifacts require a clean tracked and untracked source tree');
 
   const tracked = git(root, ['ls-files']).split(/\r?\n/).filter(Boolean);
   const trackedLocalState = tracked.find((path) => path.split('/').some((part) => (
-    ['.pea', '.stryker-tmp', '.worktrees', 'work', 'release-artifacts'].includes(part)
+    ['.pea', '.stryker-tmp', '.vscode-test', '.worktrees', 'coverage', 'dist', 'node_modules', 'work', 'release-artifacts'].includes(part)
   )));
   if (trackedLocalState) throw new Error(`tracked local state cannot enter release: ${trackedLocalState}`);
 
@@ -71,6 +106,11 @@ export async function buildRelease() {
   if (archive.status !== 0) throw new Error(`git archive failed: ${String(archive.stderr).trim()}`);
 
   const vsix = await packageExtension();
+  const firstVsixBytes = await readFile(vsix.path);
+  const reproducedVsix = await packageExtension();
+  if (!firstVsixBytes.equals(await readFile(reproducedVsix.path))) {
+    throw new Error('VSIX packaging is not byte-reproducible from the clean source tree');
+  }
   const npmInvocation = npmSbomInvocation();
   const sbomResult = spawnSync(npmInvocation.command, npmInvocation.args, {
     cwd: root,
@@ -81,11 +121,16 @@ export async function buildRelease() {
   });
   if (sbomResult.error) throw sbomResult.error;
   if (sbomResult.status !== 0) throw new Error(`npm sbom failed: ${String(sbomResult.stderr).trim()}`);
-  const sbomDocument = JSON.parse(sbomResult.stdout);
-  await writeFile(sbom, `${JSON.stringify(sbomDocument, null, 2)}\n`, 'utf8');
-  const sourceVerification = await verifySourceArchive(source, version);
+  const sbomDocument = normalizeSbomDocument(JSON.parse(sbomResult.stdout));
+  sbomDocument.metadata ??= {};
+  sbomDocument.metadata.properties = [
+    ...(sbomDocument.metadata.properties ?? []).filter((item) => item?.name !== 'pea:package-lock:sha256'),
+    { name: 'pea:package-lock:sha256', value: await sha256(join(root, 'package-lock.json')) },
+  ].sort((left, right) => left.name.localeCompare(right.name));
+  await writeReleaseOutput(root, sbom, `${JSON.stringify(sbomDocument, null, 2)}\n`);
+  const sourceVerification = await verifySourceArchive(source, version, { root, commit });
   if (sourceVerification.status !== 'PASS') throw new Error(sourceVerification.errors.join('; '));
-  const sbomVerification = await verifySbom(sbom, version);
+  const sbomVerification = await verifySbom(sbom, version, { root });
   if (sbomVerification.status !== 'PASS') throw new Error(sbomVerification.errors.join('; '));
 
   const artifacts = [];
@@ -100,19 +145,21 @@ export async function buildRelease() {
     schemaVersion: 1,
     version,
     commit,
-    generatedAt: new Date().toISOString(),
+    generatedAt: git(root, ['show', '-s', '--format=%cI', commit]),
     artifacts,
     verification: {
       publication: publication.status,
       sourceArchive: sourceVerification.status,
       vsix: vsix.status,
+      vsixReproducible: 'PASS',
       sbom: sbomVerification.status,
+      sbomLockfile: sbomVerification.status,
     },
   };
   const manifestPath = join(artifactsRoot, `release-manifest-v${version}.json`);
-  await writeFile(manifestPath, `${JSON.stringify(releaseManifest, null, 2)}\n`, 'utf8');
+  await writeReleaseOutput(root, manifestPath, `${JSON.stringify(releaseManifest, null, 2)}\n`);
   const evidenceTemplatePath = join(artifactsRoot, `release-evidence-template-v${version}.json`);
-  await writeFile(evidenceTemplatePath, `${JSON.stringify(createReleaseEvidenceTemplate({
+  await writeReleaseOutput(root, evidenceTemplatePath, `${JSON.stringify(createReleaseEvidenceTemplate({
     version,
     commit,
     artifacts,
@@ -120,11 +167,11 @@ export async function buildRelease() {
       path: relative(root, manifestPath).replaceAll('\\', '/'),
       sha256: await sha256(manifestPath),
     },
-  }), null, 2)}\n`, 'utf8');
-  await writeFile(
+  }), null, 2)}\n`);
+  await writeReleaseOutput(
+    root,
     join(artifactsRoot, 'SHA256SUMS'),
     `${artifacts.map((item) => `${item.sha256}  ${item.path.split('/').at(-1)}`).join('\n')}\n`,
-    'utf8',
   );
   return {
     status: 'PASS',

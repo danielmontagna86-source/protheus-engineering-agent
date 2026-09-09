@@ -58,7 +58,7 @@ async function installedTdsExtension() {
   return join(extensionRoot, match.name);
 }
 
-async function localVsCodeExecutable(requestedVersion) {
+export async function localVsCodeExecutable(requestedVersion) {
   if (requestedVersion || process.env.PEA_VSCODE_VERSION) return null;
   if (process.env.PEA_VSCODE_EXECUTABLE) {
     const configured = await existingFile(resolve(process.env.PEA_VSCODE_EXECUTABLE));
@@ -69,7 +69,7 @@ async function localVsCodeExecutable(requestedVersion) {
   return existingFile(join(process.env.LOCALAPPDATA, 'Programs', 'Microsoft VS Code', 'Code.exe'));
 }
 
-function runVsCodeCli(cli, args) {
+export function runVsCodeCli(cli, args) {
   return spawnSync(process.platform === 'win32' ? `"${cli}"` : cli, args, {
     encoding: 'utf8',
     shell: process.platform === 'win32',
@@ -84,8 +84,9 @@ export async function runVsCodeSmoke() {
   const sandbox = await mkdtemp(join(tmpdir(), 'pea-vscode-host-'));
   const workspace = join(sandbox, 'workspace');
   const secondWorkspace = join(sandbox, 'workspace-cp1252');
-  const userData = join(sandbox, 'user-data');
-  const extensions = join(sandbox, 'extensions');
+    const userData = join(sandbox, 'user-data');
+    const extensions = join(sandbox, 'extensions');
+    const hostReceiptPath = join(sandbox, 'installed-host-receipt.json');
   await Promise.all([
     mkdir(workspace, { recursive: true }),
     mkdir(secondWorkspace, { recursive: true }),
@@ -171,11 +172,25 @@ export async function runVsCodeSmoke() {
         PEA_EXPECTED_EXTENSIONS_DIR: extensions,
         PEA_EXPECT_TDS: tdsSource ? '1' : '0',
         PEA_EXPECT_TDS_VERSION: tdsVersion ?? '',
+        PEA_SMOKE_RECEIPT: hostReceiptPath,
       },
     });
+    const hostReceipt = JSON.parse(await readFile(hostReceiptPath, 'utf8'));
+    if (hostReceipt.schemaVersion !== 1
+      || !Array.isArray(hostReceipt.commandIds)
+      || hostReceipt.commandIds.length !== 19
+      || new Set(hostReceipt.commandIds).size !== 19
+      || !Array.isArray(hostReceipt.executedCommandIds)
+      || hostReceipt.executedCommandIds.length < 5
+      || hostReceipt.invocations !== 7) {
+      throw new Error('installed Extension Host returned incomplete command evidence');
+    }
     const report = {
       status: code === 0 ? 'PASS' : 'FAIL',
-      commands: 4,
+      commands: hostReceipt.commandIds.length,
+      commandIds: hostReceipt.commandIds,
+      executedCommandIds: hostReceipt.executedCommandIds,
+      invocations: hostReceipt.invocations,
       vscode: actualVscodeVersion,
       isolatedWorkspace: true,
       isolatedUserData: true,

@@ -83,7 +83,7 @@ test('agent resources reject a standard skill root junction that escapes the wor
 
   await assert.rejects(
     snapshotAgentResources({ workspace }),
-    /skill root must not be a symlink/,
+    /resource root must not be a symlink/,
   );
 });
 
@@ -226,5 +226,20 @@ test('agent resources reject a .pea junction that escapes the workspace', async 
   await assert.rejects(
     snapshotAgentResources({ workspace }),
     /state path must not be a symlink/,
+  );
+});
+
+test('agent resources reject a rules junction that escapes the workspace', async (t) => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-rules-junction-workspace-'));
+  const externalRules = await mkdtemp(join(tmpdir(), 'pea-rules-junction-target-'));
+  t.after(() => rm(workspace, { recursive: true, force: true }));
+  t.after(() => rm(externalRules, { recursive: true, force: true }));
+  await mkdir(join(workspace, '.pea'), { recursive: true });
+  await writeFile(join(externalRules, 'private.md'), '# External private rule\n', 'utf8');
+  await symlink(externalRules, join(workspace, '.pea', 'rules'), 'junction');
+
+  await assert.rejects(
+    snapshotAgentResources({ workspace }),
+    /resource root must not be a symlink/,
   );
 });

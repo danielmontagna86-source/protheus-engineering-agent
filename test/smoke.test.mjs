@@ -14,6 +14,6 @@ test('release smoke exercises the CLI and MCP critical path in under five minute
   assert.equal(result.status, 0, result.stderr);
   const report = JSON.parse(result.stdout);
   assert.equal(report.status, 'PASS');
-  assert.deepEqual(report.checks, ['doctor', 'index', 'review', 'mcp']);
+  assert.deepEqual(report.checks, ['doctor', 'index', 'review', 'mcp-source', 'mcp-bundled']);
   assert.ok(report.durationMs < 300_000);
 });

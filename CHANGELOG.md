@@ -31,6 +31,11 @@ All notable changes are recorded here. The project follows Semantic Versioning a
 - Reproducible synthetic effectiveness benchmark with an explicit human-pilot claim gate.
 - Durable idempotent build checkpoints, safe pause/resume and unknown-outcome reconciliation.
 - Installed official TDS 2.0.16 coexistence UAT with multi-root and CP1252/LF preservation.
+- Native Engineering Center with workspace, change review, Memory/Journal, integrations and environment sections.
+- SCM-aware review, stable JSON/SARIF, reusable GitHub Action and official MCP SDK transport.
+- Structured attributed Memory/Journal promotion and expiry, licensed snapshot onboarding and generic read-only database port.
+- ADVPL/TLPP conformance corpus, tolerant incremental parser and 10,000-symbol performance gate.
+- Installed-VSIX smoke now exercises six first-value operations on VS Code 1.95.3 and 1.133.0; TDS 2.1.2 coexistence preserves CP1252/LF in multi-root mode.
 
 ### Security
 
@@ -48,6 +53,8 @@ All notable changes are recorded here. The project follows Semantic Versioning a
 - Marketplace preview status is expressed by the publication flag instead of a SemVer suffix.
 - Project Memory and Journal writes now use a workspace-local cross-instance lock.
 - The focused mutation release gate now breaks below 95%; the candidate reached 95.17% across 870 mutants.
+- The VS Code runtime bridge runs in-process from a bundled CommonJS entry point, avoiding a system Node or Electron-as-Node dependency.
+- ZIP verification/normalization moved from vulnerable `adm-zip` versions to bounded `yauzl`/`yazl`; the online npm audit reports zero known vulnerabilities for the current lockfile.
 
 ## 0.1.0 - 2026-09-07
 

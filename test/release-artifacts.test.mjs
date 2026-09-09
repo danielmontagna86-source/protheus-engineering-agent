@@ -1,10 +1,9 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
-
-import AdmZip from 'adm-zip';
+import { spawnSync } from 'node:child_process';
 
 import {
   artifactPath,
@@ -18,6 +17,8 @@ import { assertNoLinkPath } from '../scripts/path-safety.mjs';
 import { validateReleaseManifest } from '../scripts/verify-release.mjs';
 import { verifyVsix } from '../scripts/verify-vsix.mjs';
 import { npmSbomInvocation } from '../scripts/build-release.mjs';
+import { normalizeSbomDocument, writeReleaseOutput } from '../scripts/build-release.mjs';
+import { createZipBuffer, readZipArchive } from '../scripts/zip.mjs';
 
 const version = '0.3.0';
 const prefix = `protheus-engineering-agent-v${version}/`;
@@ -39,33 +40,46 @@ test('SBOM invocation uses the active npm CLI for portable Windows execution', (
   assert.equal(invocation.shell, false);
 });
 
-function sourceArchive(path, extraEntries = []) {
-  const zip = new AdmZip();
-  zip.addFile(`${prefix}README.md`, Buffer.from('# Product\n'));
-  zip.addFile(`${prefix}LICENSE.md`, Buffer.from('Apache-2.0\n'));
-  zip.addFile(`${prefix}package-lock.json`, Buffer.from('{}\n'));
-  zip.addFile(`${prefix}package.json`, Buffer.from(JSON.stringify({ version })));
-  for (const [name, contents] of extraEntries) zip.addFile(`${prefix}${name}`, Buffer.from(contents));
-  zip.writeZip(path);
+async function sourceArchive(path, extraEntries = []) {
+  const entries = [
+    ['README.md', '# Product\n'],
+    ['LICENSE.md', 'Apache-2.0\n'],
+    ['package-lock.json', '{}\n'],
+    ['package.json', JSON.stringify({ version })],
+    ...extraEntries,
+  ].map(([name, contents]) => ({ name: `${prefix}${name}`, data: Buffer.from(contents) }));
+  await writeFile(path, await createZipBuffer(entries));
 }
 
-function vsixArchive(path, extraEntries = []) {
-  const zip = new AdmZip();
+async function vsixArchive(path, extraEntries = []) {
   const entries = [
     ['[Content_Types].xml', '<Types/>'],
     ['extension.vsixmanifest', '<PackageManifest/>'],
     ['extension/package.json', JSON.stringify({ version })],
     ['extension/extension.cjs', 'module.exports = {};'],
+    ['extension/dist/runtime-cli.cjs', 'module.exports = {};'],
     ['extension/dist/runtime-cli.mjs', 'export {};'],
     ['extension/dist/mcp-stdio.mjs', 'export {};'],
     ['extension/readme.md', '# Extension'],
     ['extension/license.md', 'Apache-2.0'],
     ['extension/changelog.md', '# Changelog'],
+    ['extension/third_party_notices.md', '@modelcontextprotocol/server\nZod\n'],
+    ['extension/third-party-licenses/model-context-protocol.txt', 'Apache License\nMIT License\nModel Context Protocol\n'],
+    ['extension/third-party-licenses/zod.txt', 'MIT License\nCopyright (c) 2025 Colin McDonnell\n'],
+    ['extension/package.nls.json', '{}'],
+    ['extension/package.nls.pt-br.json', '{}'],
+    ['extension/l10n/bundle.l10n.pt-br.json', '{}'],
     ['extension/media/icon.png', 'fixture icon'],
+    ['extension/media/activity-icon.svg', '<svg/>'],
+    ['extension/sample-workspace/README.md', '# Offline sample'],
+    ['extension/sample-workspace/sample-review.prw', 'User Function PEASample()\nReturn Nil\n'],
+    ['extension/skills/protheus-evidence-review/SKILL.md', '# Evidence review'],
     ...extraEntries,
   ];
-  for (const [name, contents] of entries) zip.addFile(name, Buffer.from(contents));
-  zip.writeZip(path);
+  await writeFile(path, await createZipBuffer(entries.map(([name, contents]) => ({
+    name,
+    data: Buffer.from(contents),
+  }))));
 }
 
 test('release artifact paths are contained under the ignored artifact directory', () => {
@@ -105,8 +119,30 @@ test('release evidence template is bound to the exact manifest and remains fail-
     sha256: 'c'.repeat(64),
   });
   assert.equal(evidence.freshInstall.passed, false);
+  assert.equal(evidence.vscodeSmoke.commands, 0);
+  assert.deepEqual(evidence.vscodeSmoke.commandIds, []);
+  assert.equal(evidence.freshInstall.commands, 0);
+  assert.deepEqual(evidence.freshInstall.commandIds, []);
+  assert.equal(evidence.stableGates, undefined);
   assert.equal(evidence.freshInstall.vsixSha256, null);
   assert.equal(evidence.approvedBy, null);
+});
+
+test('stable evidence template starts with every stable-only gate closed', () => {
+  const evidence = createReleaseEvidenceTemplate({
+    version: '1.0.0',
+    commit: 'b'.repeat(40),
+    artifacts: [],
+    manifest: { path: 'release-artifacts/release-manifest-v1.0.0.json', sha256: 'c'.repeat(64) },
+  });
+  assert.deepEqual(Object.keys(evidence.stableGates), [
+    'g0BaselineIntegrity', 'g1PremiumP0', 'g2SemanticP1', 'g3Tier0Virtualization',
+    'g4OfficialAnalyzer', 'g5OfficialPostgres', 'g6LicensedAppserver',
+    'g7PackageLifecycle', 'g8UxAccessibility', 'g9SecuritySupplyChain',
+    'g10CompatibilitySupport', 'g11EffectivenessClaims', 'g12ExactRelease',
+    'g13PublicationAuthorization',
+  ]);
+  assert.equal(Object.values(evidence.stableGates).every((gate) => gate.passed === false && gate.evidence === null), true);
 });
 
 test('release manifest validator requires exact provenance and verification fields', () => {
@@ -121,7 +157,10 @@ test('release manifest validator requires exact provenance and verification fiel
       artifact('release-artifacts/product.vsix', 'b'),
       artifact('release-artifacts/product.cdx.json', 'c'),
     ],
-    verification: { publication: 'PASS', sourceArchive: 'PASS', vsix: 'PASS', sbom: 'PASS' },
+    verification: {
+      publication: 'PASS', sourceArchive: 'PASS', vsix: 'PASS', vsixReproducible: 'PASS',
+      sbom: 'PASS', sbomLockfile: 'PASS',
+    },
   };
 
   assert.deepEqual(validateReleaseManifest(manifest), []);
@@ -149,18 +188,137 @@ test('CycloneDX SBOM verification requires the product identity and version', as
   assert.equal((await verifySbom(invalid, version)).status, 'FAIL');
 });
 
+test('CycloneDX SBOM reconciles production dependencies with the exact lockfile', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'pea-release-sbom-lock-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const lockPath = join(root, 'package-lock.json');
+  await writeFile(join(root, 'package.json'), JSON.stringify({
+    name: 'protheus-engineering-agent', version, dependencies: { '@example/runtime': '1.2.3' },
+  }));
+  await writeFile(lockPath, JSON.stringify({
+    lockfileVersion: 3,
+    packages: { 'node_modules/@example/runtime': { version: '1.2.3' } },
+  }));
+  const path = join(root, 'product.cdx.json');
+  const document = {
+    bomFormat: 'CycloneDX', specVersion: '1.5',
+    metadata: {
+      component: { name: 'protheus-engineering-agent', version },
+      properties: [{ name: 'pea:package-lock:sha256', value: await sha256(lockPath) }],
+    },
+    components: [{ name: '@example/runtime', version: '1.2.3' }],
+    dependencies: [],
+  };
+  await writeFile(path, JSON.stringify(document));
+  assert.equal((await verifySbom(path, version, { root })).status, 'PASS');
+  document.components[0].version = '9.9.9';
+  await writeFile(path, JSON.stringify(document));
+  assert.equal((await verifySbom(path, version, { root })).status, 'FAIL');
+});
+
 test('source archive allows the public env template and rejects nested Git metadata', async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'pea-release-archive-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const clean = join(root, 'clean.zip');
   const poisoned = join(root, 'poisoned.zip');
-  sourceArchive(clean, [['.env.example', 'PEA_ENVIRONMENT=development\n']]);
-  sourceArchive(poisoned, [['recovered/.git/config', '[core]\n']]);
+  await sourceArchive(clean, [['.env.example', 'PEA_ENVIRONMENT=development\n']]);
+  await sourceArchive(poisoned, [['recovered/.git/config', '[core]\n']]);
+  const ignoredButTracked = join(root, 'ignored-but-tracked.zip');
+  await sourceArchive(ignoredButTracked, [['dist/private.txt', 'must not ship']]);
 
   assert.equal((await verifySourceArchive(clean, version)).status, 'PASS');
   const report = await verifySourceArchive(poisoned, version);
   assert.equal(report.status, 'FAIL');
   assert.ok(report.errors.some((error) => error.includes('recovered/.git/config')));
+  assert.equal((await verifySourceArchive(ignoredButTracked, version)).status, 'FAIL');
+});
+
+test('source archive rejects duplicate, case-colliding and Unix symlink entries', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'pea-release-archive-ambiguity-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const duplicate = join(root, 'duplicate.zip');
+  const symlinkMode = join(root, 'symlink-mode.zip');
+  await sourceArchive(duplicate, [['readme.md', '# Collision\n']]);
+  await writeFile(symlinkMode, await createZipBuffer([
+    { name: `${prefix}README.md`, data: Buffer.from('# Product\n') },
+    { name: `${prefix}LICENSE.md`, data: Buffer.from('Apache-2.0\n') },
+    { name: `${prefix}package-lock.json`, data: Buffer.from('{}\n') },
+    { name: `${prefix}package.json`, data: Buffer.from(JSON.stringify({ version })) },
+    { name: `${prefix}linked.txt`, data: Buffer.from('target'), mode: 0o120777 },
+  ]));
+
+  assert.equal((await verifySourceArchive(duplicate, version)).status, 'FAIL');
+  assert.equal((await verifySourceArchive(symlinkMode, version)).status, 'FAIL');
+});
+
+test('source archive provenance byte-matches the exact declared Git commit', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'pea-release-source-origin-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await Promise.all([
+    writeFile(join(root, 'README.md'), '# Product\n'),
+    writeFile(join(root, 'LICENSE.md'), 'Apache-2.0\n'),
+    writeFile(join(root, 'package.json'), JSON.stringify({ version })),
+    writeFile(join(root, 'package-lock.json'), '{}\n'),
+  ]);
+  for (const args of [
+    ['init', '-b', 'main'], ['add', '.'],
+    ['-c', 'user.name=PEA Tests', '-c', 'user.email=pea@example.invalid', 'commit', '-m', 'fixture'],
+  ]) {
+    const result = spawnSync('git', args, { cwd: root, encoding: 'utf8', windowsHide: true });
+    assert.equal(result.status, 0, result.stderr);
+  }
+  const commit = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim();
+  const archive = join(root, 'source.zip');
+  const created = spawnSync('git', [
+    'archive', '--format=zip', `--prefix=${prefix}`, `--output=${archive}`, commit,
+  ], { cwd: root, encoding: 'utf8', windowsHide: true });
+  assert.equal(created.status, 0, created.stderr);
+  assert.equal((await verifySourceArchive(archive, version, { root, commit })).status, 'PASS');
+  const tampered = await readFile(archive);
+  tampered[tampered.length - 1] ^= 1;
+  await writeFile(archive, tampered);
+  assert.equal((await verifySourceArchive(archive, version, { root, commit })).status, 'FAIL');
+});
+
+test('SBOM normalization removes volatile identity while preserving deterministic content', () => {
+  const first = normalizeSbomDocument({
+    bomFormat: 'CycloneDX', serialNumber: 'urn:uuid:first',
+    metadata: { timestamp: '2026-09-09T01:00:00Z', component: { name: 'product' } },
+  });
+  const second = normalizeSbomDocument({
+    bomFormat: 'CycloneDX', serialNumber: 'urn:uuid:second',
+    metadata: { timestamp: '2026-09-09T02:00:00Z', component: { name: 'product' } },
+  });
+  assert.equal(JSON.stringify(first), JSON.stringify(second));
+  assert.equal('serialNumber' in first, false);
+  assert.equal('timestamp' in first.metadata, false);
+});
+
+test('SBOM verifier rejects files beyond its compressed input budget', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'pea-release-sbom-limit-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const oversized = join(root, 'oversized.cdx.json');
+  await writeFile(oversized, Buffer.alloc(11 * 1024 * 1024, 32));
+
+  const report = await verifySbom(oversized, version);
+
+  assert.equal(report.status, 'FAIL');
+  assert.match(report.errors[0], /10 MiB/);
+});
+
+test('release metadata output atomically replaces a hardlink without overwriting its target', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'pea-release-output-root-'));
+  const outside = join(await mkdtemp(join(tmpdir(), 'pea-release-output-outside-')), 'outside.json');
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(join(root, 'release-artifacts'));
+  await writeFile(outside, 'preserve', 'utf8');
+  const target = join(root, 'release-artifacts', 'release-manifest-v0.3.0.json');
+  await (await import('node:fs/promises')).link(outside, target);
+
+  await writeReleaseOutput(root, target, '{"safe":true}\n');
+
+  assert.equal(await readFile(outside, 'utf8'), 'preserve');
+  assert.equal(await readFile(target, 'utf8'), '{"safe":true}\n');
 });
 
 test('archive verifiers report malformed files as failures instead of throwing', async (t) => {
@@ -177,13 +335,39 @@ test('archive verifiers report malformed files as failures instead of throwing',
   assert.equal((await verifyVsix(vsix, version)).status, 'FAIL');
 });
 
+test('ZIP reader rejects excessive entry counts and declared expansion before extraction', async () => {
+  const manyEntries = await createZipBuffer([
+    { name: 'one.txt', data: Buffer.from('one') },
+    { name: 'two.txt', data: Buffer.from('two') },
+  ]);
+  const oversizedEntry = await createZipBuffer([
+    { name: 'large.txt', data: Buffer.alloc(32, 1) },
+  ]);
+
+  await assert.rejects(readZipArchive(manyEntries, { maxEntries: 1 }), /exceeds 1 entries/);
+  await assert.rejects(readZipArchive(oversizedEntry, { maxEntryBytes: 16 }), /exceeds 16 bytes/);
+  await assert.rejects(readZipArchive(oversizedEntry, { maxUncompressedBytes: 16 }), /exceeds 16 uncompressed bytes/);
+});
+
+test('ZIP reader verifies each entry CRC instead of trusting only the central directory', async () => {
+  const archive = Buffer.from(await createZipBuffer([{
+    name: 'evidence.json',
+    data: Buffer.from('{"ok":true}\n'),
+  }]));
+  const centralDirectory = archive.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+  assert.notEqual(centralDirectory, -1);
+  archive.writeUInt32LE((archive.readUInt32LE(centralDirectory + 16) + 1) >>> 0, centralDirectory + 16);
+
+  await assert.rejects(readZipArchive(archive), /CRC mismatch/);
+});
+
 test('VSIX verifier enforces an exact content allow-list', async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'pea-release-vsix-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const valid = join(root, 'valid.vsix');
   const unexpected = join(root, 'unexpected.vsix');
-  vsixArchive(valid);
-  vsixArchive(unexpected, [['extension/extra.txt', 'not allowed']]);
+  await vsixArchive(valid);
+  await vsixArchive(unexpected, [['extension/extra.txt', 'not allowed']]);
 
   assert.equal((await verifyVsix(valid, version)).status, 'PASS');
   const report = await verifyVsix(unexpected, version);
@@ -196,21 +380,21 @@ test('ZIP normalization produces a reproducible byte stream', async (t) => {
   t.after(() => rm(root, { recursive: true, force: true }));
   const first = join(root, 'first.zip');
   const second = join(root, 'second.zip');
-  const makeArchive = (path, date) => {
-    const zip = new AdmZip();
-    zip.addFile('extension/package.json', Buffer.from('{}\n'));
-    zip.getEntry('extension/package.json').header.time = date;
-    zip.writeZip(path);
-  };
-  makeArchive(first, new Date('2020-01-01T00:00:00Z'));
-  makeArchive(second, new Date('2026-09-07T12:34:56Z'));
+  const makeArchive = async (path, date) => writeFile(path, await createZipBuffer([{
+    name: 'extension/package.json',
+    data: Buffer.from('{}\n'),
+    mtime: date,
+  }]));
+  await makeArchive(first, new Date('2020-01-01T00:00:00Z'));
+  await makeArchive(second, new Date('2026-09-07T12:34:56Z'));
 
   await normalizeZipArchive(first);
   await normalizeZipArchive(second);
 
   assert.equal(await sha256(first), await sha256(second));
-  const normalizedEntry = new AdmZip(first).getEntry('extension/package.json');
-  assert.equal((normalizedEntry.attr >>> 16) & 0xfff, 0o644);
+  const normalizedEntry = (await readZipArchive(await readFile(first)))
+    .find((entry) => entry.name === 'extension/package.json');
+  assert.equal(normalizedEntry.mode & 0xfff, 0o644);
 });
 
 test('release build paths reject a junction before writing outside the repository', async (t) => {

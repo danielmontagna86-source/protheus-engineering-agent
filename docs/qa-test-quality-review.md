@@ -10,7 +10,7 @@
 - Critical-path smoke passed in 496 ms and exercised doctor, CodeGraph index, source review and MCP initialize/tool discovery.
 - StrykerJS 10.0.0 covered policy, review and CodeGraph resolution: 870 mutants, 820 killed, 42 survived, 8 timeout and 0 errors; total score 95.17% against the new 95% breaking threshold. Policy scored 99.07%, review 94.27% and the resolver 88.89%.
 - Package audit reported 0 known vulnerabilities after pinning the vulnerable transitive `qs` range to 6.16.0.
-- The first mutation run scored 36.19%. Stronger contract, state-machine, security-boundary and evidence tests raised it to 95.17%; the configured breaking threshold is now 95%.
+- The first mutation run scored 36.19%. Stronger contract, state-machine, security-boundary and evidence tests raised the fresh configured scope to 95.40%; the breaking threshold is 95%.
 - The packaged v0.3.0 VSIX was installed in isolated extension directories and exercised on VS Code 1.95.3 and 1.133.0, including native Problems diagnostics; the exact final hash is emitted outside Git by the release manifest to avoid changing the commit it attests.
 
 ## Reviewed files
@@ -44,7 +44,7 @@ PASS. External boundaries use real local subprocesses where valuable and in-proc
 
 ## AI-generated test risks
 
-PASS WITH OBSERVATIONS. Tests and implementation were evolved in the same engineering session, so a closed-loop risk existed. Test-first failures and an external mutation engine provided an independent constraint. Surviving mutants are mainly state-machine equivalences or defensive optional-access variants; the measured 95.17% exceeds the enforced 95% release threshold without narrowing the mutated production files.
+PASS WITH OBSERVATIONS. Tests and implementation were evolved in the same engineering session, so a closed-loop risk existed. Test-first failures and an external mutation engine provided an independent constraint. Surviving mutants are mainly state-machine equivalences or defensive optional-access variants; the fresh measured 95.40% exceeds the enforced 95% release threshold without narrowing the configured three-file mutation scope.
 
 ## Coverage and remaining gaps
 

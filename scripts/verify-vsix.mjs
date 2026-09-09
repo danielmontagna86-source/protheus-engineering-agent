@@ -1,18 +1,29 @@
-import { readFile } from 'node:fs/promises';
+import { lstat, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import AdmZip from 'adm-zip';
+import { readZipArchive } from './zip.mjs';
 
 const requiredEntries = new Set([
   'extension/package.json',
   'extension/extension.cjs',
+  'extension/dist/runtime-cli.cjs',
   'extension/dist/runtime-cli.mjs',
   'extension/dist/mcp-stdio.mjs',
   'extension/readme.md',
   'extension/license.md',
   'extension/changelog.md',
+  'extension/third_party_notices.md',
+  'extension/third-party-licenses/model-context-protocol.txt',
+  'extension/third-party-licenses/zod.txt',
+  'extension/package.nls.json',
+  'extension/package.nls.pt-br.json',
+  'extension/l10n/bundle.l10n.pt-br.json',
   'extension/media/icon.png',
+  'extension/media/activity-icon.svg',
+  'extension/sample-workspace/readme.md',
+  'extension/sample-workspace/sample-review.prw',
+  'extension/skills/protheus-evidence-review/skill.md',
 ]);
 
 const allowedEntries = new Set([
@@ -32,11 +43,18 @@ const forbiddenEntryPatterns = [
 ];
 
 export async function verifyVsix(path, expectedVersion) {
+  const fileState = await lstat(path);
+  if (!fileState.isFile() || fileState.isSymbolicLink() || fileState.size > 25 * 1024 * 1024) {
+    return {
+      status: 'FAIL', path: resolve(path), version: null, entries: 0,
+      compressedBytes: fileState.size, uncompressedBytes: 0,
+      errors: ['VSIX is unsafe or exceeds the 25 MiB compressed budget'],
+    };
+  }
   const bytes = await readFile(path);
-  let zip;
+  let entries;
   try {
-    zip = new AdmZip(bytes);
-    zip.getEntries();
+    entries = await readZipArchive(bytes, { maxUncompressedBytes: 20 * 1024 * 1024 });
   } catch (error) {
     return {
       status: 'FAIL',
@@ -48,8 +66,8 @@ export async function verifyVsix(path, expectedVersion) {
       errors: [`invalid VSIX archive: ${error.message}`],
     };
   }
-  const entries = zip.getEntries().filter((entry) => !entry.isDirectory);
-  const names = entries.map((entry) => entry.entryName.replaceAll('\\', '/'));
+  const files = entries.filter((entry) => !entry.isDirectory);
+  const names = files.map((entry) => entry.name.replaceAll('\\', '/'));
   const nameSet = new Set(names.map((name) => name.toLowerCase()));
   const errors = [];
 
@@ -64,14 +82,14 @@ export async function verifyVsix(path, expectedVersion) {
       errors.push(`forbidden VSIX entry: ${name}`);
     }
   }
-  const uncompressedBytes = entries.reduce((total, entry) => total + entry.header.size, 0);
+  const uncompressedBytes = files.reduce((total, entry) => total + entry.uncompressedSize, 0);
   if (uncompressedBytes > 20 * 1024 * 1024) errors.push('VSIX exceeds the 20 MiB uncompressed budget');
 
-  const manifestEntry = zip.getEntry('extension/package.json');
+  const manifestEntry = files.find((entry) => entry.name.toLowerCase() === 'extension/package.json');
   let version = null;
   if (manifestEntry) {
     try {
-      const manifest = JSON.parse(manifestEntry.getData().toString('utf8'));
+      const manifest = JSON.parse(manifestEntry.data.toString('utf8'));
       version = manifest.version;
       if (expectedVersion && version !== expectedVersion) {
         errors.push(`VSIX version ${version} does not match ${expectedVersion}`);
@@ -82,11 +100,26 @@ export async function verifyVsix(path, expectedVersion) {
     }
   }
 
+  const legalRequirements = [
+    ['extension/third_party_notices.md', ['@modelcontextprotocol/server', 'Zod']],
+    ['extension/third-party-licenses/model-context-protocol.txt', ['Apache License', 'MIT License', 'Model Context Protocol']],
+    ['extension/third-party-licenses/zod.txt', ['MIT License', 'Colin McDonnell']],
+  ];
+  for (const [requiredName, markers] of legalRequirements) {
+    const entry = files.find((item) => item.name.toLowerCase() === requiredName);
+    if (entry) {
+      const content = entry.data.toString('utf8');
+      for (const marker of markers) {
+        if (!content.includes(marker)) errors.push(`incomplete VSIX legal notice ${requiredName}: missing ${marker}`);
+      }
+    }
+  }
+
   return {
     status: errors.length === 0 ? 'PASS' : 'FAIL',
     path: resolve(path),
     version,
-    entries: entries.length,
+    entries: files.length,
     compressedBytes: bytes.length,
     uncompressedBytes,
     errors,

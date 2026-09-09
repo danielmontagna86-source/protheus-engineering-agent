@@ -8,6 +8,7 @@ test('bounded subagent records parent-child evidence and exact tool inheritance'
   const supervisor = createSubagentSupervisor({
     idFactory: () => 'child-001',
     clock: () => Date.parse('2026-09-07T12:00:00.000Z'),
+    toolPolicies: { 'review:file': { mutating: false } },
     invoke: async (request) => { calls.push(request); return { findingCount: 2 }; },
   });
 
@@ -28,6 +29,7 @@ test('subagent denies unknown tools, excess depth and oversized input before inv
   let calls = 0;
   const supervisor = createSubagentSupervisor({
     maxDepth: 2, maxInputBytes: 32,
+    toolPolicies: { 'review:file': { mutating: false } },
     invoke: async () => { calls += 1; return {}; },
   });
 
@@ -46,20 +48,24 @@ test('subagent denies unknown tools, excess depth and oversized input before inv
 test('mutating subagent requires checkpoint and returns diff for human review', async () => {
   const supervisor = createSubagentSupervisor({
     idFactory: () => 'child-edit',
+    toolPolicies: { 'workspace:patch': { mutating: true } },
     invoke: async () => ({ changed: true }),
     checkpoint: async () => ({ id: 'cp-1', kind: 'worktree', reference: 'refs/pea/cp-1' }),
     diff: async () => ({ files: ['source.prw'], sha256: 'a'.repeat(64) }),
   });
   const run = await supervisor.run({
-    role: 'fixer', tool: 'workspace:patch', input: { patch: 'bounded' }, mutating: true,
+    role: 'fixer', tool: 'workspace:patch', input: { patch: 'bounded' }, mutating: false,
   }, { parentId: 'p', depth: 1, allowedTools: ['workspace:patch'] });
 
   assert.equal(run.status, 'awaiting-review');
   assert.equal(run.checkpoint.kind, 'worktree');
   assert.deepEqual(run.diff.files, ['source.prw']);
 
-  const noCheckpoint = createSubagentSupervisor({ invoke: async () => ({}) });
-  assert.equal((await noCheckpoint.run({ role: 'fixer', tool: 'workspace:patch', input: {}, mutating: true }, {
+  const noCheckpoint = createSubagentSupervisor({
+    invoke: async () => ({}),
+    toolPolicies: { 'workspace:patch': { mutating: true } },
+  });
+  assert.equal((await noCheckpoint.run({ role: 'fixer', tool: 'workspace:patch', input: {}, mutating: false }, {
     parentId: 'p', depth: 1, allowedTools: ['workspace:patch'],
   })).error.code, 'SUBAGENT_CHECKPOINT_UNAVAILABLE');
 });
@@ -67,6 +73,7 @@ test('mutating subagent requires checkpoint and returns diff for human review', 
 test('subagent bounds output and fails closed on timeout and cancellation', async () => {
   const oversized = createSubagentSupervisor({
     maxOutputBytes: 32,
+    toolPolicies: { 'review:file': { mutating: false } },
     invoke: async () => ({ text: 'x'.repeat(100) }),
   });
   const context = { parentId: 'p', depth: 1, allowedTools: ['review:file'] };
@@ -74,6 +81,7 @@ test('subagent bounds output and fails closed on timeout and cancellation', asyn
 
   const slow = createSubagentSupervisor({
     timeoutMs: 5,
+    toolPolicies: { 'review:file': { mutating: false } },
     invoke: async () => new Promise(() => {}),
   });
   assert.equal((await slow.run({ role: 'x', tool: 'review:file', input: {} }, context)).error.code, 'SUBAGENT_TIMEOUT');
@@ -88,6 +96,7 @@ test('subagent bounds output and fails closed on timeout and cancellation', asyn
 test('failed mutating subagent rolls back its checkpoint and records recovery', async () => {
   const rollbacks = [];
   const supervisor = createSubagentSupervisor({
+    toolPolicies: { 'workspace:patch': { mutating: true } },
     invoke: async () => { throw new Error('provider failed'); },
     checkpoint: async () => ({ id: 'cp-2', kind: 'snapshot', reference: 'snapshot-2' }),
     diff: async () => ({ files: [] }),
@@ -107,6 +116,7 @@ test('subagent enforces concurrency budget', async () => {
   let release;
   const supervisor = createSubagentSupervisor({
     maxConcurrent: 1,
+    toolPolicies: { 'review:file': { mutating: false } },
     invoke: async () => new Promise((resolve) => { release = resolve; }),
   });
   const context = { parentId: 'p', depth: 1, allowedTools: ['review:file'] };
@@ -116,4 +126,29 @@ test('subagent enforces concurrency budget', async () => {
   assert.equal(second.error.code, 'SUBAGENT_CONCURRENCY_EXCEEDED');
   release({ ok: true });
   assert.equal((await first).status, 'completed');
+});
+
+test('subagent mutability is derived only from the trusted host tool policy', async () => {
+  let checkpoints = 0;
+  const supervisor = createSubagentSupervisor({
+    toolPolicies: { 'workspace:patch': { mutating: true } },
+    invoke: async () => ({ changed: true }),
+    checkpoint: async () => {
+      checkpoints += 1;
+      return { id: 'cp-host', kind: 'snapshot', reference: 'snapshot-host' };
+    },
+    diff: async () => ({ files: ['safe.prw'] }),
+  });
+
+  const run = await supervisor.run({
+    role: 'fixer', tool: 'workspace:patch', input: {}, mutating: false,
+  }, { parentId: 'p', depth: 1, allowedTools: ['workspace:patch'] });
+
+  assert.equal(run.status, 'awaiting-review');
+  assert.equal(run.mutating, true);
+  assert.equal(checkpoints, 1);
+  const unknown = createSubagentSupervisor({ invoke: async () => ({}) });
+  assert.equal((await unknown.run({ role: 'x', tool: 'review:file', input: {} }, {
+    parentId: 'p', depth: 1, allowedTools: ['review:file'],
+  })).error.code, 'SUBAGENT_TOOL_POLICY_MISSING');
 });

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 
 import {
   assessmentFor,
@@ -7,6 +8,19 @@ import {
   maskStringsAndComments,
   reviewSource,
 } from '../packages/review/src/index.mjs';
+
+test('bundled legal sample produces a deterministic first review finding', async () => {
+  const source = await readFile(
+    new URL('../apps/vscode-extension/sample-workspace/sample-review.prw', import.meta.url),
+    'utf8',
+  );
+  assert.match(source, /@author\s+Protheus Engineering Agent/i);
+  assert.match(source, /@return\s+character/i);
+
+  const result = reviewSource(source, { file: 'sample-review.prw' });
+
+  assert.equal(result.findings.some((finding) => finding.ruleId === 'CA4000'), true);
+});
 
 test('review masker preserves positions and newlines while removing only comments and strings', () => {
   const source = [

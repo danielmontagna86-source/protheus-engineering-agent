@@ -40,18 +40,42 @@ export async function buildExtension() {
   });
   await build({
     ...common,
+    entryPoints: [join(root, 'packages', 'runtime', 'src', 'cli.mjs')],
+    outfile: join(extensionDist, 'runtime-cli.cjs'),
+    format: 'cjs',
+    banner: {
+      js: "const __pea_import_meta_url = require('node:url').pathToFileURL(__filename).href;",
+    },
+    define: { 'import.meta.url': '__pea_import_meta_url' },
+  });
+  await build({
+    ...common,
     entryPoints: [join(root, 'packages', 'mcp', 'src', 'stdio.mjs')],
     outfile: join(extensionDist, 'mcp-stdio.mjs'),
   });
 
   await mkdir(join(stageRoot, 'dist'), { recursive: true });
-  for (const file of ['extension.cjs', 'README.md', '.vscodeignore']) {
+  for (const file of ['extension.cjs', 'README.md', '.vscodeignore', 'package.nls.json', 'package.nls.pt-br.json']) {
     await cp(join(extensionRoot, file), join(stageRoot, file));
   }
   await cp(extensionDist, join(stageRoot, 'dist'), { recursive: true });
   await cp(join(extensionRoot, 'media'), join(stageRoot, 'media'), { recursive: true });
+  await cp(join(extensionRoot, 'l10n'), join(stageRoot, 'l10n'), { recursive: true });
+  await cp(join(extensionRoot, 'sample-workspace'), join(stageRoot, 'sample-workspace'), { recursive: true });
+  await mkdir(join(stageRoot, 'skills', 'protheus-evidence-review'), { recursive: true });
+  await cp(
+    join(root, '.agents', 'skills', 'protheus-evidence-review', 'SKILL.md'),
+    join(stageRoot, 'skills', 'protheus-evidence-review', 'SKILL.md'),
+  );
   await cp(join(root, 'LICENSE.md'), join(stageRoot, 'LICENSE.md'));
   await cp(join(root, 'CHANGELOG.md'), join(stageRoot, 'CHANGELOG.md'));
+  await cp(join(root, 'THIRD_PARTY_NOTICES.md'), join(stageRoot, 'THIRD_PARTY_NOTICES.md'));
+  await mkdir(join(stageRoot, 'third-party-licenses'), { recursive: true });
+  await cp(
+    join(root, 'node_modules', '@modelcontextprotocol', 'server', 'LICENSE'),
+    join(stageRoot, 'third-party-licenses', 'model-context-protocol.txt'),
+  );
+  await cp(join(root, 'node_modules', 'zod', 'LICENSE'), join(stageRoot, 'third-party-licenses', 'zod.txt'));
 
   const manifest = JSON.parse(await readFile(join(extensionRoot, 'package.json'), 'utf8'));
   delete manifest.private;

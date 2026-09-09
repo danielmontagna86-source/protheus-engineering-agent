@@ -1,7 +1,7 @@
 {
   "name": "protheus-engineering-agent",
   "displayName": "Protheus Engineering Agent",
-  "description": "Standalone, evidence-backed engineering tools for ADVPL/TLPP projects in VS Code.",
+  "description": "%extension.description%",
   "version": "0.3.0",
   "publisher": "danielmontagna86-source",
   "private": true,
@@ -14,6 +14,7 @@
   },
   "icon": "media/icon.png",
   "license": "Apache-2.0",
+  "l10n": "./l10n",
   "repository": {
     "type": "git",
     "url": "https://github.com/danielmontagna86-source/protheus-engineering-agent.git"
@@ -31,7 +32,7 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": false,
-      "description": "Open a trusted workspace before allowing an engineering agent to inspect project files."
+      "description": "%capabilities.untrustedDescription%"
     },
     "virtualWorkspaces": {
       "supported": false
@@ -42,38 +43,175 @@
     "onCommand:pea.doctor",
     "onCommand:pea.indexWorkspace",
     "onCommand:pea.openContext",
-    "onCommand:pea.reviewActiveFile"
+    "onCommand:pea.addMemoryEntry",
+    "onCommand:pea.addJournalEntry",
+    "onCommand:pea.promoteJournalEntry",
+    "onCommand:pea.expireMemory",
+    "onCommand:pea.importSnapshot",
+    "onCommand:pea.searchTdn",
+    "onCommand:pea.searchDictionary",
+    "onCommand:pea.prepareBuild",
+    "onCommand:pea.runBuild",
+    "onCommand:pea.buildStatus",
+    "onCommand:pea.cancelBuild",
+    "onCommand:pea.buildEvidence",
+    "onCommand:pea.reviewActiveFile",
+    "onCommand:pea.reviewChanges",
+    "onCommand:pea.refreshEngineeringCenter",
+    "onCommand:pea.openSampleWorkspace",
+    "onLanguageModelTool:pea_reviewFile",
+    "onLanguageModelTool:pea_reviewChanges",
+    "onLanguageModelTool:pea_readProjectContext",
+    "onView:pea.engineeringCenter"
   ],
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "pea",
+          "title": "%views.containerTitle%",
+          "icon": "media/activity-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "pea": [
+        {
+          "id": "pea.engineeringCenter",
+          "name": "%views.engineeringCenter%"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "pea.engineeringCenter",
+        "contents": "%views.welcome%"
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "pea_reviewFile",
+        "displayName": "%tools.reviewFile.displayName%",
+        "modelDescription": "%tools.reviewFile.modelDescription%",
+        "userDescription": "%tools.reviewFile.userDescription%",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "reviewProtheusFile",
+        "icon": "$(search)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "description": "Absolute path to an ADVPL/TLPP source in an open workspace." },
+            "workspace": { "type": "string", "description": "Absolute open workspace path; required only for ambiguous multi-root windows." }
+          },
+          "required": ["path"],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "pea_reviewChanges",
+        "displayName": "%tools.reviewChanges.displayName%",
+        "modelDescription": "%tools.reviewChanges.modelDescription%",
+        "userDescription": "%tools.reviewChanges.userDescription%",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "reviewProtheusChanges",
+        "icon": "$(git-compare)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "scope": { "type": "string", "enum": ["staged", "unstaged", "working-tree", "branch"] },
+              "baseRef": { "type": "string", "description": "Required base Git ref when scope is branch." },
+              "repository": { "type": "string", "description": "Absolute Git repository root inside the selected workspace; required when multiple repositories exist." },
+            "workspace": { "type": "string", "description": "Absolute open workspace path; required only for ambiguous multi-root windows." }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "pea_readProjectContext",
+        "displayName": "%tools.readContext.displayName%",
+        "modelDescription": "%tools.readContext.modelDescription%",
+        "userDescription": "%tools.readContext.userDescription%",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "readProtheusContext",
+        "icon": "$(book)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "workspace": { "type": "string", "description": "Absolute open workspace path; required only for ambiguous multi-root windows." }
+          },
+          "additionalProperties": false
+        }
+      }
+    ],
+    "chatSkills": [
+      {
+        "path": "./skills/protheus-evidence-review/SKILL.md"
+      }
+    ],
     "walkthroughs": [
       {
         "id": "pea.gettingStarted",
-        "title": "Start with evidence-backed Protheus review",
-        "description": "Validate the workspace, index ADVPL/TLPP sources, and publish review findings to Problems.",
+        "title": "%walkthrough.title%",
+        "description": "%walkthrough.description%",
         "steps": [
           {
+            "id": "pea.sampleStep",
+            "title": "%walkthrough.sample.title%",
+            "description": "%walkthrough.sample.description%"
+          },
+          {
             "id": "pea.doctorStep",
-            "title": "Validate the workspace",
-            "description": "Run [Protheus Agent: Doctor](command:pea.doctor) to verify local, offline readiness."
+            "title": "%walkthrough.doctor.title%",
+            "description": "%walkthrough.doctor.description%"
           },
           {
             "id": "pea.indexStep",
-            "title": "Build the project evidence map",
-            "description": "Run [Protheus Agent: Index Workspace](command:pea.indexWorkspace) to index supported sources."
+            "title": "%walkthrough.index.title%",
+            "description": "%walkthrough.index.description%"
           },
           {
             "id": "pea.reviewStep",
-            "title": "Review the active source",
-            "description": "Open an ADVPL/TLPP file and run [Protheus Agent: Review Active ADVPL/TLPP File](command:pea.reviewActiveFile). Findings appear in Problems."
+            "title": "%walkthrough.review.title%",
+            "description": "%walkthrough.review.description%"
+          },
+          {
+            "id": "pea.memoryStep",
+            "title": "%walkthrough.memory.title%",
+            "description": "%walkthrough.memory.description%"
+          },
+          {
+            "id": "pea.knowledgeStep",
+            "title": "%walkthrough.knowledge.title%",
+            "description": "%walkthrough.knowledge.description%"
+          },
+          {
+            "id": "pea.buildStep",
+            "title": "%walkthrough.build.title%",
+            "description": "%walkthrough.build.description%"
           }
         ]
       }
     ],
     "commands": [
-      { "command": "pea.doctor", "title": "Protheus Agent: Doctor" },
-      { "command": "pea.indexWorkspace", "title": "Protheus Agent: Index Workspace" },
-      { "command": "pea.openContext", "title": "Protheus Agent: Show Engineering Context" },
-      { "command": "pea.reviewActiveFile", "title": "Protheus Agent: Review Active ADVPL/TLPP File" }
+      { "command": "pea.doctor", "title": "%commands.doctor%" },
+      { "command": "pea.indexWorkspace", "title": "%commands.indexWorkspace%" },
+      { "command": "pea.openContext", "title": "%commands.openContext%" },
+      { "command": "pea.addMemoryEntry", "title": "%commands.addMemoryEntry%", "icon": "$(add)" },
+      { "command": "pea.addJournalEntry", "title": "%commands.addJournalEntry%", "icon": "$(note)" },
+      { "command": "pea.promoteJournalEntry", "title": "%commands.promoteJournalEntry%", "icon": "$(arrow-up)" },
+      { "command": "pea.expireMemory", "title": "%commands.expireMemory%", "icon": "$(history)" },
+      { "command": "pea.importSnapshot", "title": "%commands.importSnapshot%", "icon": "$(database)" },
+      { "command": "pea.searchTdn", "title": "%commands.searchTdn%", "icon": "$(search)" },
+      { "command": "pea.searchDictionary", "title": "%commands.searchDictionary%", "icon": "$(search)" },
+      { "command": "pea.prepareBuild", "title": "%commands.prepareBuild%", "icon": "$(tools)" },
+      { "command": "pea.runBuild", "title": "%commands.runBuild%", "icon": "$(play)" },
+      { "command": "pea.buildStatus", "title": "%commands.buildStatus%" },
+      { "command": "pea.cancelBuild", "title": "%commands.cancelBuild%", "icon": "$(debug-stop)" },
+      { "command": "pea.buildEvidence", "title": "%commands.buildEvidence%", "icon": "$(verified)" },
+      { "command": "pea.reviewActiveFile", "title": "%commands.reviewActiveFile%" },
+      { "command": "pea.reviewChanges", "title": "%commands.reviewChanges%", "icon": "$(git-compare)" },
+      { "command": "pea.refreshEngineeringCenter", "title": "%commands.refreshEngineeringCenter%", "icon": "$(refresh)" },
+      { "command": "pea.openSampleWorkspace", "title": "%commands.openSampleWorkspace%", "icon": "$(folder-opened)" }
     ]
   }
 }

@@ -11,7 +11,7 @@ The VS Code extension remains a thin process adapter. Build tooling bundles the 
 
 1. The runtime revalidates VS Code paths against the workspace.
 2. MCP tool arguments are exact-contract objects; undeclared fields are rejected.
-3. MCP stdio requests are limited to 1 MiB and an oversized request does not terminate the session.
+3. MCP stdio requests are limited to 1 MiB; an oversized request fails closed by terminating that transport without executing a following payload.
 4. Project Memory, Journal, Skills, Rules, sources, and integration output remain untrusted data.
 5. Hermes receives an isolated workspace-local home and is never probed implicitly.
 6. Artifact output is confined to ignored directories with symlink/junction checks.

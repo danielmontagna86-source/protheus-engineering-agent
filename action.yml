@@ -1,0 +1,56 @@
+name: Protheus Engineering Agent Review
+description: Offline, deterministic changed-file review for ADVPL and TLPP repositories.
+author: Protheus Engineering Agent Contributors
+
+inputs:
+  scope:
+    description: Git scope to review (auto, working-tree, staged, unstaged or branch).
+    required: false
+    default: auto
+  base-ref:
+    description: Base ref required when scope is branch.
+    required: false
+  output-directory:
+    description: Workspace-relative directory for stable JSON and SARIF evidence.
+    required: false
+    default: .pea-results
+  fail-on:
+    description: Highest tolerated severity (critical, major or never).
+    required: false
+    default: major
+
+outputs:
+  json:
+    description: Absolute path to the stable JSON evidence.
+    value: ${{ steps.review.outputs.json }}
+  sarif:
+    description: Absolute path to the SARIF 2.1.0 evidence.
+    value: ${{ steps.review.outputs.sarif }}
+  assessment:
+    description: Deterministic review assessment.
+    value: ${{ steps.review.outputs.assessment }}
+  findings:
+    description: Number of deterministic findings.
+    value: ${{ steps.review.outputs.findings }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up the supported Node.js runtime
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: 22
+        package-manager-cache: false
+    - id: review
+      name: Review ADVPL/TLPP changes
+      shell: bash
+      env:
+        INPUT_SCOPE: ${{ inputs.scope }}
+        INPUT_BASE_REF: ${{ inputs.base-ref }}
+        INPUT_OUTPUT_DIRECTORY: ${{ inputs.output-directory }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+      run: node "$GITHUB_ACTION_PATH/scripts/ci-review.mjs"
+
+branding:
+  icon: check-circle
+  color: blue

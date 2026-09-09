@@ -30,6 +30,7 @@
     "test:vscode:host": "node scripts/run-vscode-smoke.mjs",
     "test:vscode:minimum": "node scripts/run-vscode-smoke.mjs --version 1.95.3",
     "test:vscode:tds": "node scripts/run-vscode-smoke.mjs --with-tds",
+    "test:vscode:lifecycle": "node scripts/run-vscode-lifecycle.mjs",
     "build:extension": "node scripts/build-extension.mjs",
     "package:extension": "node scripts/package-extension.mjs",
     "build:release": "node scripts/build-release.mjs",
@@ -37,10 +38,12 @@
     "check": "node scripts/check.mjs",
     "smoke": "node scripts/smoke.mjs",
     "benchmark": "node benchmark/run.mjs",
+    "benchmark:large": "node benchmark/large-repository.mjs ci",
+    "benchmark:large:release": "node benchmark/large-repository.mjs release",
     "publication:check": "node scripts/publication-check.mjs",
     "publication:release-check": "node scripts/publication-check.mjs --release",
     "validate": "node --test && node scripts/check.mjs && node scripts/publication-check.mjs",
-    "validate:release-candidate": "npm run validate && npm run benchmark && npm run smoke && npm run package:extension && npm run test:vscode:host && npm run test:vscode:minimum && npm run test:vscode:tds && npm audit --audit-level=high && npm run test:mutation",
+    "validate:release-candidate": "npm run validate && npm run benchmark && npm run smoke && npm run package:extension && npm run test:vscode:host && npm run test:vscode:minimum && npm run test:vscode:tds && npm audit --audit-level=moderate && npm run test:mutation",
     "doctor": "node packages/runtime/src/cli.mjs doctor",
     "mcp": "node packages/mcp/src/stdio.mjs"
   },
@@ -48,8 +51,11 @@
     "@stryker-mutator/core": "10.0.0",
     "@vscode/test-electron": "3.1.0",
     "@vscode/vsce": "3.9.2",
-    "adm-zip": "0.6.0",
-    "esbuild": "0.28.2"
+    "buffer-crc32": "1.0.0",
+    "esbuild": "0.28.2",
+    "yaml": "2.9.0",
+    "yauzl": "3.4.0",
+    "yazl": "3.3.1"
   },
   "overrides": {
     "qs": "6.16.0"
@@ -58,5 +64,8 @@
     "esbuild@0.28.2": true,
     "@vscode/vsce-sign": false,
     "keytar": false
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0"
   }
 }

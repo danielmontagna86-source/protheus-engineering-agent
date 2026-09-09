@@ -3,7 +3,7 @@
 **Date:** 2026-09-07
 **Decision:** Local development gate PASS; public release NO-GO.
 
-Latest v0.3.0 candidate: 170/170 tests passed three consecutive times, 47 source files and 3 manifests passed structural checks, the CLI/MCP smoke passed in 496 ms, npm audit reported zero vulnerabilities, and mutation reached 95.17% with a 95% breaking gate. The packaged VSIX installed into isolated profiles and all four commands plus native Problems diagnostics passed on VS Code 1.95.3 and 1.133.0; official TDS 2.0.16 coexistence also passed. Exact-final-commit archive audit and candidate GitHub CI/OSV/public CodeQL remain pending.
+Historical v0.3.0 baseline (superseded by `docs/qa/stable-candidate-local-validation-2026-09-09.md`): 170/170 tests passed three consecutive times, 47 source files and 3 manifests passed structural checks, the CLI/MCP smoke passed in 496 ms, npm audit reported zero vulnerabilities, and mutation reached 95.17% with a 95% breaking gate. The then-current packaged VSIX passed on VS Code 1.95.3 and 1.133.0 with TDS 2.0.16. This paragraph is retained as historical evidence and must not be read as the current candidate result.
 
 ## Requirement traceability
 

@@ -2,9 +2,13 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const vscode = require('vscode');
+const executedCommandIds = new Set();
 
-async function execute(command) {
-  const result = await vscode.commands.executeCommand(command);
+async function execute(command, ...args) {
+  executedCommandIds.add(command);
+  process.stdout.write(`VS Code smoke: invoking ${command}\n`);
+  const result = await vscode.commands.executeCommand(command, ...args);
+  process.stdout.write(`VS Code smoke: completed ${command}\n`);
   assert.equal(typeof result, 'string', `${command} did not return the runtime JSON`);
   return JSON.parse(result);
 }
@@ -41,20 +45,34 @@ async function run() {
     assert.equal(tds.isActive, true, 'TDS did not activate in the isolated workspace');
   }
 
-  const doctor = await execute('pea.doctor');
+  const doctor = await execute('pea.doctor', workspace.uri);
   assert.equal(doctor.ok, true);
   assert.equal(doctor.hermes.probed, false);
 
-  const index = await execute('pea.indexWorkspace');
+  const index = await execute('pea.indexWorkspace', workspace.uri);
   assert.deepEqual(index.files, ['empty.prw']);
+  const warmIndex = await execute('pea.indexWorkspace', workspace.uri);
+  assert.deepEqual(warmIndex.files, index.files);
+  assert.equal(warmIndex.analysis.cache.hits, 1, 'second index did not reuse the installed runtime cache');
+  assert.equal(warmIndex.analysis.cache.misses, 0, 'unchanged source was unexpectedly reparsed');
 
-  const context = await execute('pea.openContext');
+  const context = await execute('pea.openContext', workspace.uri);
   assert.equal(context.trust, 'untrusted-project-data');
   assert.match(context.hermes.mcp.args[0], /dist[\\/]mcp-stdio\.mjs$/);
   assert.deepEqual(
     context.hermes.mcp.env.find((item) => item.name === 'PEA_ENVIRONMENT'),
     { name: 'PEA_ENVIRONMENT', value: 'production' },
   );
+
+  const journal = await execute('pea.addJournalEntry', {
+    uri: workspace.uri,
+    summary: 'Installed VSIX lifecycle smoke',
+    actor: 'qa-smoke',
+  });
+  assert.equal(journal.kind, 'decision');
+  assert.equal(journal.attribution.actor, 'qa-smoke');
+  const updatedContext = await execute('pea.openContext', workspace.uri);
+  assert.equal(updatedContext.context.journal.some((entry) => entry.id === journal.id), true);
 
   const sourceUri = vscode.Uri.file(path.join(
     expectTds ? vscode.workspace.workspaceFolders[1].uri.fsPath : workspace.uri.fsPath,
@@ -81,7 +99,24 @@ async function run() {
     assert.equal(bytes.includes(Buffer.from([0x0d, 0x0a])), false, 'LF fixture was converted to CRLF');
   }
 
-  process.stdout.write(`VS Code Extension Host smoke: PASS (4 commands${expectTds ? ', TDS + CP1252/LF + multi-root' : ''})\n`);
+  const declaredCommandIds = (product.packageJSON.contributes?.commands ?? []).map((item) => item.command).sort();
+  const registeredCommands = new Set(await vscode.commands.getCommands(true));
+  assert.equal(declaredCommandIds.length, 19, 'packaged extension must declare all 19 public commands');
+  assert.deepEqual(
+    declaredCommandIds.filter((command) => !registeredCommands.has(command)),
+    [],
+    'every packaged public command must be registered in the installed Extension Host',
+  );
+  const receiptPath = process.env.PEA_SMOKE_RECEIPT;
+  assert.ok(receiptPath, 'installed smoke receipt path was not provided');
+  await fs.writeFile(receiptPath, JSON.stringify({
+    schemaVersion: 1,
+    commandIds: declaredCommandIds,
+    executedCommandIds: [...executedCommandIds].sort(),
+    invocations: 7,
+  }, null, 2));
+
+  process.stdout.write(`VS Code Extension Host smoke: PASS (7 core command invocations${expectTds ? ', TDS + CP1252/LF + multi-root' : ''})\n`);
 }
 
 module.exports = { run };

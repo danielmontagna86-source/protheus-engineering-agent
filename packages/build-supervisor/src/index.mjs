@@ -1,12 +1,13 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
-import { lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, open, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
 
 const MAX_TIMEOUT_MS = 30 * 60 * 1_000;
 const DEFAULT_TIMEOUT_MS = 2 * 60 * 1_000;
 const DEFAULT_MAX_LOG_BYTES = 256 * 1_024;
 const MAX_STORE_BYTES = 2 * 1_024 * 1_024;
+const DEFAULT_MAX_ARTIFACT_BYTES = 512 * 1_024 * 1_024;
 
 class BuildContractError extends Error {
   constructor(code, message) {
@@ -35,16 +36,30 @@ function validatePlan(plan) {
   return mode;
 }
 
-function commandIdentity(command) {
+function defaultRedact(value) {
+  return String(value)
+    .replace(/\b(Bearer\s+)[^\s"']+/gi, '$1[REDACTED]')
+    .replace(/(["'](?:api[_-]?key|token|password|secret)["']\s*:\s*["'])[^"']*(["'])/gi, '$1[REDACTED]$2')
+    .replace(/((?:api[_-]?key|token|password|secret)\s*[=:]\s*)[^\s,"']+/gi, '$1[REDACTED]')
+    .replace(/([?&](?:api[_-]?key|token|password|secret)=)[^&#\s]+/gi, '$1[REDACTED]')
+    .replace(/\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}|AKIA[A-Z0-9]{16})\b/g, '[REDACTED]');
+}
+
+function commandIdentity(command, redact = defaultRedact) {
   if (command === undefined) return null;
   if (!command || typeof command.executable !== 'string' || command.executable.length === 0
     || !Array.isArray(command.args) || command.args.some((item) => typeof item !== 'string')) {
     throw new TypeError('build command requires executable and string args');
   }
+  const args = command.args.map((argument, index) => {
+    const previous = command.args[index - 1] ?? '';
+    if (/^(?:--?|\/)(?:api[_-]?key|token|password|secret)$/i.test(previous)) return '[REDACTED]';
+    return redact(argument);
+  });
   return {
-    executable: command.executable,
-    args: [...command.args],
-    ...(command.identity ? { identity: String(command.identity) } : {}),
+    executable: redact(command.executable),
+    args,
+    ...(command.identity ? { identity: redact(command.identity) } : {}),
   };
 }
 
@@ -56,12 +71,12 @@ function boundedLog(value, maxBytes, label) {
   return { text: bytes.subarray(0, maxBytes).toString('utf8'), truncated: true };
 }
 
-function normalizeResult(result, maxLogBytes) {
+function normalizeResult(result, maxLogBytes, redact) {
   if (!result || typeof result !== 'object' || !Number.isInteger(result.exitCode)) {
     throw new BuildContractError('BUILD_RESULT_INVALID', 'runner result requires an integer exitCode');
   }
-  const stdout = boundedLog(result.stdout ?? result.output, maxLogBytes, 'stdout');
-  const stderr = boundedLog(result.stderr, maxLogBytes, 'stderr');
+  const stdout = boundedLog(redact(result.stdout ?? result.output ?? ''), maxLogBytes, 'stdout');
+  const stderr = boundedLog(redact(result.stderr ?? ''), maxLogBytes, 'stderr');
   const artifacts = result.artifacts ?? [];
   if (!Array.isArray(artifacts) || artifacts.some((artifact) => (
     typeof artifact?.path !== 'string' || artifact.path.length === 0
@@ -69,10 +84,20 @@ function normalizeResult(result, maxLogBytes) {
   ))) {
     throw new BuildContractError('BUILD_RESULT_INVALID', 'artifacts require path and SHA-256');
   }
+  let compiler = null;
+  if (result.compiler !== undefined && result.compiler !== null) {
+    if (!result.compiler || typeof result.compiler !== 'object' || Array.isArray(result.compiler)) {
+      throw new BuildContractError('BUILD_RESULT_INVALID', 'compiler evidence must be an object');
+    }
+    compiler = {
+      ...(typeof result.compiler.identity === 'string' ? { identity: redact(result.compiler.identity) } : {}),
+      ...(typeof result.compiler.version === 'string' ? { version: redact(result.compiler.version) } : {}),
+    };
+  }
   return {
     exitCode: result.exitCode,
-    compiler: result.compiler ?? null,
-    artifacts: artifacts.map((artifact) => ({ path: artifact.path, sha256: artifact.sha256.toLowerCase() })),
+    compiler,
+    artifacts: artifacts.map((artifact) => ({ path: redact(artifact.path), sha256: artifact.sha256.toLowerCase() })),
     logs: {
       stdout: stdout.text,
       stderr: stderr.text,
@@ -199,11 +224,49 @@ export function createJsonBuildStore(options = {}) {
 
 export function createProcessBuildRunner(options = {}) {
   const execFileImpl = options.execFileImpl ?? execFile;
-  const readFileImpl = options.readFileImpl ?? readFile;
   const maxBuffer = options.maxBuffer ?? (4 * 1_024 * 1_024);
+  const maxArtifactBytes = options.maxArtifactBytes ?? DEFAULT_MAX_ARTIFACT_BYTES;
+  if (!Number.isSafeInteger(maxArtifactBytes) || maxArtifactBytes < 1) {
+    throw new TypeError('maxArtifactBytes must be a positive safe integer');
+  }
+
+  async function hashArtifact(workspace, artifactPath) {
+    const contained = assertWorkspaceRelative(workspace, artifactPath);
+    const before = await lstat(contained.absolute);
+    if (!before.isFile() || before.isSymbolicLink()) {
+      throw new BuildContractError('BUILD_ARTIFACT_UNSAFE', `artifact is not a regular file: ${artifactPath}`);
+    }
+    if (before.size > maxArtifactBytes) {
+      throw new BuildContractError('BUILD_ARTIFACT_TOO_LARGE', `artifact exceeds ${maxArtifactBytes} bytes: ${artifactPath}`);
+    }
+    const [resolvedWorkspace, resolvedArtifact] = await Promise.all([realpath(workspace), realpath(contained.absolute)]);
+    const resolved = assertWorkspaceRelative(resolvedWorkspace, relative(resolvedWorkspace, resolvedArtifact));
+    const handle = await open(resolved.absolute, 'r');
+    try {
+      const opened = await handle.stat();
+      if (!opened.isFile() || opened.dev !== before.dev || opened.ino !== before.ino) {
+        throw new BuildContractError('BUILD_ARTIFACT_UNSAFE', `artifact changed during verification: ${artifactPath}`);
+      }
+      const hash = createHash('sha256');
+      const chunk = Buffer.alloc(64 * 1024);
+      let position = 0;
+      while (position < opened.size) {
+        const { bytesRead } = await handle.read(chunk, 0, Math.min(chunk.length, opened.size - position), position);
+        if (bytesRead === 0) break;
+        position += bytesRead;
+        if (position > maxArtifactBytes) {
+          throw new BuildContractError('BUILD_ARTIFACT_TOO_LARGE', `artifact exceeds ${maxArtifactBytes} bytes: ${artifactPath}`);
+        }
+        hash.update(chunk.subarray(0, bytesRead));
+      }
+      return { path: contained.relative, sha256: hash.digest('hex') };
+    } finally {
+      await handle.close();
+    }
+  }
 
   return async function runProcess(step, context = {}) {
-    const command = commandIdentity(step.command);
+    const command = commandIdentity(step.command, (value) => String(value));
     if (!command) throw new BuildContractError('BUILD_COMMAND_INVALID', 'process build requires a command');
     const workspace = resolve(context.workspace ?? process.cwd());
     return new Promise((resolveRun, rejectRun) => {
@@ -221,12 +284,7 @@ export function createProcessBuildRunner(options = {}) {
           const artifacts = [];
           if (exitCode === 0) {
             for (const artifactPath of step.artifacts ?? []) {
-              const contained = assertWorkspaceRelative(workspace, artifactPath);
-              const bytes = await readFileImpl(contained.absolute);
-              artifacts.push({
-                path: contained.relative,
-                sha256: createHash('sha256').update(bytes).digest('hex'),
-              });
+              artifacts.push(await hashArtifact(workspace, artifactPath));
             }
           }
           return {
@@ -251,12 +309,15 @@ export function createBuildSupervisor(options) {
   const clock = options.clock ?? Date.now;
   const idFactory = options.idFactory ?? randomUUID;
   const maxLogBytes = options.maxLogBytes ?? DEFAULT_MAX_LOG_BYTES;
+  const redact = options.redact ?? defaultRedact;
+  if (typeof redact !== 'function') throw new TypeError('build redactor must be a function');
   const store = options.store;
   if (store && (typeof store.load !== 'function' || typeof store.save !== 'function')) {
     throw new TypeError('build store requires load and save functions');
   }
 
   return {
+    redact,
     async runPlan(plan, context = {}) {
       const mode = validatePlan(plan);
       const environment = context.environment ?? 'development';
@@ -330,7 +391,7 @@ export function createBuildSupervisor(options) {
           { grants },
         );
         if (!decision.allowed) {
-          run.steps.push({ id: step.id, status: 'blocked', decision, command: commandIdentity(step.command) });
+          run.steps.push({ id: step.id, status: 'blocked', decision, command: commandIdentity(step.command, redact) });
           run.status = 'blocked';
           break;
         }
@@ -338,7 +399,7 @@ export function createBuildSupervisor(options) {
           run.steps.push({
             id: step.id,
             status: 'blocked',
-            command: commandIdentity(step.command),
+            command: commandIdentity(step.command, redact),
             decision: { ...decision, allowed: false, reason: 'approval-evidence-required' },
           });
           run.status = 'blocked';
@@ -351,7 +412,7 @@ export function createBuildSupervisor(options) {
           ...(idempotencyKey ? { idempotencyKey: step.idempotencyKey } : {}),
           status: 'running',
           decision,
-          command: commandIdentity(step.command),
+          command: commandIdentity(step.command, redact),
           timeoutMs: step.timeoutMs ?? DEFAULT_TIMEOUT_MS,
           startedAt: new Date(stepStartedAt).toISOString(),
           durationMs: 0,
@@ -364,7 +425,7 @@ export function createBuildSupervisor(options) {
             record.timeoutMs,
             context.signal,
           );
-          const result = normalizeResult(raw, maxLogBytes);
+          const result = normalizeResult(raw, maxLogBytes, redact);
           record.result = {
             exitCode: result.exitCode,
             compiler: result.compiler,
@@ -390,7 +451,7 @@ export function createBuildSupervisor(options) {
           record.status = code === 'BUILD_TIMEOUT'
             ? 'timed-out'
             : (code === 'BUILD_CANCELLED' ? 'cancelled' : 'failed');
-          record.error = { code, message: String(error?.message ?? error) };
+          record.error = { code, message: redact(error?.message ?? error).slice(0, 500) };
           run.status = record.status;
           try { await saveRun(); } catch { /* The checkpoint error is already represented below. */ }
           break;
@@ -406,6 +467,119 @@ export function createBuildSupervisor(options) {
       run.durationMs = Math.max(0, clock() - startedAt);
       await saveRun();
       return run;
+    },
+  };
+}
+
+export function createBuildService(options) {
+  if (!options?.supervisor || typeof options.supervisor.runPlan !== 'function') {
+    throw new TypeError('build supervisor is required');
+  }
+  if (!options.plans || typeof options.plans !== 'object' || Array.isArray(options.plans)) {
+    throw new TypeError('build plans catalog is required');
+  }
+  const idFactory = options.idFactory ?? randomUUID;
+  const redact = options.redact ?? options.supervisor.redact ?? defaultRedact;
+  if (typeof redact !== 'function') throw new TypeError('build service redactor must be a function');
+  const plans = new Map();
+  for (const [planId, plan] of Object.entries(options.plans)) {
+    if (!/^[a-z][a-z0-9.-]{0,79}$/.test(planId)) throw new TypeError(`invalid build plan id: ${planId}`);
+    validatePlan(plan);
+    plans.set(planId, structuredClone(plan));
+  }
+  const requests = new Map();
+
+  function requestFor(requestId) {
+    if (typeof requestId !== 'string' || !requests.has(requestId)) {
+      throw new BuildContractError('BUILD_REQUEST_NOT_FOUND', `unknown build request: ${String(requestId)}`);
+    }
+    return requests.get(requestId);
+  }
+
+  function publicState(record) {
+    if (record.result) return structuredClone(record.result);
+    return {
+      schemaVersion: 1,
+      requestId: record.requestId,
+      planId: record.planId,
+      status: record.status,
+      ...(record.error ? { error: structuredClone(record.error) } : {}),
+    };
+  }
+
+  return {
+    prepare({ planId } = {}) {
+      if (typeof planId !== 'string' || !plans.has(planId)) {
+        throw new BuildContractError('BUILD_PLAN_NOT_FOUND', `unknown build plan: ${String(planId)}`);
+      }
+      const requestId = idFactory();
+      if (typeof requestId !== 'string' || requestId.length === 0 || requests.has(requestId)) {
+        throw new BuildContractError('BUILD_REQUEST_INVALID', 'build request id must be unique and non-empty');
+      }
+      const plan = structuredClone(plans.get(planId));
+      const prepared = {
+        schemaVersion: 1,
+        requestId,
+        planId,
+        status: 'prepared',
+        mode: plan.mode ?? 'simulation',
+        steps: plan.steps.map((step) => ({
+          id: step.id,
+          capability: step.capability ?? 'build:execute',
+          command: commandIdentity(step.command, redact),
+          timeoutMs: step.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        })),
+      };
+      requests.set(requestId, { requestId, planId, plan, status: 'prepared', prepared });
+      return structuredClone(prepared);
+    },
+    async run({ requestId } = {}, context = {}) {
+      const record = requestFor(requestId);
+      if (record.promise) return record.promise;
+      if (record.status !== 'prepared') return publicState(record);
+      const controller = new AbortController();
+      record.controller = controller;
+      record.status = 'running';
+      const signals = [controller.signal, context.signal].filter(Boolean);
+      const signal = signals.length > 1 ? AbortSignal.any(signals) : signals[0];
+      record.promise = options.supervisor.runPlan(record.plan, { ...context, signal })
+        .then((result) => {
+          record.status = result.status;
+          record.result = {
+            ...result,
+            requestId: record.requestId,
+            planId: record.planId,
+          };
+          return structuredClone(record.result);
+        })
+        .catch((error) => {
+          record.status = 'failed';
+          const code = typeof error?.code === 'string' && /^[A-Z0-9_]{1,80}$/.test(error.code)
+            ? error.code
+            : 'BUILD_SUPERVISOR_FAILED';
+          const message = redact(error?.message ?? error).slice(0, 500);
+          record.error = {
+            code,
+            message,
+          };
+          throw new BuildContractError(code, message);
+        })
+        .finally(() => { record.controller = undefined; });
+      return record.promise;
+    },
+    status(requestId) {
+      return publicState(requestFor(requestId));
+    },
+    cancel(requestId) {
+      const record = requestFor(requestId);
+      if (record.status === 'running') {
+        record.status = 'cancelling';
+        record.controller.abort();
+      }
+      return publicState(record);
+    },
+    evidence(requestId) {
+      return publicState(requestFor(requestId));
     },
   };
 }

@@ -33,9 +33,9 @@ This repository is an independent compatibility project. Product and company nam
 
 ## Runtime and build dependencies
 
-The alpha runtime uses Node.js standard-library modules only. The VSIX contains generated bundles of this project's own runtime modules and does not redistribute LionCodeLabs, Hermes Agent, React, SQLite bindings, ACP SDK or MCP SDK packages.
+The MCP executable uses the official `@modelcontextprotocol/server` 2.0.0 package and its `@modelcontextprotocol/core` 2.0.0 dependency. Their package metadata declares MIT, while the distributed upstream license file records the MCP project's Apache-2.0 transition, retained MIT contributions, and CC-BY-4.0 documentation boundary. Zod 4.5.4 is MIT, copyright Colin McDonnell. Their code is included only in the generated MCP bundle. The VSIX carries this notice plus the upstream MCP and Zod license texts; it does not redistribute LionCodeLabs, Hermes Agent, React, SQLite bindings or ACP SDK packages.
 
-Development and release tooling is locked in `package-lock.json`: `@vscode/test-electron` and `@vscode/vsce` (Microsoft, MIT), `esbuild` (MIT), `adm-zip` (MIT), and Stryker Mutator (Apache-2.0). These tools and their transitive dependencies are not included in the VSIX. Their installed license metadata is part of the release dependency review.
+Development and release tooling is locked in `package-lock.json`: `@vscode/test-electron` and `@vscode/vsce` (Microsoft, MIT), `buffer-crc32`, `esbuild`, `yauzl` and `yazl` (MIT), Stryker Mutator (Apache-2.0), and YAML (ISC). Development-only tools and their transitive dependencies are not included in the VSIX. Their installed license metadata is part of the release dependency review.
 
 The resolved review, including dual-license and VSCE signing-tool treatment, is recorded in [`docs/security/dependency-license-review.md`](docs/security/dependency-license-review.md).
 

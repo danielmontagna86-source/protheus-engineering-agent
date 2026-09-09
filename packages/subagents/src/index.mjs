@@ -27,6 +27,7 @@ export function createSubagentSupervisor(options = {}) {
   const timeoutMs = options.timeoutMs ?? 60_000;
   const idFactory = options.idFactory ?? randomUUID;
   const clock = options.clock ?? Date.now;
+  const toolPolicies = options.toolPolicies ?? {};
   for (const [name, value] of Object.entries({ maxDepth, maxConcurrent, maxInputBytes, maxOutputBytes, timeoutMs })) {
     if (!Number.isInteger(value) || value < 1) throw new TypeError(`${name} must be a positive integer`);
   }
@@ -55,6 +56,12 @@ export function createSubagentSupervisor(options = {}) {
       if (!base.allowedTools.includes(spec.tool)) {
         return failure(base, 'SUBAGENT_TOOL_DENIED', 'tool is not in the child allowlist');
       }
+      const toolPolicy = toolPolicies[spec.tool];
+      if (!toolPolicy || typeof toolPolicy.mutating !== 'boolean') {
+        return failure(base, 'SUBAGENT_TOOL_POLICY_MISSING', 'host must define whether the allowed tool is mutating');
+      }
+      const mutating = toolPolicy.mutating;
+      base.mutating = mutating;
       try {
         if (byteLength(spec.input ?? {}, 'input') > maxInputBytes) {
           return failure(base, 'SUBAGENT_INPUT_TOO_LARGE', `input exceeds ${maxInputBytes} bytes`);
@@ -66,7 +73,7 @@ export function createSubagentSupervisor(options = {}) {
         return failure(base, 'SUBAGENT_CONCURRENCY_EXCEEDED', `at most ${maxConcurrent} child runs are allowed`);
       }
       if (context.signal?.aborted) return failure(base, 'SUBAGENT_CANCELLED', 'child run was cancelled');
-      if (spec.mutating && (typeof options.checkpoint !== 'function' || typeof options.diff !== 'function')) {
+      if (mutating && (typeof options.checkpoint !== 'function' || typeof options.diff !== 'function')) {
         return failure(base, 'SUBAGENT_CHECKPOINT_UNAVAILABLE', 'mutating runs require checkpoint and diff adapters');
       }
 
@@ -76,7 +83,7 @@ export function createSubagentSupervisor(options = {}) {
       let abortListener;
       const controller = new AbortController();
       try {
-        if (spec.mutating) {
+        if (mutating) {
           checkpoint = await options.checkpoint({ id, parentId: base.parentId, role: spec.role });
           if (!validCheckpoint(checkpoint)) {
             return failure(base, 'SUBAGENT_CHECKPOINT_INVALID', 'checkpoint adapter returned invalid evidence');
@@ -110,7 +117,7 @@ export function createSubagentSupervisor(options = {}) {
         if (byteLength(output, 'output') > maxOutputBytes) {
           throw Object.assign(new Error(`output exceeds ${maxOutputBytes} bytes`), { code: 'SUBAGENT_OUTPUT_TOO_LARGE' });
         }
-        if (!spec.mutating) return { ...base, status: 'completed', output };
+        if (!mutating) return { ...base, status: 'completed', output };
         const diff = await options.diff(checkpoint, { id, output });
         if (!diff || typeof diff !== 'object' || byteLength(diff, 'diff') > maxOutputBytes) {
           throw Object.assign(new Error('diff evidence is missing or oversized'), { code: 'SUBAGENT_DIFF_INVALID' });

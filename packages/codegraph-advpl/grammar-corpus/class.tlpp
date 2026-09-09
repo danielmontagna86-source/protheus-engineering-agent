@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+Class CorpusService
+    Method Calculate(nValue)
+EndClass
+
+Method Calculate(nValue) Class CorpusService
+Return nValue

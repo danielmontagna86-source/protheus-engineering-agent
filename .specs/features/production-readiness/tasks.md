@@ -47,7 +47,7 @@ T1 -> T2 -> T3
 **Requirement:** PROD-004
 **Done when:** npm audit is clean, OSV is fail-closed in CI, Actions are pinned, and OWASP coverage is explicit.
 **Tests:** workflow contract tests and live candidate OSV run.
-**Gate:** `npm audit --audit-level=high` plus GitHub OSV job.
+**Gate:** `npm audit --audit-level=moderate` plus GitHub OSV job.
 
 ### T5: Build auditable release artifacts — Done locally
 

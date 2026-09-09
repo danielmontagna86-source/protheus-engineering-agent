@@ -1,8 +1,6 @@
 # Read-only TDN and Dictionary integrations
 
-The runtime can consume locally controlled, versioned JSON snapshots. No credential, remote
-request or fallback service is enabled by default. Configure either path only when the file's
-provenance is trusted:
+The runtime can inspect, install, update, and consume locally controlled versioned JSON snapshots. No credential, remote request, or fallback service is enabled by default. Engineering Center verifies a regular bounded file, schema, declared license or owner authorization, capture age, and SHA-256 before copying it atomically into `.pea/snapshots/`. Snapshot text is always untrusted data.
 
 ```text
 PEA_TDN_SNAPSHOT=C:\evidence\tdn-snapshot.json
@@ -13,6 +11,8 @@ The same configuration is available to the CLI, MCP server and bundled runtime. 
 reports only whether each adapter is configured. Results contain the source, capture time,
 schema version, SHA-256 digest, cache state and load time.
 
+The active `.pea/config.json` profile is authoritative for `tdnSnapshotPath` and `dictionarySnapshotPath`. Profile paths must remain inside the workspace. Environment variables are host-level overrides and must not be committed.
+
 ## TDN schema v1
 
 ```json
@@ -21,6 +21,7 @@ schema version, SHA-256 digest, cache state and load time.
   "schemaVersion": 1,
   "source": "https://tdn.totvs.com/...",
   "capturedAt": "2026-09-07T12:00:00.000Z",
+  "license": "owner-authorized-local-snapshot",
   "pages": [
     { "id": "page-id", "title": "Title", "url": "https://...", "body": "Plain text" }
   ]
@@ -38,6 +39,7 @@ to 500 characters.
   "schemaVersion": 1,
   "source": "customer-export:SX2/SX3",
   "capturedAt": "2026-09-07T12:00:00.000Z",
+  "license": "owner-authorized-local-snapshot",
   "tables": [
     {
       "name": "SE1",
@@ -53,11 +55,11 @@ to 500 characters.
 Read-only operations are `table`, `field` and `search`. Names are matched case-insensitively.
 The snapshot adapter never opens an Oracle connection or reads live SX tables.
 
-## Oracle named-query adapter
+## Generic named-query database port
 
-Oracle is unavailable by default and no driver or credential is bundled. A host may inject a driver function and a trusted catalog of named `SELECT` queries. Callers provide only a query name and the exact declared bind variables; raw SQL, comments, multiple statements, `FOR UPDATE`, DDL, DML and control blocks are rejected while the catalog is loaded.
+Oracle and PostgreSQL are unavailable by default; no driver or credential is bundled. A host injects a dialect-specific driver, an exact capability authorizer, and a trusted catalog of named `SELECT` queries. Callers provide only a query name and exact declared scalar binds. Raw SQL, comments, multiple statements, `FOR UPDATE`, DDL, DML, and control blocks are rejected while the catalog loads. Oracle uses named placeholders; PostgreSQL uses contiguous positional placeholders derived from declared bind order.
 
-The adapter requires an `oracle:read` authorizer, limits timeout, bind size and rows, redacts configured and conventionally sensitive fields, and returns only the query name plus a SHA-256 identity—not SQL, bind values, connection strings or credentials. Driver errors are normalized so their potentially sensitive text is not exposed.
+The generic adapter limits timeout, bind size, rows and fields; declares read-only execution to the driver; redacts configured and conventionally sensitive fields; and returns query name plus SHA-256 identity—not SQL, bind values, connection strings, or credentials. Driver errors are normalized. The legacy Oracle wrapper remains for compatibility while hosts migrate to the generic port.
 
 ## MCP tools
 

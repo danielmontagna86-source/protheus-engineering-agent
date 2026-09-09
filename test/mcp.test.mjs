@@ -1,13 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
-import { createMcpHandler } from '../packages/mcp/src/server.mjs';
+import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
+
+import { createMcpHandler, createOfficialMcpServer } from '../packages/mcp/src/server.mjs';
 import productManifest from '../package.json' with { type: 'json' };
 
 test('MCP handler initializes and lists the product tools', async () => {
@@ -22,13 +24,199 @@ test('MCP handler initializes and lists the product tools', async () => {
   assert.equal(initialized.result.serverInfo.name, 'protheus-engineering-agent');
   assert.equal(initialized.result.serverInfo.version, productManifest.version);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_review_file'), true);
+  assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_review_changes'), true);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_write_memory'), true);
+  assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_promote_journal'), true);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_tdn_search'), true);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_dictionary_field'), true);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_bug_review'), true);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_subagent_run'), true);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_ai_task'), true);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_oracle_query'), true);
+  assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_build_run'), false);
+});
+
+test('MCP exposes governed structured Memory and Journal lifecycle tools', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-context-lifecycle-'));
+  const handle = createMcpHandler({ workspace, environment: 'development' });
+  const invoke = async (id, name, args) => {
+    const response = await handle({ jsonrpc: '2.0', id, method: 'tools/call', params: { name, arguments: args } });
+    assert.equal(response.result.isError, false, response.result.content[0].text);
+    return JSON.parse(response.result.content[0].text);
+  };
+
+  const journal = await invoke(60, 'pea_record_journal', {
+    id: 'decision-1', kind: 'decision', summary: 'Keep offline review.', actor: 'reviewer',
+  });
+  const preview = await invoke(61, 'pea_preview_journal_promotion', { journalId: journal.id, actor: 'maintainer' });
+  const promoted = await invoke(62, 'pea_promote_journal', { journalId: journal.id, actor: 'maintainer' });
+  const expired = await invoke(63, 'pea_expire_memory', { at: '2027-01-01T00:00:00.000Z' });
+
+  assert.equal(preview.status, 'ready');
+  assert.equal(promoted.status, 'promoted');
+  assert.equal(expired.removed, 0);
+});
+
+test('official MCP server registers tools and bounded project resources through the SDK', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-official-'));
+  await writeFile(join(workspace, 'entry.prw'), 'User Function McpEntry()\nReturn\n');
+
+  const server = createOfficialMcpServer({ workspace });
+
+  assert.ok(server instanceof McpServer);
+  assert.equal(Object.hasOwn(server._registeredTools, 'pea_review_file'), true);
+  assert.equal(Object.hasOwn(server._registeredTools, 'pea_review_changes'), true);
+  assert.equal(Object.hasOwn(server._registeredTools, 'pea_build_run'), false);
+  assert.equal(Object.hasOwn(server._registeredResources, 'pea://project-context'), true);
+  assert.equal(Object.hasOwn(server._registeredResources, 'pea://session-context'), true);
+});
+
+test('embedded MCP host advertises build execution only when it supplies an approval resolver', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-build-advertisement-'));
+  const server = createOfficialMcpServer({
+    workspace,
+    resolveBuildApproval: async () => ({ approvedBy: 'host', approvedAt: '2026-09-09T12:00:00.000Z' }),
+  });
+  assert.equal(Object.hasOwn(server._registeredTools, 'pea_build_run'), true);
+});
+
+test('official MCP tool forwards protocol cancellation to governed subagents', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-cancel-'));
+  const observed = [];
+  const server = createOfficialMcpServer({
+    workspace,
+    subagentAllowedTools: ['review:file'],
+    subagentSupervisor: {
+      async run(_spec, context) {
+        observed.push(context.signal);
+        return { schemaVersion: 1, status: 'cancelled' };
+      },
+    },
+  });
+  const controller = new AbortController();
+  controller.abort();
+
+  const result = await server._registeredTools.pea_subagent_run.handler({
+    role: 'reviewer', tool: 'review:file', input: {}, parentId: 'root', depth: 1,
+  }, { mcpReq: { signal: controller.signal } });
+
+  assert.equal(result.isError, false);
+  assert.equal(observed[0], controller.signal);
+  assert.equal(observed[0].aborted, true);
+});
+
+test('official MCP wire emits progress and cancels an in-flight tool request', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-wire-cancel-'));
+  let markStarted;
+  const started = new Promise((resolve) => { markStarted = resolve; });
+  let markCancelled;
+  const cancelled = new Promise((resolve) => { markCancelled = resolve; });
+  const server = createOfficialMcpServer({
+    workspace,
+    subagentAllowedTools: ['review:file'],
+    subagentSupervisor: {
+      async run(_spec, context) {
+        markStarted();
+        await new Promise((resolve) => context.signal.addEventListener('abort', resolve, { once: true }));
+        markCancelled();
+        return { schemaVersion: 1, status: 'cancelled' };
+      },
+    },
+  });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const messages = [];
+  const waitFor = (predicate) => new Promise((resolve) => {
+    const inspect = (message) => {
+      messages.push(message);
+      if (predicate(message)) resolve(message);
+    };
+    clientTransport.onmessage = inspect;
+  });
+  await server.connect(serverTransport);
+  await clientTransport.start();
+
+  let responsePromise = waitFor((message) => message.id === 1);
+  await clientTransport.send({
+    jsonrpc: '2.0', id: 1, method: 'initialize',
+    params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'wire-test', version: '1' } },
+  });
+  await responsePromise;
+  await clientTransport.send({ jsonrpc: '2.0', method: 'notifications/initialized', params: {} });
+
+  waitFor((message) => message.id === 2);
+  const callSend = clientTransport.send({
+    jsonrpc: '2.0', id: 2, method: 'tools/call', params: {
+      _meta: { progressToken: 'wire-progress' },
+      name: 'pea_subagent_run',
+      arguments: { role: 'reviewer', tool: 'review:file', input: {}, parentId: 'root', depth: 1 },
+    },
+  });
+  await Promise.race([
+    started,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`tool did not start: ${JSON.stringify(messages)}`)), 1_000)),
+  ]);
+  const cancelSend = clientTransport.send({
+    jsonrpc: '2.0', method: 'notifications/cancelled', params: { requestId: 2, reason: 'test cancellation' },
+  });
+  await callSend;
+  await cancelSend;
+  await cancelled;
+  await new Promise((resolve) => setTimeout(resolve, 20));
+
+  const progress = messages.filter((message) => message.method === 'notifications/progress');
+  assert.equal(progress[0].params.progressToken, 'wire-progress');
+  assert.equal(progress[0].params.progress, 0);
+  assert.equal(messages.some((message) => message.id === 2), false, 'cancelled requests must not emit a stale response');
+  await server.close();
+  await clientTransport.close();
+});
+
+test('MCP changed-files review preserves the normalized SCM scope contract', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-changes-'));
+  await writeFile(join(workspace, 'changed.prw'), 'User Function Changed()\nReturn\n');
+  const observed = [];
+  const handle = createMcpHandler({
+    workspace,
+    scm: {
+      async changes(request) {
+        observed.push(request);
+        return {
+          schemaVersion: 1,
+          status: 'changed',
+          repository: '.',
+          scope: { kind: request.scope, baseRef: request.baseRef },
+          files: [{ path: 'changed.prw', status: 'modified', binary: false }],
+        };
+      },
+    },
+  });
+
+  const response = await handle({
+    jsonrpc: '2.0', id: 46, method: 'tools/call',
+    params: {
+      name: 'pea_review_changes',
+      arguments: { scope: 'branch', baseRef: 'origin/main', repository: workspace },
+    },
+  });
+  const report = JSON.parse(response.result.content[0].text);
+  const sarifResponse = await handle({
+    jsonrpc: '2.0', id: 47, method: 'tools/call',
+    params: {
+      name: 'pea_review_changes',
+      arguments: { scope: 'branch', baseRef: 'origin/main', repository: workspace, format: 'sarif' },
+    },
+  });
+  const sarif = JSON.parse(sarifResponse.result.content[0].text);
+
+  assert.equal(response.result.isError, false);
+  assert.equal(sarifResponse.result.isError, false);
+  assert.deepEqual(observed, [
+    { scope: 'branch', baseRef: 'origin/main', repository: workspace },
+    { scope: 'branch', baseRef: 'origin/main', repository: workspace },
+  ]);
+  assert.equal(report.kind, 'change-review');
+  assert.equal(report.summary.filesReviewed, 1);
+  assert.equal(sarif.version, '2.1.0');
 });
 
 test('MCP exposes only configured Oracle named-query adapters', async () => {
@@ -69,6 +257,78 @@ test('MCP uses an injected provider-neutral AI gateway without making it a core 
   assert.equal(result.environment, 'production');
 });
 
+test('MCP fails closed when a tool response exceeds the protocol output budget', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-output-limit-'));
+  const handle = createMcpHandler({
+    workspace,
+    aiGateway: { async run() { return { text: 'x'.repeat((1024 * 1024) + 1) }; } },
+  });
+  const response = await handle({
+    jsonrpc: '2.0', id: 47, method: 'tools/call',
+    params: { name: 'pea_ai_task', arguments: { instruction: 'large', context: {} } },
+  });
+  assert.equal(response.result.isError, true);
+  assert.match(response.result.content[0].text, /MCP_RESPONSE_TOO_LARGE/);
+});
+
+test('MCP exposes the complete supervised build lifecycle through the runtime port', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-build-'));
+  const calls = [];
+  const buildService = {
+    prepare(request) { calls.push(['prepare', request]); return { status: 'prepared', requestId: 'build-one' }; },
+    run(request, context) { calls.push(['run', request, context]); return { status: 'completed', requestId: request.requestId }; },
+    status(requestId) { return { status: 'completed', requestId }; },
+    cancel(requestId) { return { status: 'cancelled', requestId }; },
+    evidence(requestId) { return { status: 'completed', requestId, evidenceLevel: 'simulation' }; },
+  };
+  const handle = createMcpHandler({
+    workspace,
+    buildService,
+    environment: 'development',
+    grants: ['build:execute'],
+    async resolveBuildApproval({ requestId, approvalToken }) {
+      assert.equal(requestId, 'build-one');
+      assert.equal(approvalToken, 'host-issued-token');
+      return { approvedBy: 'developer', approvedAt: '2026-09-08T12:00:00.000Z' };
+    },
+  });
+
+  const invoke = async (id, name, args) => {
+    const response = await handle({
+      jsonrpc: '2.0', id, method: 'tools/call', params: { name, arguments: args },
+    });
+    assert.equal(response.result.isError, false, response.result.content[0].text);
+    return JSON.parse(response.result.content[0].text);
+  };
+  const prepared = await invoke(50, 'pea_build_prepare', { planId: 'verify' });
+  const completed = await invoke(51, 'pea_build_run', {
+    requestId: prepared.requestId,
+    approvalToken: 'host-issued-token',
+  });
+  assert.equal((await invoke(52, 'pea_build_status', { requestId: prepared.requestId })).status, 'completed');
+  assert.equal((await invoke(53, 'pea_build_cancel', { requestId: prepared.requestId })).status, 'cancelled');
+  assert.equal((await invoke(54, 'pea_build_evidence', { requestId: prepared.requestId })).evidenceLevel, 'simulation');
+  assert.equal(completed.status, 'completed');
+  assert.equal(calls[1][2].environment, 'development');
+});
+
+test('MCP build execution fails closed without a host approval resolver', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-build-approval-'));
+  const handle = createMcpHandler({
+    workspace,
+    buildService: { run() { throw new Error('must not run'); } },
+    environment: 'development',
+    grants: ['build:execute'],
+  });
+  const response = await handle({
+    jsonrpc: '2.0', id: 55, method: 'tools/call',
+    params: { name: 'pea_build_run', arguments: { requestId: 'build-one', approvalToken: 'forged' } },
+  });
+
+  assert.equal(response.result.isError, true);
+  assert.match(response.result.content[0].text, /tool is not advertised by this host/);
+});
+
 test('MCP runs only host-configured bounded subagent tools', async () => {
   const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-subagent-'));
   const observed = [];
@@ -94,6 +354,21 @@ test('MCP runs only host-configured bounded subagent tools', async () => {
   assert.equal(response.result.isError, false);
   assert.equal(result.status, 'completed');
   assert.deepEqual(observed[0].context.allowedTools, ['review:file']);
+  assert.equal('mutating' in observed[0].spec, false);
+});
+
+test('MCP does not accept caller-controlled subagent mutability', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-subagent-policy-'));
+  const handle = createMcpHandler({ workspace });
+  const response = await handle({
+    jsonrpc: '2.0', id: 46, method: 'tools/call',
+    params: {
+      name: 'pea_subagent_run',
+      arguments: { role: 'fixer', tool: 'workspace:patch', input: {}, parentId: 'root', depth: 1, mutating: false },
+    },
+  });
+  assert.equal(response.result.isError, true);
+  assert.match(response.result.content[0].text, /unexpected argument: mutating/);
 });
 
 test('MCP bug review returns source, impact and residual-risk evidence', async () => {
@@ -224,19 +499,46 @@ test('MCP stdio process accepts newline-delimited initialize and tools/list requ
   child.stdout.on('data', (chunk) => { stdout += chunk; });
   child.stderr.on('data', (chunk) => { stderr += chunk; });
   child.stdin.end([
-    JSON.stringify({ jsonrpc: '2.0', id: 20, method: 'initialize', params: { protocolVersion: '2025-06-18' } }),
+    JSON.stringify({
+      jsonrpc: '2.0', id: 20, method: 'initialize',
+      params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'pea-test', version: '1' } },
+    }),
+    JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized', params: {} }),
     JSON.stringify({ jsonrpc: '2.0', id: 21, method: 'tools/list', params: {} }),
+    JSON.stringify({ jsonrpc: '2.0', id: 22, method: 'resources/list', params: {} }),
+    JSON.stringify({ jsonrpc: '2.0', id: 23, method: 'resources/read', params: { uri: 'pea://project-context' } }),
+    JSON.stringify({ jsonrpc: '2.0', id: 24, method: 'tools/call', params: { name: 'pea_review_file', arguments: {} } }),
+    JSON.stringify({ jsonrpc: '2.0', id: 25, method: 'tools/call', params: { name: 'pea_unknown', arguments: {} } }),
+    JSON.stringify({ jsonrpc: '2.0', id: 26, method: 'tools/call', params: { name: 'pea_session_context', arguments: {} } }),
     '',
   ].join('\n'));
 
   const [code] = await once(child, 'close');
   assert.equal(code, 0, stderr);
   const responses = stdout.trim().split(/\r?\n/).map((line) => JSON.parse(line));
-  assert.equal(responses[0].result.serverInfo.version, productManifest.version);
-  assert.ok(responses[1].result.tools.some((tool) => tool.name === 'pea_session_context'));
+  const responseById = new Map(responses.map((response) => [response.id, response]));
+  assert.equal(responseById.get(20).result.serverInfo.version, productManifest.version);
+  assert.ok(responseById.get(21).result.tools.some((tool) => tool.name === 'pea_session_context'));
+  assert.equal(responseById.get(21).result.tools.some((tool) => tool.name === 'pea_build_run'), false);
+  assert.ok(responseById.get(22).result.resources.some((resource) => resource.uri === 'pea://project-context'));
+  assert.equal(JSON.parse(responseById.get(23).result.contents[0].text).workspace, workspace);
+  assert.equal(responseById.get(24).result.isError, true);
+  assert.match(responseById.get(24).result.content[0].text, /required property 'path'/);
+  assert.equal(responseById.get(25).error.code, -32602);
+  const session = JSON.parse(responseById.get(26).result.content[0].text);
+  assert.equal(session.hermes.mcp.args[0], serverPath);
 });
 
-test('MCP stdio rejects an oversized request and continues with the next bounded request', async () => {
+test('MCP stdio entrypoint delegates protocol framing to the official SDK', async () => {
+  const serverPath = fileURLToPath(new URL('../packages/mcp/src/stdio.mjs', import.meta.url));
+  const source = await readFile(serverPath, 'utf8');
+
+  assert.match(source, /@modelcontextprotocol\/server\/stdio/);
+  assert.match(source, /serveStdio/);
+  assert.doesNotMatch(source, /for await \(const chunkValue of process\.stdin\)/);
+});
+
+test('MCP stdio fails closed when an inbound request exceeds one MiB', async () => {
   const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-stdio-limit-'));
   const serverPath = fileURLToPath(new URL('../packages/mcp/src/stdio.mjs', import.meta.url));
   const child = spawn(process.execPath, [serverPath], {
@@ -253,9 +555,7 @@ test('MCP stdio rejects an oversized request and continues with the next bounded
   child.stdin.end(`${'x'.repeat((1024 * 1024) + 1)}\n${JSON.stringify({ jsonrpc: '2.0', id: 31, method: 'tools/list', params: {} })}\n`);
 
   const [code] = await once(child, 'close');
-  assert.equal(code, 0, stderr);
-  const responses = stdout.trim().split(/\r?\n/).map((line) => JSON.parse(line));
-  assert.equal(responses[0].error.code, -32600);
-  assert.match(responses[0].error.message, /exceeds 1048576 bytes/);
-  assert.ok(responses[1].result.tools.some((tool) => tool.name === 'pea_doctor'));
+  assert.equal(code, 0);
+  assert.equal(stdout, '');
+  assert.match(stderr, /exceeded maximum size of 1048576 bytes/);
 });

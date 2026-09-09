@@ -43,7 +43,7 @@ No unresolved blocker or high-severity code/security finding remains in the loca
 
 - 170/170 Node tests pass three consecutive times, with no skips or retries.
 - Critical CLI/MCP smoke passes in 496 ms.
-- Mutation score is 95.17% overall (99.07% policy, 94.27% review, 88.89% CodeGraph resolver) against a 95% breaking threshold; 0 mutation errors.
-- `npm audit --audit-level=high` reports zero vulnerabilities.
-- The same packaged VSIX installs and passes all four commands plus native diagnostics on VS Code 1.95.3 and 1.133.0; its exact final hash is emitted outside Git by the commit-bound release manifest.
+- Fresh mutation score is 95.40% overall (99.07% policy, 94.60% review, 88.89% CodeGraph resolver) against a 95% breaking threshold; 0 mutation errors.
+- `npm audit --audit-level=moderate` reports zero vulnerabilities.
+- The same packaged VSIX registers all 19 public commands and passes seven invocations across five core journeys plus native diagnostics on VS Code 1.95.3 and 1.136.2; its exact final hash is emitted outside Git by the commit-bound release manifest.
 - Active-worktree publication audit intentionally rejects old locked local mutation state. Exact-commit archive audit is the remaining local publication proof; release mode remains blocked by candidate CI/OSV/public CodeQL, downloaded-asset proof, assistive-technology UAT, live Protheus/Oracle acceptance and named approval.

@@ -40,7 +40,7 @@
 | Extension package | `npm run package:extension` | PASS: v0.3.0, 10 entries, 54,060 compressed bytes |
 | VS Code current host | `npm run test:vscode:host` | PASS on 1.133.0, 4 commands + native CA4000 diagnostic |
 | VS Code minimum host | `npm run test:vscode:minimum` | PASS on 1.95.3, same VSIX and behavior |
-| Dependency audit | `npm audit --audit-level=high` and remote OSV | Local PASS: 0 vulnerabilities; remote OSV pending final commit |
+| Dependency audit | `npm audit --audit-level=moderate` and remote OSV | Local PASS: 0 vulnerabilities; remote OSV pending final commit |
 | Mutation | `npm run test:mutation` | PASS: 95.17%, 820 killed, 8 timeout, 42 survived, 0 errors; enforced break threshold 95%; no new temp directory |
 | Supply chain | release artifact/SBOM/checksum tests | PASS for exact commit |
 | Code review | evidence review + pre-merge audit | PASS WITH ACCEPTED ALPHA LIMITS; one `DbEval` scope leak found and fixed test-first |

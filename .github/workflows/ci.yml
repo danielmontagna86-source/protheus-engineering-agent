@@ -37,6 +37,8 @@ jobs:
         run: node --test
       - name: Smoke critical CLI and MCP path
         run: node scripts/smoke.mjs
+      - name: Enforce large-repository performance budget
+        run: npm run benchmark:large
       - name: Check source and manifests
         run: node scripts/check.mjs
       - name: Check public source tree
@@ -57,7 +59,7 @@ jobs:
       - name: Install locked QA dependencies
         run: npm ci
       - name: Audit dependencies
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=moderate
       - name: Mutation gate
         run: npm run test:mutation
 
@@ -77,5 +79,5 @@ jobs:
         run: npm ci
       - name: Build and verify installable VSIX
         run: npm run package:extension
-      - name: Exercise all extension commands in VS Code
+      - name: Exercise core extension journeys in VS Code
         run: xvfb-run -a npm run test:vscode:minimum

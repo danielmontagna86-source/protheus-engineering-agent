@@ -1,7 +1,7 @@
 # State
 
-**Last Updated:** 2026-09-07
-**Current Work:** Production-ready public GitHub release candidate
+**Last Updated:** 2026-09-09
+**Current Work:** Final local verification of the Stable 1.0 repository candidate; external promotion gates remain NO-GO
 
 ---
 
@@ -58,7 +58,7 @@
 
 ### AD-008: VS Code smoke validates the installed VSIX (2026-09-07)
 
-**Decision:** Instalar o pacote em diretório de extensões temporário antes de executar os quatro comandos.
+**Decision:** Instalar o pacote em diretório de extensões temporário antes de executar a jornada de seis operações do host.
 **Reason:** O modo de desenvolvimento não comprova que o arquivo distribuído pode ser instalado e carregado.
 **Impact:** VS Code 1.95.3 e 1.133.0 passaram localmente; a primeira tentativa encontrou permissões ZIP não graváveis e virou regressão automatizada.
 
@@ -98,6 +98,44 @@
 **Decision:** Publish the synthetic benchmark and its limitations; do not claim productivity uplift or market leadership before a consenting representative pilot.
 **Impact:** Technical correctness on fixtures is separated from human outcome evidence.
 
+### AD-015: The category is Protheus Engineering Evidence Layer (2026-09-08)
+
+**Decision:** Position the product around verified change confidence, project/domain context, governed execution and local-to-CI evidence rather than as a generic coding chatbot.
+**Reason:** TDS already owns compile/debug/RPO/server operations and horizontal agents already own general chat/edit/terminal workflows. The repository's strongest differentiated assets are deterministic Protheus analysis, provenance, policy and evidence.
+**Trade-off:** The word “Agent” remains in the product name, but the product does not own or require a model loop.
+**Impact:** 0.4 prioritizes Engineering Center, changed-files review, SARIF/Action and portable tools/skills before more generative features.
+
+### AD-016: Product completeness is evidence-gated, not a percentage (2026-09-08)
+
+**Decision:** Use the P0/P1/P2 requirement and validation matrix in `.specs/features/product-completeness-v1/`; do not claim “95% product complete”.
+**Reason:** The 95% mutation threshold measures resistance of a configured test scope, not usability, semantic coverage, live integration or market effectiveness.
+**Impact:** 0.4, 0.5 and 1.0 each have explicit automated, human and external gates.
+
+### AD-017: Standard agent surfaces replace a bespoke chat roadmap (2026-09-08)
+
+**Decision:** Expose runtime capabilities through VS Code Language Model Tools, portable Agent Skills/plugin and the official MCP TypeScript SDK; keep deterministic commands available without any agent.
+**Reason:** These standards provide broader adoption and allow users to keep their chosen host/model while the product owns Protheus evidence and permission enforcement.
+**Trade-off:** Compatibility work increases as VS Code/MCP evolve.
+**Impact:** MCP conformance and host compatibility become release gates; Hermes remains an optional adapter.
+
+### AD-018: Semantic analysis advances through a conformance corpus (2026-09-08)
+
+**Decision:** Keep the lexical graph as an honest fallback and require a legal versioned ADVPL/TLPP corpus before adopting/building a tolerant incremental parser.
+**Reason:** No maintained ADVPL/TLPP Tree-sitter grammar was established by the current source review, and compiler-equivalence claims would be unsupported.
+**Impact:** Parser technology remains an evaluated implementation choice; support is reported per construct with confidence and unresolved evidence.
+
+### AD-019: Docker is internal QA infrastructure only (2026-09-08)
+
+**Decision:** Use official or admitted containers only in maintainer test lanes; the VSIX, runtime, sample, onboarding and supported GitHub Action do not require Docker.
+**Reason:** The owner supplied Docker projects to improve our validation, not as a product feature. Community images also introduce provenance, licensing and supply-chain risks.
+**Impact:** Official analyzer/Postgres images may cross-check internal behavior. Licensed AppServer evidence remains an external stable gate. Community images are rejected or quarantined and never shipped/recommended as the product.
+
+### AD-020: Stable 1.0 replaces public-preview as the launch target (2026-09-08)
+
+**Decision:** Keep 0.3 as an internal evidence baseline and 0.4/0.5 as implementation milestones; publish a regular `1.0.0` only after product, QA, live-environment, accessibility, support and exact-artifact gates pass.
+**Reason:** A stable product requires a defined public contract, proven install/upgrade/rollback and support lifecycle; changing the version or Marketplace flag is insufficient.
+**Impact:** `.specs/features/stable-1-0-launch/` is the promotion contract. Publication remains separately authorized.
+
 ## Active Blockers
 
 ### B-003: External release evidence is incomplete
@@ -105,7 +143,7 @@
 **Discovered:** 2026-09-07
 **Impact:** Blocker para release e visibilidade pública.
 **Workaround:** Manter o remoto privado e o gate de release em `NO-GO`.
-**Progress:** Repositório privado criado; `main` e o candidato anterior passaram a matriz Windows/Linux, Node.js 22/24, smoke, auditoria de dependências e mutação. O candidato `0.3.0` passou localmente no VS Code mínimo/atual e com TDS 2.0.16, multi-root e CP1252/LF; a mutação alcançou 95.17% e agora quebra abaixo de 95%. CI/OSV do commit final, CodeQL após visibilidade pública, inspeção assistiva/screenshots, AppServer homologado e evidência externa ainda precisam ser reconciliados.
+**Progress:** Repositório privado criado; `main` e o candidato anterior passaram a matriz Windows/Linux, Node.js 22/24, smoke, auditoria de dependências e mutação. O candidato atual passou localmente no VS Code 1.95.3/1.136.2 e com TDS 2.1.2, multi-root e CP1252/LF; a bateria atual tem 239 testes e a mutação intermediária alcançou 95.36% com gate de 95%. O analyzer oficial devolveu saída malformada e falhou fechado. CI/OSV do commit final, CodeQL após visibilidade pública, ciclo upgrade/rollback, inspeção assistiva/screenshots, AppServer homologado e evidência externa ainda precisam ser reconciliados.
 **Resolution:** Candidate CI/OSV/CodeQL, reconciliação do commit, artefatos/manifesto limpos, reprodução após download e aprovação nomeada registrados.
 
 ## Resolved Blockers
@@ -138,9 +176,10 @@
 
 ## Deferred Ideas
 
-- [ ] Marketplace VS Code após o GitHub alpha estabilizar.
-- [ ] Parser ADVPL/TLPP completo e incremental.
+- [ ] Marketplace VS Code como release regular `1.0.0` após todos os gates estáveis e autorização.
+- [ ] Parser ADVPL/TLPP completo; 0.5 plans a tolerant incremental parser with corpus-scoped support, not compiler equivalence.
 - [ ] Telemetria opt-in com redaction e sem código-fonte.
+- [ ] Commercial/team packaging after adoption and willingness-to-pay discovery.
 
 ## Todos
 

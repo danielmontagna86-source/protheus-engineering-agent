@@ -1,11 +1,23 @@
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtemp, mkdir, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { promisify } from 'node:util';
 
-import { assessPublication } from '../scripts/publication-check.mjs';
+import { assessPublication, completeReleaseEvidence } from '../scripts/publication-check.mjs';
+import { createZipBuffer } from '../scripts/zip.mjs';
+
+const execFileAsync = promisify(execFile);
+const publicCommandIds = [
+  'pea.doctor', 'pea.indexWorkspace', 'pea.openContext', 'pea.addMemoryEntry',
+  'pea.addJournalEntry', 'pea.promoteJournalEntry', 'pea.expireMemory', 'pea.importSnapshot',
+  'pea.searchTdn', 'pea.searchDictionary', 'pea.prepareBuild', 'pea.runBuild',
+  'pea.buildStatus', 'pea.cancelBuild', 'pea.buildEvidence', 'pea.reviewActiveFile',
+  'pea.reviewChanges', 'pea.refreshEngineeringCenter', 'pea.openSampleWorkspace',
+];
 
 const requiredFiles = [
   'README.md',
@@ -27,6 +39,9 @@ const requiredFiles = [
   '.github/workflows/ci.yml',
   '.github/workflows/security.yml',
   '.github/workflows/codeql.yml',
+  '.github/workflows/dependency-review.yml',
+  '.github/workflows/secret-scan.yml',
+  '.github/workflows/provenance.yml',
   '.github/dependabot.yml',
   '.github/CODEOWNERS',
   '.github/PULL_REQUEST_TEMPLATE.md',
@@ -93,12 +108,67 @@ async function fixture({ license = 'Apache-2.0', repository = true } = {}) {
   );
   await mkdir(join(root, 'release-evidence'), { recursive: true });
   await mkdir(join(root, 'release-artifacts'), { recursive: true });
+  await writeFile(join(root, '.gitignore'), 'release-artifacts/\nrelease-evidence/\n', 'utf8');
+  await execFileAsync('git', ['init', root]);
+  await execFileAsync('git', ['-C', root, 'add', '.']);
+  await execFileAsync('git', [
+    '-C', root, '-c', 'user.name=PEA Tests', '-c', 'user.email=pea@example.invalid',
+    'commit', '-m', 'release fixture',
+  ]);
+  const { stdout: commitOutput } = await execFileAsync('git', ['-C', root, 'rev-parse', 'HEAD']);
+  const releaseCommit = commitOutput.trim();
   const sourceArtifactPath = join(root, 'release-artifacts', 'protheus-engineering-agent-source.zip');
   const vsixArtifactPath = join(root, 'release-artifacts', 'protheus-engineering-agent.vsix');
   const sbomArtifactPath = join(root, 'release-artifacts', 'protheus-engineering-agent.cdx.json');
-  const sourceContents = 'fixture source release artifact';
-  const vsixContents = 'fixture VSIX release artifact';
-  const sbomContents = '{"bomFormat":"CycloneDX"}\n';
+  const fixtureLockContents = `${JSON.stringify({
+    name: manifest.name,
+    version: manifest.version,
+    lockfileVersion: 3,
+    requires: true,
+    packages: { '': { name: manifest.name, version: manifest.version } },
+  })}\n`;
+  await writeFile(join(root, 'package-lock.json'), fixtureLockContents, 'utf8');
+  await execFileAsync('git', ['-C', root, 'add', 'package-lock.json']);
+  await execFileAsync('git', [
+    '-C', root, '-c', 'user.name=PEA Tests', '-c', 'user.email=pea@example.invalid',
+    'commit', '--amend', '--no-edit',
+  ]);
+  const { stdout: amendedCommitOutput } = await execFileAsync('git', ['-C', root, 'rev-parse', 'HEAD']);
+  const exactReleaseCommit = amendedCommitOutput.trim();
+  await execFileAsync('git', [
+    '-C', root, 'archive', '--format=zip', '--prefix=protheus-engineering-agent-v0.3.0/',
+    `--output=${sourceArtifactPath}`, exactReleaseCommit,
+  ]);
+  const sourceContents = await readFile(sourceArtifactPath);
+  const vsixEntries = [
+    ['[Content_Types].xml', '<Types/>'], ['extension.vsixmanifest', '<PackageManifest/>'],
+    ['extension/package.json', JSON.stringify({ version: '0.3.0' })],
+    ['extension/extension.cjs', 'module.exports = {};'], ['extension/dist/runtime-cli.cjs', 'module.exports = {};'],
+    ['extension/dist/runtime-cli.mjs', 'export {};'], ['extension/dist/mcp-stdio.mjs', 'export {};'],
+    ['extension/readme.md', '# Extension'], ['extension/license.md', 'Apache-2.0'],
+    ['extension/changelog.md', '# Changelog'],
+    ['extension/third_party_notices.md', '@modelcontextprotocol/server\nZod\n'],
+    ['extension/third-party-licenses/model-context-protocol.txt', 'Apache License\nMIT License\nModel Context Protocol\n'],
+    ['extension/third-party-licenses/zod.txt', 'MIT License\nCopyright (c) 2025 Colin McDonnell\n'],
+    ['extension/package.nls.json', '{}'], ['extension/package.nls.pt-br.json', '{}'],
+    ['extension/l10n/bundle.l10n.pt-br.json', '{}'], ['extension/media/icon.png', 'fixture icon'],
+    ['extension/media/activity-icon.svg', '<svg/>'], ['extension/sample-workspace/README.md', '# Sample'],
+    ['extension/sample-workspace/sample-review.prw', 'User Function Sample()\nReturn Nil\n'],
+    ['extension/skills/protheus-evidence-review/SKILL.md', '# Skill'],
+  ];
+  const vsixContents = await createZipBuffer(vsixEntries.map(([name, data]) => ({ name, data: Buffer.from(data) })));
+  const sbomContents = Buffer.from(JSON.stringify({
+    bomFormat: 'CycloneDX', specVersion: '1.5',
+    metadata: {
+      component: { name: 'protheus-engineering-agent', version: '0.3.0' },
+      properties: [{
+        name: 'pea:package-lock:sha256',
+        value: createHash('sha256').update(fixtureLockContents).digest('hex'),
+      }],
+    },
+    components: [],
+    dependencies: [],
+  }));
   const artifacts = [
     {
       path: 'release-artifacts/protheus-engineering-agent-source.zip',
@@ -113,34 +183,80 @@ async function fixture({ license = 'Apache-2.0', repository = true } = {}) {
       sha256: createHash('sha256').update(sbomContents).digest('hex'),
     },
   ];
-  await writeFile(sourceArtifactPath, sourceContents, 'utf8');
-  await writeFile(vsixArtifactPath, vsixContents, 'utf8');
-  await writeFile(sbomArtifactPath, sbomContents, 'utf8');
+  await writeFile(vsixArtifactPath, vsixContents);
+  await writeFile(sbomArtifactPath, sbomContents);
   const releaseManifestPath = 'release-artifacts/release-manifest-v0.3.0.json';
   const releaseManifestContents = `${JSON.stringify({
     schemaVersion: 1,
     version: '0.3.0',
-    commit: 'a'.repeat(40),
+    commit: exactReleaseCommit,
     artifacts,
-    verification: { publication: 'PASS', sourceArchive: 'PASS', vsix: 'PASS', sbom: 'PASS' },
+    verification: {
+      publication: 'PASS', sourceArchive: 'PASS', vsix: 'PASS', vsixReproducible: 'PASS',
+      sbom: 'PASS', sbomLockfile: 'PASS',
+    },
   })}\n`;
   await writeFile(join(root, releaseManifestPath), releaseManifestContents, 'utf8');
+  const releaseManifestSha256 = createHash('sha256').update(releaseManifestContents).digest('hex');
+  const receipt = async (name, document) => {
+    const path = `release-artifacts/${name}.json`;
+    const contents = `${JSON.stringify({
+      schemaVersion: 1,
+      status: 'PASS',
+      commit: exactReleaseCommit,
+      repository: 'https://github.com/example/protheus-engineering-agent',
+      releaseManifestSha256,
+      capturedAt: '2026-09-09T12:00:00.000Z',
+      ...document,
+    })}\n`;
+    await writeFile(join(root, path), contents, 'utf8');
+    return `${path}#sha256=${createHash('sha256').update(contents).digest('hex')}`;
+  };
+  const ciReceipt = await receipt('ci-receipt', {
+    kind: 'github-actions-receipt',
+    source: 'github-api',
+    headSha: exactReleaseCommit,
+    conclusion: 'success',
+    workflowPath: '.github/workflows/ci.yml',
+    runAttempt: 1,
+    url: 'https://github.com/example/protheus-engineering-agent/actions/runs/1',
+  });
+  const codeScanningReceipt = await receipt('code-scanning-receipt', {
+    kind: 'github-code-scanning-receipt',
+    source: 'github-api',
+    headSha: exactReleaseCommit,
+    conclusion: 'success',
+    toolName: 'CodeQL',
+    analysisId: 1,
+    sarifResults: true,
+    url: 'https://github.com/example/protheus-engineering-agent/security/code-scanning',
+  });
+  const securityReceipt = await receipt('security-review-receipt', {
+    kind: 'security-review-receipt',
+    controls: ['codeql', 'dependency-review', 'osv', 'provenance', 'secret-scan'].map((id) => ({
+      id, status: 'PASS', evidence: `verified ${id} evidence`,
+    })),
+  });
   await writeFile(
     join(root, 'release-evidence', 'v0.3.0.json'),
     JSON.stringify({
       schemaVersion: 1,
       version: '0.3.0',
       status: 'GO',
-      commit: 'a'.repeat(40),
-      ci: { passed: true, url: 'https://github.com/example/protheus-engineering-agent/actions/runs/1' },
+      commit: exactReleaseCommit,
+      ci: { passed: true, evidence: ciReceipt },
       codeReview: { passed: true },
-      securityReview: { passed: true },
-      codeScanning: { passed: true, url: 'https://github.com/example/protheus-engineering-agent/security/code-scanning' },
-      vscodeSmoke: { passed: true, versions: ['1.95.3', '1.133.0'], commands: 4, isolated: true },
+      securityReview: { passed: true, evidence: securityReceipt },
+      codeScanning: { passed: true, evidence: codeScanningReceipt },
+      vscodeSmoke: {
+        passed: true, versions: ['1.95.3', '1.133.0'], commands: publicCommandIds.length,
+        commandIds: publicCommandIds, isolated: true,
+      },
       freshInstall: {
         passed: true,
         versions: ['1.95.3', '1.133.0'],
-        commands: 4,
+        commands: publicCommandIds.length,
+        commandIds: publicCommandIds,
         isolated: true,
         vsixSha256: artifacts[1].sha256,
       },
@@ -148,13 +264,99 @@ async function fixture({ license = 'Apache-2.0', repository = true } = {}) {
       artifacts,
       releaseManifest: {
         path: releaseManifestPath,
-        sha256: createHash('sha256').update(releaseManifestContents).digest('hex'),
+        sha256: releaseManifestSha256,
       },
       approvedBy: 'maintainer',
     }),
     'utf8',
   );
   return root;
+}
+
+async function rebindReleaseReceipts(root, evidence) {
+  for (const key of ['ci', 'codeScanning', 'securityReview']) {
+    const reference = evidence[key].evidence;
+    const path = reference.slice(0, reference.indexOf('#sha256='));
+    const document = JSON.parse(await readFile(join(root, path), 'utf8'));
+    document.commit = evidence.commit;
+    document.releaseManifestSha256 = evidence.releaseManifest.sha256;
+    if ('headSha' in document) document.headSha = evidence.commit;
+    const contents = `${JSON.stringify(document)}\n`;
+    await writeFile(join(root, path), contents, 'utf8');
+    evidence[key].evidence = `${path}#sha256=${createHash('sha256').update(contents).digest('hex')}`;
+  }
+}
+
+const stableEvidenceKinds = {
+  g0BaselineIntegrity: 'baseline-validation',
+  g1PremiumP0: 'premium-p0-journey',
+  g2SemanticP1: 'semantic-validation',
+  g3Tier0Virtualization: 'tier0-virtualization',
+  g4OfficialAnalyzer: 'official-analyzer',
+  g5OfficialPostgres: 'official-postgres',
+  g6LicensedAppserver: 'licensed-appserver',
+  g7PackageLifecycle: 'package-lifecycle',
+  g8UxAccessibility: 'ux-accessibility-uat',
+  g9SecuritySupplyChain: 'security-supply-chain',
+  g10CompatibilitySupport: 'compatibility-support',
+  g11EffectivenessClaims: 'representative-pilot',
+  g12ExactRelease: 'exact-release-attestation',
+  g13PublicationAuthorization: 'publication-authorization',
+};
+
+async function stableControlEvidence(root, evidence, gateId) {
+  const path = `release-artifacts/receipt-${gateId}.json`;
+  const results = {
+    g0BaselineIntegrity: { testsPassed: 293, testsFailed: 0, testsSkipped: 0, mutationScore: 95.4, diffCheck: true },
+    g1PremiumP0: { publicCommandsRegistered: 19, coreJourneysPassed: true, offline: true },
+    g2SemanticP1: { corpusPassed: true, performancePassed: true, compilerEquivalentClaim: false },
+    g3Tier0Virtualization: { networkRequired: false, successFailureMatrix: true },
+    g4OfficialAnalyzer: {
+      imageDigest: `sha256:${'a'.repeat(64)}`, cleanCase: 'PASS', failingCase: 'EXPECTED_FAIL',
+      cancellation: 'PASS', timeout: 'PASS',
+    },
+    g5OfficialPostgres: {
+      imageDigest: `sha256:${'b'.repeat(64)}`, readOnly: true, namedQueriesPassed: true,
+      writeDenied: true, teardownPassed: true,
+    },
+    g6LicensedAppserver: {
+      lawfulInputs: true, compilerIdentity: 'compiler-1', appserverIdentity: 'appserver-1',
+      rpoSha256: 'c'.repeat(64), compileSuccess: true, compileFailureCaptured: true,
+    },
+    g7PackageLifecycle: {
+      versions: ['1.95.3', '1.136.2'], install: 'PASS', upgrade: 'PASS', uninstall: 'PASS',
+      reinstall: 'PASS', rollback: 'PASS',
+    },
+    g8UxAccessibility: {
+      participants: 3, keyboard: 'PASS', screenReader: 'PASS', highContrast: 'PASS', zoom: 'PASS',
+      medianFirstValueSeconds: 240,
+    },
+    g9SecuritySupplyChain: {
+      dependencyReview: 'PASS', secretScan: 'PASS', osv: 'PASS', npmAudit: 'PASS', codeql: 'PASS',
+      attestationVerified: true,
+    },
+    g10CompatibilitySupport: { windows: true, linux: true, remote: true, supportDrill: 'PASS' },
+    g11EffectivenessClaims: { participants: 3, preregistered: true, claimDecision: 'APPROVED' },
+    g12ExactRelease: { attestationVerified: true, downloadedArtifactsVerified: true, artifactCount: 3 },
+    g13PublicationAuthorization: { legalApproved: true, publisherReady: true, ownerAuthorized: true },
+  };
+  const result = results[gateId];
+  const contents = `${JSON.stringify({
+    schemaVersion: 1,
+    kind: stableEvidenceKinds[gateId],
+    gateId,
+    status: 'PASS',
+    commit: evidence.commit,
+    releaseManifestSha256: evidence.releaseManifest.sha256,
+    capturedAt: '2026-09-09T12:00:00.000Z',
+    validatedBy: 'release-reviewer',
+    result,
+  })}\n`;
+  await writeFile(join(root, path), contents, 'utf8');
+  return {
+    kind: stableEvidenceKinds[gateId],
+    receipt: `${path}#sha256=${createHash('sha256').update(contents).digest('hex')}`,
+  };
 }
 
 test('development audit accepts a complete portable tree that is still unlicensed', async () => {
@@ -173,7 +375,7 @@ test('release audit blocks an unlicensed product without repository metadata', a
   assert.equal(report.status, 'BLOCKED');
   assert.deepEqual(
     report.blockers.map((finding) => finding.code).sort(),
-    ['LICENSE_NOT_SELECTED', 'REPOSITORY_NOT_CONFIGURED'],
+    ['LICENSE_NOT_SELECTED', 'RELEASE_EVIDENCE_INCOMPLETE', 'REPOSITORY_NOT_CONFIGURED'],
   );
 });
 
@@ -212,6 +414,165 @@ test('audit rejects personal paths, secret files and missing governance files', 
   assert.ok(report.errors.some((finding) => finding.code === 'LOCAL_STATE_DIRECTORY'));
   assert.ok(report.errors.some((finding) => finding.code === 'SECRET_CONTENT'));
   assert.ok(report.errors.some((finding) => finding.code === 'REQUIRED_FILE_MISSING'));
+});
+
+test('audit rejects undeclared binary payloads in the public source tree', async () => {
+  const root = await fixture();
+  await writeFile(join(root, 'customer.sqlite'), Buffer.from([0, 1, 2, 3]));
+
+  const report = await assessPublication({ root, release: false });
+
+  assert.equal(report.status, 'FAIL');
+  assert.ok(report.errors.some((finding) => finding.code === 'BINARY_FILE_NOT_ALLOWED'));
+});
+
+test('stable release evidence requires every stable-only gate', async () => {
+  const root = await fixture();
+  const evidence = JSON.parse(await readFile(join(root, 'release-evidence', 'v0.3.0.json'), 'utf8'));
+  evidence.version = '1.0.0';
+  evidence.releaseManifest.path = 'release-artifacts/release-manifest-v1.0.0.json';
+  const options = {
+    root,
+    repositoryUrl: 'https://github.com/example/protheus-engineering-agent.git',
+  };
+  assert.equal(await completeReleaseEvidence(evidence, '1.0.0', options), false);
+  evidence.stableGates = Object.fromEntries([
+    'g0BaselineIntegrity', 'g1PremiumP0', 'g2SemanticP1', 'g3Tier0Virtualization',
+    'g4OfficialAnalyzer', 'g5OfficialPostgres', 'g6LicensedAppserver',
+    'g7PackageLifecycle', 'g8UxAccessibility', 'g9SecuritySupplyChain',
+    'g10CompatibilitySupport', 'g11EffectivenessClaims', 'g12ExactRelease',
+    'g13PublicationAuthorization',
+  ].map((name, index) => [name, {
+    passed: true,
+    evidence: `https://github.com/example/protheus-engineering-agent/actions/runs/${index + 1}`,
+    commit: evidence.commit,
+  }]));
+  assert.equal(await completeReleaseEvidence(evidence, '1.0.0', options), false);
+});
+
+test('stable local gate evidence must exist, stay contained and match its SHA-256', async () => {
+  const root = await fixture();
+  const evidence = JSON.parse(await readFile(join(root, 'release-evidence', 'v0.3.0.json'), 'utf8'));
+  evidence.version = '1.0.0';
+  evidence.releaseManifest.path = 'release-artifacts/release-manifest-v1.0.0.json';
+  const gateIds = [
+    'g0BaselineIntegrity', 'g1PremiumP0', 'g2SemanticP1', 'g3Tier0Virtualization',
+    'g4OfficialAnalyzer', 'g5OfficialPostgres', 'g6LicensedAppserver',
+    'g7PackageLifecycle', 'g8UxAccessibility', 'g9SecuritySupplyChain',
+    'g10CompatibilitySupport', 'g11EffectivenessClaims', 'g12ExactRelease',
+    'g13PublicationAuthorization',
+  ];
+  evidence.stableGates = {};
+  for (const [index, name] of gateIds.entries()) {
+    const path = `release-artifacts/${name}.json`;
+    const document = {
+      schemaVersion: 1,
+      gateId: name,
+      status: 'PASS',
+      commit: evidence.commit,
+      releaseManifestSha256: evidence.releaseManifest.sha256,
+      evidence: [await stableControlEvidence(root, evidence, name)],
+      validatedBy: 'release-reviewer',
+      validatedAt: '2026-09-09T12:00:00.000Z',
+      ...(index === 13 ? {
+        authorization: {
+          approvedBy: evidence.approvedBy,
+          approvedAt: '2026-09-09T12:00:00.000Z',
+          scope: 'publish-stable-1.0.0',
+        },
+      } : {}),
+    };
+    const contents = `${JSON.stringify(document)}\n`;
+    await writeFile(join(root, path), contents, 'utf8');
+    evidence.stableGates[name] = {
+      passed: true,
+      evidence: `${path}#sha256=${createHash('sha256').update(contents).digest('hex')}`,
+      commit: evidence.commit,
+    };
+  }
+  const options = { root, repositoryUrl: 'https://github.com/example/protheus-engineering-agent.git' };
+  assert.equal(await completeReleaseEvidence(evidence, '1.0.0', options), true);
+  const genericGatePath = 'release-artifacts/g4-generic.json';
+  const genericGate = `${JSON.stringify({
+    schemaVersion: 1,
+    gateId: 'g4OfficialAnalyzer',
+    status: 'PASS',
+    commit: evidence.commit,
+    releaseManifestSha256: evidence.releaseManifest.sha256,
+    evidence: ['generic URL or text is not official analyzer proof'],
+    validatedBy: 'release-reviewer',
+    validatedAt: '2026-09-09T12:00:00.000Z',
+  })}\n`;
+  await writeFile(join(root, genericGatePath), genericGate, 'utf8');
+  const originalAnalyzerEvidence = evidence.stableGates.g4OfficialAnalyzer.evidence;
+  evidence.stableGates.g4OfficialAnalyzer.evidence = `${genericGatePath}#sha256=${createHash('sha256').update(genericGate).digest('hex')}`;
+  assert.equal(await completeReleaseEvidence(evidence, '1.0.0', options), false);
+  evidence.stableGates.g4OfficialAnalyzer.evidence = originalAnalyzerEvidence;
+  evidence.stableGates.g0BaselineIntegrity.evidence = `release-artifacts/g0BaselineIntegrity.json#sha256=${'f'.repeat(64)}`;
+  assert.equal(await completeReleaseEvidence(evidence, '1.0.0', options), false);
+  evidence.stableGates.g0BaselineIntegrity.evidence = `release-artifacts/missing.json#sha256=${'a'.repeat(64)}`;
+  assert.equal(await completeReleaseEvidence(evidence, '1.0.0', options), false);
+});
+
+test('stable local gate evidence is bound to the exact release manifest', async () => {
+  const root = await fixture();
+  const evidence = JSON.parse(await readFile(join(root, 'release-evidence', 'v0.3.0.json'), 'utf8'));
+  evidence.version = '1.0.0';
+  evidence.releaseManifest.path = 'release-artifacts/release-manifest-v1.0.0.json';
+  const gateIds = [
+    'g0BaselineIntegrity', 'g1PremiumP0', 'g2SemanticP1', 'g3Tier0Virtualization',
+    'g4OfficialAnalyzer', 'g5OfficialPostgres', 'g6LicensedAppserver',
+    'g7PackageLifecycle', 'g8UxAccessibility', 'g9SecuritySupplyChain',
+    'g10CompatibilitySupport', 'g11EffectivenessClaims', 'g12ExactRelease',
+    'g13PublicationAuthorization',
+  ];
+  evidence.stableGates = {};
+  for (const name of gateIds) {
+    const path = `release-artifacts/${name}.json`;
+    const document = {
+      schemaVersion: 1,
+      gateId: name,
+      status: 'PASS',
+      commit: evidence.commit,
+      releaseManifestSha256: name === 'g0BaselineIntegrity' ? '0'.repeat(64) : evidence.releaseManifest.sha256,
+      evidence: [await stableControlEvidence(root, evidence, name)],
+      validatedBy: 'release-reviewer',
+      validatedAt: '2026-09-09T12:00:00.000Z',
+      ...(name === 'g13PublicationAuthorization' ? {
+        authorization: {
+          approvedBy: evidence.approvedBy,
+          approvedAt: '2026-09-09T12:00:00.000Z',
+          scope: 'publish-stable-1.0.0',
+        },
+      } : {}),
+    };
+    const contents = `${JSON.stringify(document)}\n`;
+    await writeFile(join(root, path), contents, 'utf8');
+    evidence.stableGates[name] = {
+      passed: true,
+      evidence: `${path}#sha256=${createHash('sha256').update(contents).digest('hex')}`,
+      commit: evidence.commit,
+    };
+  }
+  assert.equal(await completeReleaseEvidence(evidence, '1.0.0', {
+    root,
+    repositoryUrl: 'https://github.com/example/protheus-engineering-agent.git',
+  }), false);
+});
+
+test('release audit binds evidence to current HEAD and a clean tracked tree', async () => {
+  const root = await fixture();
+  await writeFile(join(root, 'README.md'), '# Dirty product\n', 'utf8');
+  const dirty = await assessPublication({ root, release: true });
+  assert.ok(dirty.blockers.some((finding) => finding.code === 'RELEASE_TREE_DIRTY'));
+
+  await execFileAsync('git', ['-C', root, 'add', 'README.md']);
+  await execFileAsync('git', [
+    '-C', root, '-c', 'user.name=PEA Tests', '-c', 'user.email=pea@example.invalid',
+    'commit', '-m', 'move head',
+  ]);
+  const mismatch = await assessPublication({ root, release: true });
+  assert.ok(mismatch.blockers.some((finding) => finding.code === 'RELEASE_COMMIT_MISMATCH'));
 });
 
 test('audit rejects an interrupted mutation-testing sandbox', async () => {
@@ -318,11 +679,11 @@ test('release audit requires a successful fresh install of the packaged VSIX', a
   assert.ok(report.blockers.some((finding) => finding.code === 'RELEASE_EVIDENCE_INCOMPLETE'));
 });
 
-test('release audit requires public CodeQL evidence bound to a GitHub URL', async () => {
+test('release audit requires checksummed CodeQL evidence bound to the exact release', async () => {
   const root = await fixture();
   const evidencePath = join(root, 'release-evidence', 'v0.3.0.json');
   const evidence = JSON.parse(await (await import('node:fs/promises')).readFile(evidencePath, 'utf8'));
-  evidence.codeScanning = { passed: false, url: 'https://example.invalid/report' };
+  evidence.codeScanning = { passed: false, evidence: 'https://example.invalid/report' };
   await writeFile(evidencePath, JSON.stringify(evidence), 'utf8');
 
   const report = await assessPublication({ root, release: true });
@@ -344,11 +705,25 @@ test('release audit binds fresh-install evidence to the packaged VSIX hash', asy
   assert.ok(report.blockers.some((finding) => finding.code === 'RELEASE_EVIDENCE_INCOMPLETE'));
 });
 
+test('release audit requires two distinct supported VS Code versions in both installed matrices', async () => {
+  const root = await fixture();
+  const evidencePath = join(root, 'release-evidence', 'v0.3.0.json');
+  const evidence = JSON.parse(await readFile(evidencePath, 'utf8'));
+  evidence.vscodeSmoke.versions = ['1.95.3', '1.95.3'];
+  evidence.freshInstall.versions = ['1.95.3', '1.95.3'];
+  await writeFile(evidencePath, JSON.stringify(evidence), 'utf8');
+
+  const report = await assessPublication({ root, release: true });
+
+  assert.ok(report.blockers.some((finding) => finding.code === 'RELEASE_EVIDENCE_INCOMPLETE'));
+});
+
 test('release audit binds evidence to the checksummed release manifest', async () => {
   const root = await fixture();
   const evidencePath = join(root, 'release-evidence', 'v0.3.0.json');
   const evidence = JSON.parse(await (await import('node:fs/promises')).readFile(evidencePath, 'utf8'));
   evidence.commit = 'b'.repeat(40);
+  await rebindReleaseReceipts(root, evidence);
   await writeFile(evidencePath, JSON.stringify(evidence), 'utf8');
 
   const report = await assessPublication({ root, release: true });
@@ -374,6 +749,32 @@ test('release audit accepts final evidence outside the tracked source tree', asy
   });
 
   assert.equal(report.status, 'PASS');
+});
+
+test('release audit rejects correctly checksummed artifacts whose contents are invalid', async () => {
+  const root = await fixture();
+  const evidencePath = join(root, 'release-evidence', 'v0.3.0.json');
+  const evidence = JSON.parse(await readFile(evidencePath, 'utf8'));
+  const invalid = Buffer.from('correctly hashed but not a VSIX');
+  const invalidHash = createHash('sha256').update(invalid).digest('hex');
+  const vsix = evidence.artifacts.find((artifact) => artifact.path.endsWith('.vsix'));
+  await writeFile(join(root, vsix.path), invalid);
+  vsix.sha256 = invalidHash;
+  evidence.freshInstall.vsixSha256 = invalidHash;
+  const manifestPath = join(root, evidence.releaseManifest.path);
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+  const manifestVsix = manifest.artifacts.find((artifact) => artifact.path.endsWith('.vsix'));
+  manifestVsix.sha256 = invalidHash;
+  manifestVsix.bytes = invalid.length;
+  const manifestContents = `${JSON.stringify(manifest)}\n`;
+  await writeFile(manifestPath, manifestContents, 'utf8');
+  evidence.releaseManifest.sha256 = createHash('sha256').update(manifestContents).digest('hex');
+  await rebindReleaseReceipts(root, evidence);
+  await writeFile(evidencePath, JSON.stringify(evidence), 'utf8');
+
+  const report = await assessPublication({ root, release: true });
+
+  assert.ok(report.blockers.some((finding) => finding.code === 'RELEASE_MANIFEST_INVALID'));
 });
 
 test('release audit does not require an optional Hermes compatibility probe', async () => {
@@ -403,6 +804,7 @@ test('audit rejects publishable symbolic links and directory junctions', async (
 test('audit ignores the repository root git pointer used by a legitimate worktree', async () => {
   const root = await fixture();
   const baseline = await assessPublication({ root, release: false });
+  await rm(join(root, '.git'), { recursive: true, force: true });
   await writeFile(join(root, '.git'), 'gitdir: C:/repository/.git/worktrees/release\n', 'utf8');
 
   const report = await assessPublication({ root, release: false });
@@ -456,7 +858,7 @@ test('repository CI has a least-privilege cross-platform matrix', async () => {
   assert.match(workflow, /node scripts\/smoke\.mjs/);
   assert.match(workflow, /node scripts\/check\.mjs/);
   assert.match(workflow, /npm ci/);
-  assert.match(workflow, /npm audit --audit-level=high/);
+  assert.match(workflow, /npm audit --audit-level=moderate/);
   assert.match(workflow, /npm run test:mutation/);
   assert.match(workflow, /name: VS Code Extension Host/);
   assert.match(workflow, /npm run package:extension/);
@@ -515,6 +917,25 @@ test('publication audit rejects a Marketplace-incompatible prerelease version', 
   assert.ok(report.errors.some((finding) => finding.code === 'MARKETPLACE_VERSION_INVALID'));
 });
 
+test('Marketplace channel requires preview for 0.x and regular publication for stable 1.x', async () => {
+  const root = await fixture();
+  const packagePath = join(root, 'package.json');
+  const extensionPath = join(root, 'apps', 'vscode-extension', 'package.json');
+  const product = JSON.parse(await readFile(packagePath, 'utf8'));
+  const extension = JSON.parse(await readFile(extensionPath, 'utf8'));
+  product.version = '1.0.0';
+  extension.version = '1.0.0';
+  extension.preview = false;
+  await writeFile(packagePath, JSON.stringify(product), 'utf8');
+  await writeFile(extensionPath, JSON.stringify(extension), 'utf8');
+  assert.equal((await assessPublication({ root, release: false })).status, 'PASS');
+
+  extension.preview = true;
+  await writeFile(extensionPath, JSON.stringify(extension), 'utf8');
+  const invalid = await assessPublication({ root, release: false });
+  assert.ok(invalid.errors.some((finding) => finding.code === 'MARKETPLACE_METADATA_INCOMPLETE'));
+});
+
 test('Marketplace icon is a real 128 by 128 PNG', async () => {
   const bytes = await (await import('node:fs/promises')).readFile(
     new URL('../apps/vscode-extension/media/icon.png', import.meta.url),
@@ -562,6 +983,26 @@ test('CodeQL is pinned, least-privilege and activates automatically when the rep
   assert.match(workflow, /security-events: write/);
   assert.doesNotMatch(workflow, /pull_request_target/);
   assert.doesNotMatch(workflow, /continue-on-error:\s*true/);
+});
+
+test('supply-chain workflows are pinned, least-privilege and fail closed', async () => {
+  const dependencyReview = await readFile(join(process.cwd(), '.github', 'workflows', 'dependency-review.yml'), 'utf8');
+  const secretScan = await readFile(join(process.cwd(), '.github', 'workflows', 'secret-scan.yml'), 'utf8');
+  const provenance = await readFile(join(process.cwd(), '.github', 'workflows', 'provenance.yml'), 'utf8');
+  for (const workflow of [dependencyReview, secretScan, provenance]) {
+    assert.doesNotMatch(workflow, /uses:\s+[^\s@]+@v\d+/);
+    assert.match(workflow, /permissions:\s*\r?\n\s+contents: read/);
+    assert.match(workflow, /timeout-minutes:/);
+  }
+  assert.match(dependencyReview, /fail-on-severity: moderate/);
+  assert.match(secretScan, /fetch-depth: 0/);
+  assert.match(secretScan, /version: 3\.97\.4/);
+  assert.match(secretScan, /--results=verified,unknown --fail/);
+  assert.match(provenance, /id-token: write/);
+  assert.match(provenance, /attestations: write/);
+  assert.match(provenance, /artifact-metadata: write/);
+  assert.match(provenance, /npm run build:release/);
+  assert.match(provenance, /release-artifacts\/\*-source\.zip/);
 });
 
 test('mutation testing always removes its local sandbox', async () => {
