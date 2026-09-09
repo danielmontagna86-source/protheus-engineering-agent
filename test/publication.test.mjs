@@ -1093,7 +1093,9 @@ test('supply-chain workflows are pinned, least-privilege and fail closed', async
   assert.match(dependencyReview, /if: github\.event\.repository\.private == false/);
   assert.match(secretScan, /fetch-depth: 0/);
   assert.match(secretScan, /version: 3\.97\.4/);
-  assert.match(secretScan, /extra_args: --results=verified,unknown/);
+  assert.match(secretScan, /name: Verified secrets/);
+  assert.match(secretScan, /extra_args: --results=verified/);
+  assert.doesNotMatch(secretScan, /results=verified,unknown/);
   assert.doesNotMatch(secretScan, /extra_args:.*--fail/);
   assert.match(provenance, /id-token: write/);
   assert.match(provenance, /attestations: write/);
