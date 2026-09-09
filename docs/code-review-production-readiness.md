@@ -1,5 +1,7 @@
 # Production Readiness Code Review
 
+> Historical review snapshot. Superseded for current candidate metrics by `docs/qa/stable-candidate-local-validation-2026-09-09.md`; retained to preserve the audit trail.
+
 **Date:** 2026-09-07
 
 **Scope:** complete `production-readiness` diff against `main`

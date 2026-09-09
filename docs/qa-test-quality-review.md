@@ -1,5 +1,7 @@
 # QA Test Quality Review
 
+> Historical QA snapshot. Superseded for current candidate metrics by `docs/qa/stable-candidate-local-validation-2026-09-09.md`; retained to preserve the audit trail.
+
 **Date:** 2026-09-07
 **Method:** `petrkindlmann/qa-skills` — `release-readiness` and `ai-qa-review`
 **Decision:** local QA gate PASS; remote/public release remains NO-GO.

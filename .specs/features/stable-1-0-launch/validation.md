@@ -31,9 +31,9 @@
 | G10 compatibility/support | published VS Code/TDS/Node/OS/Protheus matrix, support and deprecation drill | PARTIAL — public policy/matrix documented; live support drill and external matrix remain |
 | G11 effectiveness/claims | preregistered representative pilot and approved claims table | UNPROVEN |
 | G12 exact release | immutable source/VSIX/SBOM/manifest/evidence, hashes and download verification | PARTIAL — source-to-commit reproduction, commit-stamped VSIX rebuilt in an isolated source-archive checkout after clean `npm ci`, full npm-resolved production lock graph reconciliation and a five-subject attestation-verification workflow are enforced; public attestation/download verification not run |
+| G13 publication | legal/brand/publisher and named owner authorization | EXTERNAL / NOT AUTHORIZED |
 
 Detailed current local evidence: `docs/qa/stable-candidate-local-validation-2026-09-09.md`.
-| G13 publication | legal/brand/publisher and named owner authorization | EXTERNAL / NOT AUTHORIZED |
 
 ## QA battery by layer
 

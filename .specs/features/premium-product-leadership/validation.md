@@ -1,5 +1,7 @@
 # Validation — Premium product leadership
 
+> Historical feature validation. Superseded for current candidate metrics by `docs/qa/stable-candidate-local-validation-2026-09-09.md`; retained to preserve requirements traceability.
+
 **Date opened:** 2026-09-07
 **Spec:** `.specs/features/premium-product-leadership/spec.md`
 **Status:** LOCAL AUTOMATED PASS — public release remains NO-GO
