@@ -142,7 +142,7 @@ async function fixture({ license = 'Apache-2.0', repository = true } = {}) {
   const sourceContents = await readFile(sourceArtifactPath);
   const vsixEntries = [
     ['[Content_Types].xml', '<Types/>'], ['extension.vsixmanifest', '<PackageManifest/>'],
-    ['extension/package.json', JSON.stringify({ version: '0.3.0' })],
+    ['extension/package.json', JSON.stringify({ version: '0.3.0', peaRelease: { commit: exactReleaseCommit } })],
     ['extension/extension.cjs', 'module.exports = {};'], ['extension/dist/runtime-cli.cjs', 'module.exports = {};'],
     ['extension/dist/runtime-cli.mjs', 'export {};'], ['extension/dist/mcp-stdio.mjs', 'export {};'],
     ['extension/readme.md', '# Extension'], ['extension/license.md', 'Apache-2.0'],
@@ -193,6 +193,7 @@ async function fixture({ license = 'Apache-2.0', repository = true } = {}) {
     artifacts,
     verification: {
       publication: 'PASS', sourceArchive: 'PASS', vsix: 'PASS', vsixReproducible: 'PASS',
+      vsixSourceCommit: 'PASS', vsixSourceRebuild: 'PASS',
       sbom: 'PASS', sbomLockfile: 'PASS',
     },
   })}\n`;
@@ -233,8 +234,24 @@ async function fixture({ license = 'Apache-2.0', repository = true } = {}) {
   });
   const securityReceipt = await receipt('security-review-receipt', {
     kind: 'security-review-receipt',
-    controls: ['codeql', 'dependency-review', 'osv', 'provenance', 'secret-scan'].map((id) => ({
-      id, status: 'PASS', evidence: `verified ${id} evidence`,
+    controls: Object.entries({
+      codeql: '.github/workflows/codeql.yml',
+      'dependency-review': '.github/workflows/dependency-review.yml',
+      osv: '.github/workflows/security.yml',
+      provenance: '.github/workflows/provenance.yml',
+      'secret-scan': '.github/workflows/secret-scan.yml',
+    }).map(([id, workflowPath], index) => ({
+      id,
+      status: 'PASS',
+      evidence: {
+        source: 'github-api',
+        headSha: exactReleaseCommit,
+        conclusion: 'success',
+        workflowPath,
+        runId: index + 10,
+        runAttempt: 1,
+        url: `https://github.com/example/protheus-engineering-agent/actions/runs/${index + 10}`,
+      },
     })),
   });
   await writeFile(
@@ -281,6 +298,11 @@ async function rebindReleaseReceipts(root, evidence) {
     document.commit = evidence.commit;
     document.releaseManifestSha256 = evidence.releaseManifest.sha256;
     if ('headSha' in document) document.headSha = evidence.commit;
+    for (const control of document.controls ?? []) {
+      if (control?.evidence && typeof control.evidence === 'object' && 'headSha' in control.evidence) {
+        control.evidence.headSha = evidence.commit;
+      }
+    }
     const contents = `${JSON.stringify(document)}\n`;
     await writeFile(join(root, path), contents, 'utf8');
     evidence[key].evidence = `${path}#sha256=${createHash('sha256').update(contents).digest('hex')}`;
@@ -336,8 +358,35 @@ async function stableControlEvidence(root, evidence, gateId) {
       attestationVerified: true,
     },
     g10CompatibilitySupport: { windows: true, linux: true, remote: true, supportDrill: 'PASS' },
-    g11EffectivenessClaims: { participants: 3, preregistered: true, claimDecision: 'APPROVED' },
-    g12ExactRelease: { attestationVerified: true, downloadedArtifactsVerified: true, artifactCount: 3 },
+    g11EffectivenessClaims: {
+      participants: 3,
+      preregistered: true,
+      preregistrationUrl: 'https://github.com/example/protheus-engineering-agent/commit/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      acceptedTasks: { withProduct: 3, baseline: 3 },
+      anonymizedDataset: true,
+      rawObservationsPublished: true,
+      datasetUrl: 'https://github.com/example/protheus-engineering-agent/commit/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+      analysisCodePublished: true,
+      analysisUrl: 'https://github.com/example/protheus-engineering-agent/commit/cccccccccccccccccccccccccccccccccccccccc',
+      analysisReviewedBy: 'independent-reviewer',
+      licensingReviewed: true,
+      companyAuthorizationReviewed: true,
+      confidenceIntervals: [{ metric: 'accepted-result-seconds', lower: -20, upper: 40, confidenceLevel: 0.95 }],
+      claimDecision: 'APPROVED',
+    },
+    g12ExactRelease: {
+      attestationVerified: true,
+      verificationTool: 'gh attestation verify',
+      attestationUrl: 'https://github.com/example/protheus-engineering-agent/attestations/1',
+      downloadedArtifactsVerified: true,
+      artifactCount: 3,
+      downloadedArtifacts: evidence.artifacts,
+      verifiedSubjects: [
+        ...evidence.artifacts,
+        { path: `release-artifacts/release-manifest-v${evidence.version}.json`, sha256: evidence.releaseManifest.sha256 },
+        { path: 'release-artifacts/SHA256SUMS', sha256: 'd'.repeat(64) },
+      ],
+    },
     g13PublicationAuthorization: { legalApproved: true, publisherReady: true, ownerAuthorized: true },
   };
   const result = results[gateId];
@@ -491,6 +540,27 @@ test('stable local gate evidence must exist, stay contained and match its SHA-25
     };
   }
   const options = { root, repositoryUrl: 'https://github.com/example/protheus-engineering-agent.git' };
+  assert.equal(await completeReleaseEvidence(evidence, '1.0.0', options), true);
+  const effectivenessGatePath = evidence.stableGates.g11EffectivenessClaims.evidence.split('#sha256=')[0];
+  const effectivenessGate = JSON.parse(await readFile(join(root, effectivenessGatePath), 'utf8'));
+  const effectivenessReceiptPath = effectivenessGate.evidence[0].receipt.split('#sha256=')[0];
+  const effectivenessReceipt = JSON.parse(await readFile(join(root, effectivenessReceiptPath), 'utf8'));
+  const originalIntervals = effectivenessReceipt.result.confidenceIntervals;
+  effectivenessReceipt.result.confidenceIntervals = [];
+  let rewrittenContents = `${JSON.stringify(effectivenessReceipt)}\n`;
+  await writeFile(join(root, effectivenessReceiptPath), rewrittenContents, 'utf8');
+  effectivenessGate.evidence[0].receipt = `${effectivenessReceiptPath}#sha256=${createHash('sha256').update(rewrittenContents).digest('hex')}`;
+  rewrittenContents = `${JSON.stringify(effectivenessGate)}\n`;
+  await writeFile(join(root, effectivenessGatePath), rewrittenContents, 'utf8');
+  evidence.stableGates.g11EffectivenessClaims.evidence = `${effectivenessGatePath}#sha256=${createHash('sha256').update(rewrittenContents).digest('hex')}`;
+  assert.equal(await completeReleaseEvidence(evidence, '1.0.0', options), false);
+  effectivenessReceipt.result.confidenceIntervals = originalIntervals;
+  rewrittenContents = `${JSON.stringify(effectivenessReceipt)}\n`;
+  await writeFile(join(root, effectivenessReceiptPath), rewrittenContents, 'utf8');
+  effectivenessGate.evidence[0].receipt = `${effectivenessReceiptPath}#sha256=${createHash('sha256').update(rewrittenContents).digest('hex')}`;
+  rewrittenContents = `${JSON.stringify(effectivenessGate)}\n`;
+  await writeFile(join(root, effectivenessGatePath), rewrittenContents, 'utf8');
+  evidence.stableGates.g11EffectivenessClaims.evidence = `${effectivenessGatePath}#sha256=${createHash('sha256').update(rewrittenContents).digest('hex')}`;
   assert.equal(await completeReleaseEvidence(evidence, '1.0.0', options), true);
   const genericGatePath = 'release-artifacts/g4-generic.json';
   const genericGate = `${JSON.stringify({
@@ -684,6 +754,24 @@ test('release audit requires checksummed CodeQL evidence bound to the exact rele
   const evidencePath = join(root, 'release-evidence', 'v0.3.0.json');
   const evidence = JSON.parse(await (await import('node:fs/promises')).readFile(evidencePath, 'utf8'));
   evidence.codeScanning = { passed: false, evidence: 'https://example.invalid/report' };
+  await writeFile(evidencePath, JSON.stringify(evidence), 'utf8');
+
+  const report = await assessPublication({ root, release: true });
+
+  assert.equal(report.status, 'BLOCKED');
+  assert.ok(report.blockers.some((finding) => finding.code === 'RELEASE_EVIDENCE_INCOMPLETE'));
+});
+
+test('release audit rejects security controls backed only by self-declared text', async () => {
+  const root = await fixture();
+  const evidencePath = join(root, 'release-evidence', 'v0.3.0.json');
+  const evidence = JSON.parse(await readFile(evidencePath, 'utf8'));
+  const receiptPath = evidence.securityReview.evidence.split('#sha256=')[0];
+  const receipt = JSON.parse(await readFile(join(root, receiptPath), 'utf8'));
+  receipt.controls[0].evidence = 'verified codeql evidence';
+  const contents = `${JSON.stringify(receipt)}\n`;
+  await writeFile(join(root, receiptPath), contents, 'utf8');
+  evidence.securityReview.evidence = `${receiptPath}#sha256=${createHash('sha256').update(contents).digest('hex')}`;
   await writeFile(evidencePath, JSON.stringify(evidence), 'utf8');
 
   const report = await assessPublication({ root, release: true });
@@ -1003,6 +1091,10 @@ test('supply-chain workflows are pinned, least-privilege and fail closed', async
   assert.match(provenance, /artifact-metadata: write/);
   assert.match(provenance, /npm run build:release/);
   assert.match(provenance, /release-artifacts\/\*-source\.zip/);
+  assert.match(provenance, /release-artifacts\/release-manifest-\*\.json/);
+  assert.match(provenance, /release-artifacts\/SHA256SUMS/);
+  assert.match(provenance, /sha256sum --check SHA256SUMS/);
+  assert.match(provenance, /gh attestation verify/);
 });
 
 test('mutation testing always removes its local sandbox', async () => {

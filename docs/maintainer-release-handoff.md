@@ -9,8 +9,8 @@ This document separates completed engineering from actions that require the prod
 - CLI/MCP and installed-VSIX smoke;
 - minimum/current VS Code plus installed official TDS coexistence UAT;
 - dependency audit, mutation testing and publication-tree audit;
-- reproducible VSIX, source ZIP, CycloneDX SBOM, SHA-256 manifest and verification;
-- pinned CI, dependency-review, OSV, full-history secret-scan, CodeQL and artifact-attestation workflows; exact public executions remain external.
+- commit-stamped and independently rebuilt VSIX, exact-commit source ZIP, full-production-graph CycloneDX SBOM, SHA-256 manifest and verification;
+- pinned CI, dependency-review, OSV, full-history secret-scan, CodeQL and artifact-attestation workflows; the workflow checks hashes and verifies attestations for the three payloads, manifest and checksum set, while exact public executions remain external.
 
 ## Owner actions that cannot be manufactured by the build
 

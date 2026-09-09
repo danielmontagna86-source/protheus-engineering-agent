@@ -39,9 +39,11 @@ function validatePlan(plan) {
 function defaultRedact(value) {
   return String(value)
     .replace(/\b(Bearer\s+)[^\s"']+/gi, '$1[REDACTED]')
-    .replace(/(["'](?:api[_-]?key|token|password|secret)["']\s*:\s*["'])[^"']*(["'])/gi, '$1[REDACTED]$2')
-    .replace(/((?:api[_-]?key|token|password|secret)\s*[=:]\s*)[^\s,"']+/gi, '$1[REDACTED]')
-    .replace(/([?&](?:api[_-]?key|token|password|secret)=)[^&#\s]+/gi, '$1[REDACTED]')
+    .replace(/\b((?:proxy-)?authorization\s*:\s*basic\s+)[^\s"']+/gi, '$1[REDACTED]')
+    .replace(/\b((?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?|redis|rediss|amqp|amqps|oracle):\/\/)[^@\s/]+@/gi, '$1[REDACTED]@')
+    .replace(/(["'](?:api[_-]?key|token|password|secret|connection[_-]?string|database[_-]?url|private[_-]?key|client[_-]?secret|access[_-]?key)["']\s*:\s*["'])[^"']*(["'])/gi, '$1[REDACTED]$2')
+    .replace(/((?:api[_-]?key|token|password|secret|connection[_-]?string|database[_-]?url|private[_-]?key|client[_-]?secret|access[_-]?key)\s*[=:]\s*)[^\s,"']+/gi, '$1[REDACTED]')
+    .replace(/([?&](?:api[_-]?key|token|password|secret|connection[_-]?string|database[_-]?url|private[_-]?key|client[_-]?secret|access[_-]?key)=)[^&#\s]+/gi, '$1[REDACTED]')
     .replace(/\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}|AKIA[A-Z0-9]{16})\b/g, '[REDACTED]');
 }
 

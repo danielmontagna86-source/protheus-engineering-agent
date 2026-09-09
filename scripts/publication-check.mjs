@@ -81,6 +81,13 @@ const stableGateEvidenceKinds = Object.freeze({
   g12ExactRelease: 'exact-release-attestation',
   g13PublicationAuthorization: 'publication-authorization',
 });
+const securityControlWorkflows = Object.freeze({
+  codeql: '.github/workflows/codeql.yml',
+  'dependency-review': '.github/workflows/dependency-review.yml',
+  osv: '.github/workflows/security.yml',
+  provenance: '.github/workflows/provenance.yml',
+  'secret-scan': '.github/workflows/secret-scan.yml',
+});
 const secretFilePatterns = [
   /^\.env(?:\..+)?$/i,
   /^(?:id_rsa|id_ed25519)$/i,
@@ -217,14 +224,21 @@ async function verifyReleaseReceipt(productRoot, reference, expected) {
         && githubEvidenceMatches(document.url, expected.repository);
     }
     if (expected.kind === 'security-review-receipt') {
-      const required = ['codeql', 'dependency-review', 'osv', 'provenance', 'secret-scan'];
+      const required = Object.keys(securityControlWorkflows);
       return Array.isArray(document.controls)
         && document.controls.length === required.length
         && required.every((control) => document.controls.some((item) => (
           item?.id === control
           && item.status === 'PASS'
-          && typeof item.evidence === 'string'
-          && item.evidence.length > 0
+          && item.evidence?.source === 'github-api'
+          && item.evidence?.headSha?.toLowerCase() === expected.commit.toLowerCase()
+          && item.evidence?.conclusion === 'success'
+          && item.evidence?.workflowPath === securityControlWorkflows[control]
+          && Number.isSafeInteger(item.evidence?.runId)
+          && item.evidence.runId > 0
+          && Number.isSafeInteger(item.evidence?.runAttempt)
+          && item.evidence.runAttempt > 0
+          && githubEvidenceMatches(item.evidence?.url, expected.repository)
         )));
     }
     return false;
@@ -295,10 +309,55 @@ async function verifyStableControlReceipt(productRoot, reference, expected) {
           && result.supportDrill === 'PASS';
       case 'g11EffectivenessClaims':
         return Number.isSafeInteger(result.participants) && result.participants >= 3
-          && result.preregistered === true && result.claimDecision === 'APPROVED';
+          && result.preregistered === true
+          && githubEvidenceMatches(result.preregistrationUrl, expected.repository)
+          && Number.isSafeInteger(result.acceptedTasks?.withProduct)
+          && result.acceptedTasks.withProduct >= result.participants
+          && Number.isSafeInteger(result.acceptedTasks?.baseline)
+          && result.acceptedTasks.baseline >= result.participants
+          && result.anonymizedDataset === true
+          && result.rawObservationsPublished === true
+          && githubEvidenceMatches(result.datasetUrl, expected.repository)
+          && result.analysisCodePublished === true
+          && githubEvidenceMatches(result.analysisUrl, expected.repository)
+          && typeof result.analysisReviewedBy === 'string'
+          && result.analysisReviewedBy.trim().length > 0
+          && result.licensingReviewed === true
+          && result.companyAuthorizationReviewed === true
+          && Array.isArray(result.confidenceIntervals)
+          && result.confidenceIntervals.length > 0
+          && result.confidenceIntervals.every((interval) => (
+            typeof interval?.metric === 'string' && interval.metric.length > 0
+            && Number.isFinite(interval.lower) && Number.isFinite(interval.upper)
+            && interval.lower <= interval.upper && interval.confidenceLevel === 0.95
+          ))
+          && result.claimDecision === 'APPROVED';
       case 'g12ExactRelease':
-        return result.attestationVerified === true && result.downloadedArtifactsVerified === true
-          && result.artifactCount === 3;
+        return result.attestationVerified === true
+          && result.verificationTool === 'gh attestation verify'
+          && githubEvidenceMatches(result.attestationUrl, expected.repository)
+          && result.downloadedArtifactsVerified === true
+          && result.artifactCount === 3
+          && Array.isArray(result.downloadedArtifacts)
+          && result.downloadedArtifacts.length === expected.artifacts.length
+          && expected.artifacts.every((artifact) => result.downloadedArtifacts.some((item) => (
+            item?.path === artifact.path && item.sha256 === artifact.sha256
+          )))
+          && Array.isArray(result.verifiedSubjects)
+          && result.verifiedSubjects.length === 5
+          && new Set(result.verifiedSubjects.map((item) => item?.path)).size === 5
+          && result.verifiedSubjects.every((item) => (
+            /^release-artifacts\/[A-Za-z0-9._-]+$/.test(item?.path ?? '')
+            && /^[0-9a-f]{64}$/.test(item?.sha256 ?? '')
+          ))
+          && expected.artifacts.every((artifact) => result.verifiedSubjects.some((item) => (
+            item.path === artifact.path && item.sha256 === artifact.sha256
+          )))
+          && result.verifiedSubjects.some((item) => (
+            item.path === `release-artifacts/release-manifest-v${expected.targetVersion}.json`
+            && item.sha256 === expected.releaseManifestSha256
+          ))
+          && result.verifiedSubjects.some((item) => item.path === 'release-artifacts/SHA256SUMS');
       case 'g13PublicationAuthorization':
         return result.legalApproved === true && result.publisherReady === true
           && result.ownerAuthorized === true;
@@ -318,6 +377,8 @@ async function verifyStableGateEvidence(
   targetVersion,
   approvedBy,
   releaseManifestSha256,
+  artifacts,
+  repository,
 ) {
   if (gate?.passed !== true || gate.commit?.toLowerCase() !== commit.toLowerCase()) return false;
   const match = String(gate.evidence ?? '').match(/^(release-artifacts\/[A-Za-z0-9._-]+)#sha256=([0-9a-f]{64})$/i);
@@ -343,6 +404,9 @@ async function verifyStableGateEvidence(
       kind: stableGateEvidenceKinds[gateId],
       commit,
       releaseManifestSha256,
+      artifacts,
+      repository,
+      targetVersion,
     }))) return false;
     if (gateId !== 'g13PublicationAuthorization') return true;
     return typeof approvedBy === 'string'
@@ -367,6 +431,8 @@ async function completeStableGates(evidence, targetVersion, options) {
     targetVersion,
     evidence.approvedBy,
     evidence.releaseManifest?.sha256,
+    evidence.artifacts,
+    options.repositoryUrl,
   )));
   return results.every(Boolean);
 }
@@ -464,7 +530,7 @@ async function verifyReleaseManifestEvidence(productRoot, evidence, targetVersio
       && manifest.version === targetVersion
       && manifest.commit === evidence.commit
       && JSON.stringify(manifestArtifacts) === JSON.stringify(evidence.artifacts)
-      && ['publication', 'sourceArchive', 'vsix', 'vsixReproducible', 'sbom', 'sbomLockfile'].every(
+      && ['publication', 'sourceArchive', 'vsix', 'vsixReproducible', 'vsixSourceCommit', 'vsixSourceRebuild', 'sbom', 'sbomLockfile'].every(
         (key) => manifest.verification?.[key] === 'PASS',
       );
     if (!structurallyValid) return false;
@@ -480,7 +546,7 @@ async function verifyReleaseManifestEvidence(productRoot, evidence, targetVersio
         root: productRoot,
         commit: manifest.commit,
       }),
-      verifyVsix(resolve(productRoot, vsix.path), targetVersion),
+      verifyVsix(resolve(productRoot, vsix.path), targetVersion, { commit: manifest.commit }),
       verifySbom(resolve(productRoot, sbom.path), targetVersion, { root: productRoot }),
     ]);
     return [sourceReport, vsixReport, sbomReport].every((report) => report.status === 'PASS');

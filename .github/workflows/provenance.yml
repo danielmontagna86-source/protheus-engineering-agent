@@ -26,13 +26,26 @@ jobs:
         run: npm ci
       - name: Build exact release artifacts
         run: npm run build:release
-      - name: Attest source, VSIX, and SBOM
+      - name: Verify release checksums before attestation
+        working-directory: release-artifacts
+        run: sha256sum --check SHA256SUMS
+      - name: Attest artifacts, manifest, and checksum set
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: |-
             release-artifacts/*-source.zip
             release-artifacts/*.vsix
             release-artifacts/*.cdx.json
+            release-artifacts/release-manifest-*.json
+            release-artifacts/SHA256SUMS
+      - name: Verify persisted attestations
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |-
+          for subject in release-artifacts/*-source.zip release-artifacts/*.vsix release-artifacts/*.cdx.json release-artifacts/release-manifest-*.json release-artifacts/SHA256SUMS; do
+            gh attestation verify "$subject" --repo "$GITHUB_REPOSITORY"
+          done
       - name: Preserve attested artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

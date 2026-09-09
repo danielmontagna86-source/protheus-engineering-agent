@@ -4,16 +4,16 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { buildExtension } from './build-extension.mjs';
-import { normalizeZipArchive } from './release-artifacts.mjs';
+import { git, normalizeZipArchive } from './release-artifacts.mjs';
 import { verifyVsix } from './verify-vsix.mjs';
 import { assertNoLinkPath } from './path-safety.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
-export async function packageExtension() {
-  const build = await buildExtension();
+export async function packageExtension({ commit = git(root, ['rev-parse', 'HEAD']), outputPath } = {}) {
+  const build = await buildExtension({ releaseCommit: commit });
   const artifacts = join(root, 'release-artifacts');
-  const artifact = join(artifacts, `protheus-engineering-agent-v${build.version}.vsix`);
+  const artifact = outputPath ? resolve(outputPath) : join(artifacts, `protheus-engineering-agent-v${build.version}.vsix`);
   if (dirname(artifact) !== artifacts) throw new Error('refusing artifact outside release-artifacts');
   await assertNoLinkPath(root, artifacts);
   await assertNoLinkPath(root, artifact);
@@ -32,7 +32,7 @@ export async function packageExtension() {
   }
   await normalizeZipArchive(artifact);
 
-  const verification = await verifyVsix(artifact, build.version);
+  const verification = await verifyVsix(artifact, build.version, { commit });
   if (verification.status !== 'PASS') throw new Error(verification.errors.join('; '));
   return verification;
 }

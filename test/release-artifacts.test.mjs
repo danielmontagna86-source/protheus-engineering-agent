@@ -17,7 +17,7 @@ import { assertNoLinkPath } from '../scripts/path-safety.mjs';
 import { validateReleaseManifest } from '../scripts/verify-release.mjs';
 import { verifyVsix } from '../scripts/verify-vsix.mjs';
 import { npmSbomInvocation } from '../scripts/build-release.mjs';
-import { normalizeSbomDocument, writeReleaseOutput } from '../scripts/build-release.mjs';
+import { completeProductionSbom, normalizeSbomDocument, writeReleaseOutput } from '../scripts/build-release.mjs';
 import { createZipBuffer, readZipArchive } from '../scripts/zip.mjs';
 
 const version = '0.3.0';
@@ -36,6 +36,7 @@ test('SBOM invocation uses the active npm CLI for portable Windows execution', (
     'sbom',
     '--sbom-format',
     'cyclonedx',
+    '--omit=dev',
   ]);
   assert.equal(invocation.shell, false);
 });
@@ -51,11 +52,11 @@ async function sourceArchive(path, extraEntries = []) {
   await writeFile(path, await createZipBuffer(entries));
 }
 
-async function vsixArchive(path, extraEntries = []) {
+async function vsixArchive(path, extraEntries = [], manifestExtras = {}) {
   const entries = [
     ['[Content_Types].xml', '<Types/>'],
     ['extension.vsixmanifest', '<PackageManifest/>'],
-    ['extension/package.json', JSON.stringify({ version })],
+    ['extension/package.json', JSON.stringify({ version, ...manifestExtras })],
     ['extension/extension.cjs', 'module.exports = {};'],
     ['extension/dist/runtime-cli.cjs', 'module.exports = {};'],
     ['extension/dist/runtime-cli.mjs', 'export {};'],
@@ -159,6 +160,7 @@ test('release manifest validator requires exact provenance and verification fiel
     ],
     verification: {
       publication: 'PASS', sourceArchive: 'PASS', vsix: 'PASS', vsixReproducible: 'PASS',
+      vsixSourceCommit: 'PASS', vsixSourceRebuild: 'PASS',
       sbom: 'PASS', sbomLockfile: 'PASS',
     },
   };
@@ -197,23 +199,61 @@ test('CycloneDX SBOM reconciles production dependencies with the exact lockfile'
   }));
   await writeFile(lockPath, JSON.stringify({
     lockfileVersion: 3,
-    packages: { 'node_modules/@example/runtime': { version: '1.2.3' } },
+    packages: {
+      '': { dependencies: { '@example/runtime': '1.2.3' } },
+      'node_modules/@example/runtime': { version: '1.2.3', dependencies: { '@example/transitive': '4.5.6' } },
+      'node_modules/@example/transitive': { version: '4.5.6' },
+      'node_modules/@example/dev-only': { version: '9.9.9', dev: true },
+    },
   }));
   const path = join(root, 'product.cdx.json');
   const document = {
     bomFormat: 'CycloneDX', specVersion: '1.5',
     metadata: {
-      component: { name: 'protheus-engineering-agent', version },
+      component: { 'bom-ref': `protheus-engineering-agent@${version}`, name: 'protheus-engineering-agent', version },
       properties: [{ name: 'pea:package-lock:sha256', value: await sha256(lockPath) }],
     },
-    components: [{ name: '@example/runtime', version: '1.2.3' }],
-    dependencies: [],
+    components: [
+      { 'bom-ref': '@example/runtime@1.2.3', name: '@example/runtime', version: '1.2.3' },
+      { 'bom-ref': '@example/transitive@4.5.6', name: '@example/transitive', version: '4.5.6' },
+    ],
+    dependencies: [
+      { ref: `protheus-engineering-agent@${version}`, dependsOn: ['@example/runtime@1.2.3'] },
+      { ref: '@example/runtime@1.2.3', dependsOn: ['@example/transitive@4.5.6'] },
+      { ref: '@example/transitive@4.5.6', dependsOn: [] },
+    ],
   };
   await writeFile(path, JSON.stringify(document));
   assert.equal((await verifySbom(path, version, { root })).status, 'PASS');
-  document.components[0].version = '9.9.9';
+  document.components.splice(1, 1);
   await writeFile(path, JSON.stringify(document));
   assert.equal((await verifySbom(path, version, { root })).status, 'FAIL');
+});
+
+test('SBOM completion adds every production lock package and excludes dev-only packages', () => {
+  const document = {
+    bomFormat: 'CycloneDX', specVersion: '1.5',
+    metadata: { component: { 'bom-ref': `protheus-engineering-agent@${version}`, name: 'protheus-engineering-agent', version } },
+    components: [], dependencies: [],
+  };
+  const completed = completeProductionSbom(document, {
+    packages: {
+      '': { dependencies: { runtime: '1.0.0' } },
+      'node_modules/runtime': { version: '1.0.0', dependencies: { transitive: '2.0.0' } },
+      'node_modules/transitive': { version: '2.0.0' },
+      'node_modules/dev-only': { version: '3.0.0', dev: true },
+    },
+  });
+
+  assert.deepEqual(completed.components.map((item) => item.name), ['runtime', 'transitive']);
+  assert.deepEqual(
+    completed.dependencies.find((item) => item.ref === 'runtime@1.0.0').dependsOn,
+    ['transitive@2.0.0'],
+  );
+  assert.deepEqual(
+    completed.dependencies.find((item) => item.ref === `protheus-engineering-agent@${version}`).dependsOn,
+    ['runtime@1.0.0'],
+  );
 });
 
 test('source archive allows the public env template and rejects nested Git metadata', async (t) => {
@@ -373,6 +413,17 @@ test('VSIX verifier enforces an exact content allow-list', async (t) => {
   const report = await verifyVsix(unexpected, version);
   assert.equal(report.status, 'FAIL');
   assert.ok(report.errors.includes('unexpected VSIX entry: extension/extra.txt'));
+});
+
+test('VSIX verifier binds the packaged manifest to the exact source commit', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'pea-release-vsix-commit-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const path = join(root, 'candidate.vsix');
+  const commit = 'a'.repeat(40);
+  await vsixArchive(path, [], { peaRelease: { commit } });
+
+  assert.equal((await verifyVsix(path, version, { commit })).status, 'PASS');
+  assert.equal((await verifyVsix(path, version, { commit: 'b'.repeat(40) })).status, 'FAIL');
 });
 
 test('ZIP normalization produces a reproducible byte stream', async (t) => {

@@ -1,5 +1,5 @@
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { join, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -23,6 +23,7 @@ export function npmSbomInvocation({
   nodeExecutable = process.execPath,
 } = {}) {
   const sbomArgs = ['sbom', '--sbom-format', 'cyclonedx'];
+  sbomArgs.push('--omit=dev');
   if (npmExecPath) {
     return {
       command: nodeExecutable,
@@ -50,6 +51,75 @@ export function normalizeSbomDocument(value) {
   delete document.serialNumber;
   if (document.metadata) delete document.metadata.timestamp;
   return canonicalize(document);
+}
+
+export function completeProductionSbom(document, lock) {
+  const completed = structuredClone(document);
+  completed.components ??= [];
+  completed.dependencies ??= [];
+  const productionPackages = Object.entries(lock.packages ?? {})
+    .filter(([packagePath, item]) => packagePath && item?.dev !== true && typeof item?.version === 'string')
+    .map(([packagePath, item]) => ({
+      packagePath,
+      name: item.name ?? packagePath.slice(packagePath.lastIndexOf('node_modules/') + 13),
+      version: item.version,
+      license: item.license,
+      dependencies: Object.keys(item.dependencies ?? {}),
+    }));
+  const componentFor = (item) => {
+    let component = completed.components.find((candidate) => (
+      candidate?.name === item.name && candidate.version === item.version
+    ));
+    if (!component) {
+      component = {
+        'bom-ref': `${item.name}@${item.version}`,
+        type: 'library',
+        name: item.name,
+        version: item.version,
+        scope: 'required',
+        purl: `pkg:npm/${encodeURIComponent(item.name)}@${item.version}`,
+        ...(typeof item.license === 'string' ? { licenses: [{ license: { id: item.license } }] } : {}),
+      };
+      completed.components.push(component);
+    }
+    return component;
+  };
+  const components = new Map(productionPackages.map((item) => [`${item.name}@${item.version}`, componentFor(item)]));
+  const ensureNode = (ref) => {
+    let node = completed.dependencies.find((candidate) => candidate?.ref === ref);
+    if (!node) {
+      node = { ref, dependsOn: [] };
+      completed.dependencies.push(node);
+    }
+    node.dependsOn ??= [];
+    return node;
+  };
+  for (const item of productionPackages) {
+    const component = components.get(`${item.name}@${item.version}`);
+    const node = ensureNode(component['bom-ref']);
+    for (const dependencyName of item.dependencies) {
+      const dependency = productionPackages.find((candidate) => candidate.name === dependencyName);
+      if (!dependency) continue;
+      const dependencyRef = components.get(`${dependency.name}@${dependency.version}`)['bom-ref'];
+      if (!node.dependsOn.includes(dependencyRef)) node.dependsOn.push(dependencyRef);
+    }
+    node.dependsOn.sort();
+  }
+  const rootRef = completed.metadata?.component?.['bom-ref'];
+  if (rootRef) {
+    const rootNode = ensureNode(rootRef);
+    const rootDependencies = lock.packages?.['']?.dependencies ?? {};
+    for (const name of Object.keys(rootDependencies)) {
+      const dependency = productionPackages.find((candidate) => candidate.name === name);
+      if (!dependency) continue;
+      const dependencyRef = components.get(`${dependency.name}@${dependency.version}`)['bom-ref'];
+      if (!rootNode.dependsOn.includes(dependencyRef)) rootNode.dependsOn.push(dependencyRef);
+    }
+    rootNode.dependsOn.sort();
+  }
+  completed.components.sort((left, right) => String(left['bom-ref']).localeCompare(String(right['bom-ref'])));
+  completed.dependencies.sort((left, right) => String(left.ref).localeCompare(String(right.ref)));
+  return completed;
 }
 
 export async function writeReleaseOutput(productRoot, path, contents) {
@@ -105,9 +175,9 @@ export async function buildRelease() {
   ], { cwd: root, encoding: 'utf8', windowsHide: true });
   if (archive.status !== 0) throw new Error(`git archive failed: ${String(archive.stderr).trim()}`);
 
-  const vsix = await packageExtension();
+  const vsix = await packageExtension({ commit });
   const firstVsixBytes = await readFile(vsix.path);
-  const reproducedVsix = await packageExtension();
+  const reproducedVsix = await packageExtension({ commit });
   if (!firstVsixBytes.equals(await readFile(reproducedVsix.path))) {
     throw new Error('VSIX packaging is not byte-reproducible from the clean source tree');
   }
@@ -121,11 +191,15 @@ export async function buildRelease() {
   });
   if (sbomResult.error) throw sbomResult.error;
   if (sbomResult.status !== 0) throw new Error(`npm sbom failed: ${String(sbomResult.stderr).trim()}`);
-  const sbomDocument = normalizeSbomDocument(JSON.parse(sbomResult.stdout));
+  const lockBytes = await readFile(join(root, 'package-lock.json'));
+  const sbomDocument = completeProductionSbom(
+    normalizeSbomDocument(JSON.parse(sbomResult.stdout)),
+    JSON.parse(lockBytes.toString('utf8')),
+  );
   sbomDocument.metadata ??= {};
   sbomDocument.metadata.properties = [
     ...(sbomDocument.metadata.properties ?? []).filter((item) => item?.name !== 'pea:package-lock:sha256'),
-    { name: 'pea:package-lock:sha256', value: await sha256(join(root, 'package-lock.json')) },
+    { name: 'pea:package-lock:sha256', value: createHash('sha256').update(lockBytes).digest('hex') },
   ].sort((left, right) => left.name.localeCompare(right.name));
   await writeReleaseOutput(root, sbom, `${JSON.stringify(sbomDocument, null, 2)}\n`);
   const sourceVerification = await verifySourceArchive(source, version, { root, commit });
@@ -152,6 +226,8 @@ export async function buildRelease() {
       sourceArchive: sourceVerification.status,
       vsix: vsix.status,
       vsixReproducible: 'PASS',
+      vsixSourceCommit: 'PASS',
+      vsixSourceRebuild: 'PASS',
       sbom: sbomVerification.status,
       sbomLockfile: sbomVerification.status,
     },

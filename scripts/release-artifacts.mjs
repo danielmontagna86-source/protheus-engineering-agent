@@ -224,10 +224,49 @@ export async function verifySbom(path, version, { root } = {}) {
       if (!Array.isArray(document.components) || !Array.isArray(document.dependencies)) {
         errors.push('SBOM must declare CycloneDX components and dependency relationships');
       } else {
+        const productionPackages = Object.entries(lock.packages ?? {})
+          .filter(([packagePath, item]) => packagePath && item?.dev !== true && typeof item?.version === 'string')
+          .map(([packagePath, item]) => ({
+            packagePath,
+            name: item.name ?? packagePath.slice(packagePath.lastIndexOf('node_modules/') + 13),
+            version: item.version,
+            dependencies: Object.keys(item.dependencies ?? {}),
+          }));
+        const matchedComponents = new Map();
+        for (const item of productionPackages) {
+          const component = document.components.find((candidate) => (
+            candidate?.name === item.name && candidate.version === item.version
+          ));
+          if (!component || typeof component['bom-ref'] !== 'string') {
+            errors.push(`SBOM does not reconcile production package ${item.name}@${item.version} with package-lock.json`);
+          } else {
+            matchedComponents.set(`${item.name}@${item.version}`, component);
+            const dependencyNode = document.dependencies.find((candidate) => candidate?.ref === component['bom-ref']);
+            if (!dependencyNode || !Array.isArray(dependencyNode.dependsOn)) {
+              errors.push(`SBOM dependency graph is missing production package ${item.name}@${item.version}`);
+            }
+          }
+        }
+        const rootRef = document.metadata?.component?.['bom-ref'];
+        const rootNode = document.dependencies.find((candidate) => candidate?.ref === rootRef);
         for (const name of Object.keys(manifest.dependencies ?? {})) {
           const versionFromLock = lock.packages?.[`node_modules/${name}`]?.version;
-          if (!versionFromLock || !document.components.some((item) => item?.name === name && item.version === versionFromLock)) {
-            errors.push(`SBOM does not reconcile production dependency ${name} with package-lock.json`);
+          const component = matchedComponents.get(`${name}@${versionFromLock}`);
+          if (!versionFromLock || !component || !rootNode?.dependsOn?.includes(component['bom-ref'])) {
+            errors.push(`SBOM root graph does not reconcile production dependency ${name} with package-lock.json`);
+          }
+        }
+        for (const item of productionPackages) {
+          const component = matchedComponents.get(`${item.name}@${item.version}`);
+          const dependencyNode = document.dependencies.find((candidate) => candidate?.ref === component?.['bom-ref']);
+          for (const dependencyName of item.dependencies) {
+            const candidates = productionPackages.filter((candidate) => candidate.name === dependencyName);
+            if (candidates.length > 0 && !candidates.some((candidate) => {
+              const dependency = matchedComponents.get(`${candidate.name}@${candidate.version}`);
+              return dependencyNode?.dependsOn?.includes(dependency?.['bom-ref']);
+            })) {
+              errors.push(`SBOM graph omits ${item.name}@${item.version} dependency ${dependencyName}`);
+            }
           }
         }
       }

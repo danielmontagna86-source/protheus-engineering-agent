@@ -8,7 +8,7 @@
 
 | Gate | Result | Evidence |
 |---|---|---|
-| Full automated suite | PASS | 294 tests passed, 0 failed, 0 skipped in the fresh local run |
+| Full automated suite | PASS | 297 tests passed, 0 failed, 0 skipped in the fresh local run |
 | Source/manifests | PASS | 57 source files and 16 manifests syntax/structure checked |
 | Development publication audit | PASS | 219 publishable files, 0 findings after mutation cleanup |
 | Critical-path smoke | PASS | doctor, index, review, source MCP and bundled MCP passed in 884 ms |
@@ -47,8 +47,10 @@
 - `DbEval` is treated as a callback function rather than an open-ended loop block, preventing CA1003 scope leakage into following lines.
 - The release gate requires planned-version alignment, fresh installation, three checksummed artifacts, and evidence bound to the exact checksummed release manifest and commit.
 - MCP server version is derived from the product manifest.
-- Stable gates require typed, checksummed, gate-specific receipts tied to the exact commit and release manifest; generic text or URLs cannot close a gate.
-- Source archives byte-match the declared commit, VSIX packaging is byte-reproduced, and the CycloneDX SBOM reconciles the exact lockfile.
+- Stable gates require typed, checksummed, gate-specific receipts tied to the exact commit and release manifest; generic text, free-form URLs and unbound booleans cannot close a gate.
+- Source archives byte-match the declared commit; VSIX files embed the source commit and must byte-match an independent rebuild; the CycloneDX SBOM reconciles every production package and graph edge from the exact lockfile.
+- Security-control receipts are tied to GitHub API run identity, workflow, repository, exact commit and successful conclusion. The provenance workflow checks hashes and verifies attestations for all three artifacts, the manifest and `SHA256SUMS`.
+- Productivity claims require the complete published paired-crossover evidence contract, including accepted tasks in both conditions, anonymized data, reviewed analysis and 95% confidence intervals.
 - Integration cancellation is honored before a warm snapshot-cache return.
 
 ## Reproduce

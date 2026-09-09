@@ -14,7 +14,7 @@ function assertBuildPath(path, expected) {
   if (resolve(path) !== resolve(expected)) throw new Error(`refusing unexpected build path: ${path}`);
 }
 
-export async function buildExtension() {
+export async function buildExtension({ releaseCommit } = {}) {
   assertBuildPath(extensionDist, join(root, 'apps', 'vscode-extension', 'dist'));
   assertBuildPath(stageRoot, join(root, 'dist', 'vscode-extension'));
   await assertNoLinkPath(root, extensionDist);
@@ -80,6 +80,10 @@ export async function buildExtension() {
   const manifest = JSON.parse(await readFile(join(extensionRoot, 'package.json'), 'utf8'));
   delete manifest.private;
   manifest.main = './extension.cjs';
+  if (releaseCommit !== undefined) {
+    if (!/^[0-9a-f]{40}$/.test(releaseCommit)) throw new Error('release commit must be an exact lowercase Git SHA');
+    manifest.peaRelease = { commit: releaseCommit };
+  }
   await writeFile(join(stageRoot, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   return { extensionRoot, extensionDist, stageRoot, version: manifest.version };
 }

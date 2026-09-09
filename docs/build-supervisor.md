@@ -28,7 +28,7 @@ relative to the declared workspace and are hashed after a successful process exi
 1. select the executable and immutable command plan from trusted configuration;
 2. obtain a capability grant and named approval outside untrusted project content;
 3. use a homologation AppServer/RPO for the first real validation;
-4. redact credentials before command construction and never include secrets in arguments;
+4. redact credentials before command construction and never include secrets in arguments; the built-in evidence redactor covers Bearer/Basic authorization, common API/cloud keys, database URLs, connection strings and credentials embedded in supported service URIs, but host-specific formats still belong in the injected redactor;
 5. retain the returned evidence with the bug/release record.
 
 The product deliberately has no default deploy step. A live Protheus compiler/AppServer test is

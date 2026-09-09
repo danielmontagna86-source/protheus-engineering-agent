@@ -1,9 +1,11 @@
-import { lstat, readFile } from 'node:fs/promises';
+import { lstat, readFile, rm } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { artifactPath, git, sha256, verifySbom, verifySourceArchive } from './release-artifacts.mjs';
 import { verifyVsix } from './verify-vsix.mjs';
+import { packageExtension } from './package-extension.mjs';
 import { assertNoLinkPath } from './path-safety.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -49,7 +51,7 @@ export function validateReleaseManifest(manifest) {
   if (!paths.some((path) => path.endsWith('-source.zip'))) errors.push('source archive is missing from release manifest');
   if (!paths.some((path) => path.endsWith('.vsix'))) errors.push('VSIX is missing from release manifest');
   if (!paths.some((path) => path.endsWith('.cdx.json'))) errors.push('CycloneDX SBOM is missing from release manifest');
-  for (const key of ['publication', 'sourceArchive', 'vsix', 'vsixReproducible', 'sbom', 'sbomLockfile']) {
+  for (const key of ['publication', 'sourceArchive', 'vsix', 'vsixReproducible', 'vsixSourceCommit', 'vsixSourceRebuild', 'sbom', 'sbomLockfile']) {
     if (manifest.verification?.[key] !== 'PASS') {
       errors.push(`release manifest verification ${key} must be PASS`);
     }
@@ -95,8 +97,20 @@ export async function verifyRelease() {
     errors.push('source archive is missing');
   }
   if (vsix) {
-    const report = await verifyVsix(artifactPath(root, vsix.path), product.version);
+    const originalPath = artifactPath(root, vsix.path);
+    const report = await verifyVsix(originalPath, product.version, { commit: manifest.commit });
     errors.push(...report.errors);
+    const rebuildPath = join(root, 'release-artifacts', `.verify-${randomUUID()}.vsix`);
+    try {
+      const rebuilt = await packageExtension({ commit: manifest.commit, outputPath: rebuildPath });
+      if (rebuilt.status !== 'PASS' || await sha256(rebuildPath) !== vsix.sha256) {
+        errors.push('VSIX does not byte-match a clean rebuild from the current exact source commit');
+      }
+    } catch (error) {
+      errors.push(`VSIX source rebuild failed: ${error.message}`);
+    } finally {
+      await rm(rebuildPath, { force: true });
+    }
   } else {
     errors.push('VSIX artifact is missing');
   }

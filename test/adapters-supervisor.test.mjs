@@ -524,8 +524,19 @@ test('build supervisor redacts common secrets from commands and persisted logs',
     decideCapability,
     runner: async () => ({
       exitCode: 0,
-      stdout: 'Authorization: Bearer secret-access-token',
-      stderr: 'API_TOKEN=secret-api-token {"password":"json-secret"} https://example.invalid/?api_key=url-secret',
+      stdout: [
+        'Authorization: Bearer secret-access-token',
+        'Authorization: Basic dXNlcjpiYXNpYy1zZWNyZXQ=',
+        'DATABASE_URL=postgresql://database-user:database-password@db.example.invalid/product',
+      ].join('\n'),
+      stderr: [
+        'API_TOKEN=secret-api-token',
+        'AWS_SECRET_ACCESS_KEY=aws-secret-value',
+        'AZURE_CLIENT_SECRET=azure-secret-value',
+        '{"password":"json-secret","connection_string":"Server=db;Password=connection-secret"}',
+        'postgresql://inline-user:inline-password@db.example.invalid/product',
+        'https://example.invalid/?api_key=url-secret',
+      ].join(' '),
       compiler: { identity: 'token=compiler-secret', version: 'password=compiler-version-secret' },
       artifacts: [{ path: 'token=artifact-secret', sha256: 'a'.repeat(64) }],
     }),
@@ -544,7 +555,7 @@ test('build supervisor redacts common secrets from commands and persisted logs',
   });
 
   const serialized = JSON.stringify(run);
-  assert.doesNotMatch(serialized, /secret-access-token|secret-api-token|secret-argument|json-secret|url-secret|compiler-secret|compiler-version-secret|artifact-secret|identity-secret/);
+  assert.doesNotMatch(serialized, /secret-access-token|dXNlcjpiYXNpYy1zZWNyZXQ|database-user|database-password|secret-api-token|aws-secret-value|azure-secret-value|json-secret|connection-secret|inline-user|inline-password|url-secret|secret-argument|compiler-secret|compiler-version-secret|artifact-secret|identity-secret/);
   assert.match(serialized, /\[REDACTED\]/);
 
   const failing = createBuildSupervisor({

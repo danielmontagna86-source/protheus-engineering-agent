@@ -42,7 +42,7 @@ const forbiddenEntryPatterns = [
   /\.(?:jks|key|p12|pfx|pem)$/i,
 ];
 
-export async function verifyVsix(path, expectedVersion) {
+export async function verifyVsix(path, expectedVersion, { commit } = {}) {
   const fileState = await lstat(path);
   if (!fileState.isFile() || fileState.isSymbolicLink() || fileState.size > 25 * 1024 * 1024) {
     return {
@@ -93,6 +93,9 @@ export async function verifyVsix(path, expectedVersion) {
       version = manifest.version;
       if (expectedVersion && version !== expectedVersion) {
         errors.push(`VSIX version ${version} does not match ${expectedVersion}`);
+      }
+      if (commit && manifest.peaRelease?.commit !== commit) {
+        errors.push(`VSIX release commit ${manifest.peaRelease?.commit ?? 'missing'} does not match ${commit}`);
       }
       if (manifest.private === true) errors.push('packaged extension manifest must not be private');
     } catch (error) {

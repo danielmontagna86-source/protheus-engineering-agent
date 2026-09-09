@@ -18,7 +18,7 @@
 
 | Gate | Required proof | Current status |
 |---|---|---|
-| G0 baseline integrity | lint/type/build/tests, configured mutation >=95%, `git diff --check` | Fresh local pass: 294 tests, 57 source files/16 manifests, 219-file publication audit, 95.40% mutation and clean diff check; exact committed rerun remains |
+| G0 baseline integrity | lint/type/build/tests, configured mutation >=95%, `git diff --check` | Fresh local pass: 297 tests, 57 source files/16 manifests, 219-file publication audit, 95.40% mutation and clean diff check; exact committed rerun remains |
 | G1 premium P0 | PC-010..PC-019 and installed offline journey | Automated implementation and installed journey complete; human timed/accessibility and public Action checks remain |
 | G2 semantic P1 | PC-020..PC-026, corpus accuracy and performance | Declared contract/corpus and Windows performance gate complete; Linux and live-provider evidence remain |
 | G3 Tier 0 virtualization | zero-network success/error matrix | PASS for deterministic offline contracts |
@@ -27,10 +27,10 @@
 | G6 licensed AppServer | compile success/error + RPO/TDS/CP1252 evidence | BLOCKED — licensed environment/artifacts required |
 | G7 package lifecycle | actual VSIX install/upgrade/uninstall/rollback on supported matrix | PARTIAL — isolated install/upgrade/uninstall/reinstall/rollback passed on Windows VS Code 1.136.2, and clean install passed on 1.95.3; Linux/remote repetition remains |
 | G8 UX/accessibility | pt-BR/en, keyboard, screen reader, contrast, zoom, three-user first value | PARTIAL — automated localization/host journey passed; assistive and human UAT not run |
-| G9 security/supply chain | dependency review, secret scan, OSV/npm, CodeQL, SBOM, pinned workflows, attestations | PARTIAL — local audit/license/pinning/package controls and pinned dependency-review/secret-scan/attestation workflows pass; exact public runs remain |
+| G9 security/supply chain | dependency review, secret scan, OSV/npm, CodeQL, SBOM, pinned workflows, attestations | PARTIAL — local audit/license/pinning/package controls and pinned dependency-review/secret-scan/attestation workflows pass; receipts require GitHub API run/workflow/repository/commit identity; exact public runs remain |
 | G10 compatibility/support | published VS Code/TDS/Node/OS/Protheus matrix, support and deprecation drill | PARTIAL — public policy/matrix documented; live support drill and external matrix remain |
 | G11 effectiveness/claims | preregistered representative pilot and approved claims table | UNPROVEN |
-| G12 exact release | immutable source/VSIX/SBOM/manifest/evidence, hashes and download verification | PARTIAL — source-to-commit reproduction, double-build VSIX identity and lockfile-reconciled SBOM are enforced; public attestation/download verification not run |
+| G12 exact release | immutable source/VSIX/SBOM/manifest/evidence, hashes and download verification | PARTIAL — source-to-commit reproduction, commit-stamped independently rebuilt VSIX, full production lock graph reconciliation and a five-subject attestation-verification workflow are enforced; public attestation/download verification not run |
 
 Detailed current local evidence: `docs/qa/stable-candidate-local-validation-2026-09-09.md`.
 | G13 publication | legal/brand/publisher and named owner authorization | EXTERNAL / NOT AUTHORIZED |
