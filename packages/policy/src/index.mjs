@@ -104,12 +104,18 @@ function denied(reason, requiresApproval = true) {
   return { allowed: false, reason, requiresApproval };
 }
 
-function validApproval(response) {
+function validApproval(response, request) {
+  const approvedAt = Date.parse(response?.approvedAt);
+  const requestedAt = Date.parse(request.requestedAt);
   return response?.approved === true
+    && response.id === request.id
+    && response.environment === request.environment
+    && response.capability === request.capability
     && typeof response.approvedBy === 'string'
     && response.approvedBy.length > 0
     && typeof response.approvedAt === 'string'
-    && !Number.isNaN(Date.parse(response.approvedAt));
+    && !Number.isNaN(approvedAt)
+    && approvedAt >= requestedAt;
 }
 
 export function createPermissionBroker(options = {}) {
@@ -154,7 +160,7 @@ export function createPermissionBroker(options = {}) {
         const response = await Promise.race(races);
         if (response?.brokerFailure) return denied(response.brokerFailure);
         if (response?.approved === false) return denied('approval-denied');
-        if (!validApproval(response)) return denied('approval-response-invalid');
+        if (!validApproval(response, { id, environment, capability, requestedAt })) return denied('approval-response-invalid');
         const finalDecision = decide(environment, capability, { grants: [...grants, capability] });
         if (!finalDecision.allowed) return denied('approval-did-not-authorize');
         return {

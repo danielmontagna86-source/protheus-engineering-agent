@@ -7,6 +7,18 @@ import {
   getEnvironmentPolicy,
 } from '../packages/policy/src/index.mjs';
 
+function approvedResponse(request, overrides = {}) {
+  return {
+    id: request.id,
+    environment: request.environment,
+    capability: request.capability,
+    approved: true,
+    approvedBy: 'owner',
+    approvedAt: request.requestedAt,
+    ...overrides,
+  };
+}
+
 test('unknown capabilities are denied by default', () => {
   const decision = decideCapability('development', 'unknown:capability');
   assert.deepEqual(decision, {
@@ -101,7 +113,7 @@ test('permission broker correlates approved requests without broadening grants',
     clock: () => Date.parse('2026-09-07T12:00:00.000Z'),
     requestApproval: async (request) => {
       requests.push(request);
-      return { approved: true, approvedBy: 'release-owner', approvedAt: '2026-09-07T12:00:01.000Z' };
+      return approvedResponse(request, { approvedBy: 'release-owner' });
     },
   });
 
@@ -114,6 +126,25 @@ test('permission broker correlates approved requests without broadening grants',
   assert.deepEqual(decideCapability('homologation', 'workspace:write'), {
     allowed: false, reason: 'explicit-grant-required', requiresApproval: true,
   });
+});
+
+test('permission broker rejects approvals replayed for another request, environment, capability or time', async () => {
+  const fixedClock = () => Date.parse('2026-09-07T12:00:00.000Z');
+  for (const overrides of [
+    { id: 'stale-request' },
+    { environment: 'production' },
+    { capability: 'workspace:write' },
+    { approvedAt: '2026-09-07T11:59:59.999Z' },
+  ]) {
+    const broker = createPermissionBroker({
+      clock: fixedClock,
+      idFactory: () => 'request-001',
+      requestApproval: async (request) => approvedResponse(request, overrides),
+    });
+    assert.deepEqual(await broker.authorize('homologation', 'oracle:read'), {
+      allowed: false, reason: 'approval-response-invalid', requiresApproval: true,
+    });
+  }
 });
 
 test('permission broker fails closed on missing, malformed, timed-out and cancelled approval', async () => {
@@ -228,9 +259,7 @@ test('permission broker validates exact timeout boundaries and every approval fi
   for (const timeoutMs of [1, 300_000]) {
     const broker = createPermissionBroker({
       timeoutMs,
-      requestApproval: async () => ({
-        approved: true, approvedBy: 'owner', approvedAt: '2026-09-07T12:00:00.000Z',
-      }),
+      requestApproval: async (request) => approvedResponse(request),
     });
     assert.equal((await broker.authorize('production', 'oracle:read')).allowed, true);
   }
@@ -256,9 +285,7 @@ test('permission broker re-authorizes after approval and fails closed if policy 
       grantSnapshots.push([...context.grants]);
       return { allowed: false, reason: `blocked-${capability}`, requiresApproval: true };
     },
-    requestApproval: async () => ({
-      approved: true, approvedBy: 'owner', approvedAt: '2026-09-07T12:00:00.000Z',
-    }),
+    requestApproval: async (request) => approvedResponse(request),
   });
 
   assert.deepEqual(await broker.authorize('production', 'oracle:read'), {
@@ -280,9 +307,7 @@ test('permission broker registers one-shot cancellation and always removes its l
     },
   };
   const broker = createPermissionBroker({
-    requestApproval: async () => ({
-      approved: true, approvedBy: 'owner', approvedAt: '2026-09-07T12:00:00.000Z',
-    }),
+    requestApproval: async (request) => approvedResponse(request),
   });
 
   assert.equal((await broker.authorize('production', 'oracle:read', { signal })).allowed, true);

@@ -599,6 +599,7 @@ test('runtime creates a live session context with isolated Hermes and project re
   assert.equal(session.hermes.launch.env.HERMES_HOME, join(workspace, '.pea', 'hermes'));
   assert.equal(session.hermes.mcp.name, 'protheus-engineering-agent');
   assert.equal(session.hermes.mcp.env.find((item) => item.name === 'PEA_WORKSPACE').value, workspace);
+  assert.equal(session.hermes.mcp.env.find((item) => item.name === 'PEA_ENVIRONMENT').value, 'development');
 });
 
 test('CLI session command emits the same live integration contract', async () => {
@@ -609,7 +610,22 @@ test('CLI session command emits the same live integration contract', async () =>
 
   assert.equal(session.schemaVersion, 1);
   assert.equal(session.hermes.launch.env.HERMES_HOME, join(workspace, '.pea', 'hermes'));
-  assert.equal(session.hermes.mcp.env.find((item) => item.name === 'PEA_ENVIRONMENT').value, 'production');
+  assert.equal(session.hermes.mcp.env.find((item) => item.name === 'PEA_ENVIRONMENT').value, 'development');
+});
+
+test('runtime session MCP descriptor follows the active profile environment', async () => {
+  for (const environment of ['test', 'homologation', 'production']) {
+    const workspace = await mkdtemp(join(tmpdir(), `pea-session-${environment}-`));
+    await mkdir(join(workspace, '.pea'));
+    await writeFile(join(workspace, '.pea', 'config.json'), JSON.stringify({
+      schemaVersion: 1,
+      locale: 'pt-BR',
+      activeProfile: 'selected',
+      profiles: { selected: { environment } },
+    }));
+    const session = await createRuntime({ workspace }).getSessionContext();
+    assert.equal(session.hermes.mcp.env.find((item) => item.name === 'PEA_ENVIRONMENT').value, environment);
+  }
 });
 
 test('CLI session accepts an explicit Hermes executable without changing profile isolation', async () => {

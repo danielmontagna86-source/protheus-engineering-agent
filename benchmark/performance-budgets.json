@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "profiles": {
     "ci": [
-      { "id": "ci-1000", "symbols": 1000, "maxColdMs": 5000, "maxWarmMs": 3000, "maxChangedMs": 3000, "maxPeakRssDeltaMiB": 256 }
+      { "id": "ci-1000", "symbols": 1000, "maxColdMs": 500, "maxWarmMs": 250, "maxChangedMs": 250, "maxPeakRssDeltaMiB": 64 }
     ],
     "release": [
-      { "id": "release-1000", "symbols": 1000, "maxColdMs": 5000, "maxWarmMs": 3000, "maxChangedMs": 3000, "maxPeakRssDeltaMiB": 256 },
-      { "id": "release-10000", "symbols": 10000, "maxColdMs": 15000, "maxWarmMs": 8000, "maxChangedMs": 10000, "maxPeakRssDeltaMiB": 512 }
+      { "id": "release-1000", "symbols": 1000, "maxColdMs": 500, "maxWarmMs": 250, "maxChangedMs": 250, "maxPeakRssDeltaMiB": 64 },
+      { "id": "release-10000", "symbols": 10000, "maxColdMs": 2000, "maxWarmMs": 1000, "maxChangedMs": 2000, "maxPeakRssDeltaMiB": 128 }
     ]
   }
 }

@@ -76,7 +76,7 @@ TDS-VSCode permanece responsável por linguagem, LSP/DAP, compilação, depuraç
 | AI provider invoke | explicit grant | explicit grant | undeclared | explicit grant | explicit grant |
 | unknown capability | deny | deny | deny | deny | deny |
 
-The asynchronous permission broker correlates every approval, limits the purpose field and fails closed when the host has no approval handler, denies, times out, cancels or returns malformed evidence. Approval for one capability never grants another.
+The asynchronous permission broker correlates every approval to its exact request ID, environment and capability, limits the purpose field and fails closed when the host has no approval handler, denies, times out, cancels or returns replayed/malformed evidence. Approval for one capability never grants another.
 
 ## Error handling
 

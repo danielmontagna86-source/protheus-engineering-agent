@@ -161,7 +161,9 @@ test('official MCP wire emits progress and cancels an in-flight tool request', a
   await callSend;
   await cancelSend;
   await cancelled;
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  const quiesced = waitFor((message) => message.id === 3);
+  await clientTransport.send({ jsonrpc: '2.0', id: 3, method: 'tools/list', params: {} });
+  await quiesced;
 
   const progress = messages.filter((message) => message.method === 'notifications/progress');
   assert.equal(progress[0].params.progressToken, 'wire-progress');

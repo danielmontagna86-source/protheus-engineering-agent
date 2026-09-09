@@ -30,6 +30,36 @@ test('AI gateway keeps untrusted project text structured and redacts secret fiel
   assert.equal(result.privacy.redactedFields, 1);
 });
 
+test('AI gateway removes credentials embedded in untrusted source text before the provider sees it', async () => {
+  let providerRequest;
+  const gateway = createAiGateway({
+    authorize: async () => ({ allowed: true }),
+    provider: {
+      id: 'fake-provider',
+      async complete(request) {
+        providerRequest = request;
+        return { output: { summary: 'safe' } };
+      },
+    },
+  });
+
+  const result = await gateway.run({
+    instruction: 'Review the change',
+    context: {
+      source: 'DATABASE_URL=oracle://scott:exposed-password@db.example.invalid:1521/XE',
+      diff: 'api_key=exposed-key',
+      notes: 'Authorization: Bearer exposed-token',
+    },
+    outputSchema: { type: 'object', required: ['summary'] },
+  });
+
+  const serialized = JSON.stringify(providerRequest);
+  assert.equal(result.status, 'completed');
+  assert.equal(result.privacy.redactedFields, 3);
+  assert.doesNotMatch(serialized, /exposed-password|exposed-key|exposed-token/);
+  assert.match(serialized, /\[REDACTED\]/);
+});
+
 test('AI gateway fails closed without provider or capability approval', async () => {
   const unavailable = createAiGateway({ authorize: async () => ({ allowed: true }) });
   assert.equal((await unavailable.run({ instruction: 'x', context: {} })).error.code, 'AI_PROVIDER_UNAVAILABLE');

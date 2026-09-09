@@ -128,6 +128,33 @@ test('subagent enforces concurrency budget', async () => {
   assert.equal((await first).status, 'completed');
 });
 
+test('timed out invocations retain their concurrency slot until the child actually settles', async () => {
+  let release;
+  let started;
+  let invocations = 0;
+  const invocationStarted = new Promise((resolve) => { started = resolve; });
+  const supervisor = createSubagentSupervisor({
+    maxConcurrent: 1,
+    timeoutMs: 5,
+    toolPolicies: { 'review:file': { mutating: false } },
+    invoke: async () => {
+      invocations += 1;
+      if (invocations > 1) return { ok: true };
+      return new Promise((resolve) => { release = resolve; started(); });
+    },
+  });
+  const context = { parentId: 'p', depth: 1, allowedTools: ['review:file'] };
+
+  const first = supervisor.run({ role: 'one', tool: 'review:file', input: {} }, context);
+  await invocationStarted;
+  assert.equal((await first).error.code, 'SUBAGENT_TIMEOUT');
+  assert.equal((await supervisor.run({ role: 'two', tool: 'review:file', input: {} }, context)).error.code, 'SUBAGENT_CONCURRENCY_EXCEEDED');
+
+  release({ ok: true });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal((await supervisor.run({ role: 'three', tool: 'review:file', input: {} }, context)).status, 'completed');
+});
+
 test('subagent mutability is derived only from the trusted host tool policy', async () => {
   let checkpoints = 0;
   const supervisor = createSubagentSupervisor({

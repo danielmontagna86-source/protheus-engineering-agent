@@ -44,16 +44,19 @@ export function createRuntime(options) {
     ?? resolve(runtimeDirectory, '..', '..', 'mcp', 'src', 'stdio.mjs');
   const hermesHome = resolve(hermesOptions.hermesHome ?? join(workspace, '.pea', 'hermes'));
   assertInside(workspace, hermesHome);
-  const hermes = options.hermesAdapter ?? createHermesAdapter({
-    mcpServerPath,
-    environment: 'production',
-    ...hermesOptions,
-    hermesHome,
-    nodeCommand,
-    electronRunAsNode: hermesOptions.electronRunAsNode
-      ?? (process.env.ELECTRON_RUN_AS_NODE === '1' && nodeCommand === process.env.PEA_NODE_COMMAND),
-    command: hermesOptions.command ?? process.env.PEA_HERMES_COMMAND ?? 'hermes',
-  });
+  function createDefaultHermesAdapter(descriptorEnvironment = environment) {
+    return createHermesAdapter({
+      mcpServerPath,
+      environment: descriptorEnvironment,
+      ...hermesOptions,
+      hermesHome,
+      nodeCommand,
+      electronRunAsNode: hermesOptions.electronRunAsNode
+        ?? (process.env.ELECTRON_RUN_AS_NODE === '1' && nodeCommand === process.env.PEA_NODE_COMMAND),
+      command: hermesOptions.command ?? process.env.PEA_HERMES_COMMAND ?? 'hermes',
+    });
+  }
+  const hermes = options.hermesAdapter ?? createDefaultHermesAdapter();
   const explicitTdnSnapshotPath = options.tdnSnapshotPath ?? process.env.PEA_TDN_SNAPSHOT;
   const explicitDictionarySnapshotPath = options.dictionarySnapshotPath ?? process.env.PEA_DICTIONARY_SNAPSHOT;
   const integrationRegistryCache = new Map();
@@ -406,6 +409,8 @@ export function createRuntime(options) {
     },
     async getSessionContext() {
       await assertHermesBoundary();
+      const sessionEnvironment = await activeEnvironment();
+      const sessionHermes = options.hermesAdapter ?? createDefaultHermesAdapter(sessionEnvironment);
       const [projectContext, resources] = await Promise.all([
         context.read(),
         snapshotAgentResources({ workspace }),
@@ -416,8 +421,8 @@ export function createRuntime(options) {
         context: projectContext,
         resources,
         hermes: {
-          launch: hermes.getLaunchDescriptor(workspace),
-          mcp: hermes.getSessionMcpServerDescriptor(workspace),
+          launch: sessionHermes.getLaunchDescriptor(workspace),
+          mcp: sessionHermes.getSessionMcpServerDescriptor(workspace),
         },
       };
     },

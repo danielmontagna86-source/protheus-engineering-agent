@@ -1,4 +1,9 @@
 const SECRET_KEY = /(?:password|passwd|secret|token|api[_-]?key|authorization|credential)/i;
+const EMBEDDED_SECRET_PATTERNS = [
+  [/\b([a-z][a-z0-9+.-]*:\/\/)[^\s/@:]+:[^\s/@]+@/gi, '$1[REDACTED]@'],
+  [/\b((?:password|passwd|secret|token|api[_-]?key|authorization|credential)\b\s*[:=]\s*)(?:Bearer\s+)?["']?[^\s,;"'`]+/gi, '$1[REDACTED]'],
+  [/\b(Bearer)\s+[a-z0-9._~+\/-]+=*/gi, '$1 [REDACTED]'],
+];
 
 function fail(code, message) {
   return { schemaVersion: 1, status: 'failed', error: { code, message } };
@@ -13,7 +18,17 @@ function redact(value) {
         redactedFields += 1;
         return '[REDACTED]';
       }
-      return item;
+      if (typeof item !== 'string') return item;
+      let protectedText = item;
+      let changed = false;
+      for (const [pattern, replacement] of EMBEDDED_SECRET_PATTERNS) {
+        protectedText = protectedText.replace(pattern, (...args) => {
+          changed = true;
+          return replacement;
+        });
+      }
+      if (changed) redactedFields += 1;
+      return protectedText;
     });
   } catch {
     return { error: 'AI_CONTEXT_INVALID' };

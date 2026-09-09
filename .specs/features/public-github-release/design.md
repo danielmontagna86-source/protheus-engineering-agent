@@ -49,7 +49,7 @@ Hermes ACP (optional) -> per-session MCP descriptor
 
 - Default `HERMES_HOME`: `<workspace>/.pea/hermes`.
 - Executable override: `PEA_HERMES_COMMAND`.
-- ACP receives a stdio MCP descriptor for this product with `PEA_ENVIRONMENT=production` and `PEA_WORKSPACE=<workspace>`.
+- ACP receives a stdio MCP descriptor for this product with `PEA_ENVIRONMENT=<active project profile>` and `PEA_WORKSPACE=<workspace>`.
 - Skills and Rules are read live for every session snapshot and treated as untrusted project data.
 - `.pea` and the Hermes home are rejected when a symlink/junction could escape the workspace.
 - VS Code carries its Electron-as-Node executable contract through the generated MCP descriptor.

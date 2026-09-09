@@ -78,6 +78,14 @@ export function createSubagentSupervisor(options = {}) {
       }
 
       active += 1;
+      let invocation;
+      let slotReleased = false;
+      const releaseSlot = () => {
+        if (!slotReleased) {
+          slotReleased = true;
+          active -= 1;
+        }
+      };
       let checkpoint;
       let timer;
       let abortListener;
@@ -89,8 +97,7 @@ export function createSubagentSupervisor(options = {}) {
             return failure(base, 'SUBAGENT_CHECKPOINT_INVALID', 'checkpoint adapter returned invalid evidence');
           }
         }
-        const races = [
-          Promise.resolve().then(() => options.invoke({
+        invocation = Promise.resolve().then(() => options.invoke({
             id,
             parentId: base.parentId,
             depth: context.depth,
@@ -98,7 +105,12 @@ export function createSubagentSupervisor(options = {}) {
             tool: spec.tool,
             input: spec.input ?? {},
             signal: controller.signal,
-          })),
+          }));
+        // A timeout or abort only asks the child to stop. Keep its slot until it
+        // actually settles so an uncooperative transport cannot exceed the cap.
+        invocation.finally(releaseSlot).catch(() => {});
+        const races = [
+          invocation,
           new Promise((_, reject) => {
             timer = setTimeout(() => {
               controller.abort();
@@ -137,7 +149,7 @@ export function createSubagentSupervisor(options = {}) {
       } finally {
         clearTimeout(timer);
         if (context.signal && abortListener) context.signal.removeEventListener('abort', abortListener);
-        active -= 1;
+        if (!invocation) releaseSlot();
       }
     },
   };

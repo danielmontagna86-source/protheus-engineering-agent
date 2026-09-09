@@ -12,8 +12,6 @@
 - **C-021 Community Protheus containers:** Two reviewed repositories are obsolete/unlicensed for our use and one active community stack has unresolved proprietary-artifact provenance and container-hardening issues. Docker is internal QA only; these images cannot be product dependencies or release substitutes.
 - **C-022 Stable promotion gap:** Existing 0.3 evidence does not cover the expanded Engineering Center, product API freeze, upgrade/rollback, accessibility UAT, representative pilot, licensed AppServer homologation or exact public 1.0 artifacts. Stable/public claims remain `NO-GO` until the launch ledger is green.
 - **C-006 Extension compatibility:** packaged VSIX passed locally on current stable, minimum 1.95.3 and official TDS 2.0.16; exact-candidate CI still remains required.
-- **C-015 Product-surface gap:** the extension exposes only doctor, index, context and active-file review; most runtime differentiation is not discoverable as an end-user journey.
-- **C-016 Change-review gap:** review is not yet driven by staged/unstaged/branch scope and has no stable SARIF/GitHub Action distribution.
 
 ## Medium
 
@@ -37,4 +35,6 @@
 - **C-010 Weak mutation resistance:** initial 36.19% score raised to 95.17% across the unchanged policy/review/CodeGraph mutation scope; the breaking gate is now 95%.
 - **C-011 Review string/comment false positive:** resolved with lexical code-presence validation for direct metadata access.
 - **C-012 CodeGraph quadratic line lookup:** resolved with a line index, exact-line regression, and sub-second large-source budget.
+- **C-015 Product-surface gap:** resolved for the implemented Engineering Center flows; remaining launch UX and pilot requirements are tracked by C-018, C-019 and C-022.
+- **C-016 Change-review gap:** resolved with staged/unstaged/branch change review, deterministic SARIF export and the repository review workflow.
 - **C-008 Multi-process state:** resolved with an exclusive workspace-local lock, atomic writes and concurrent-instance regression.
