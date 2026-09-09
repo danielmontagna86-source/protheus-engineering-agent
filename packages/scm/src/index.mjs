@@ -246,6 +246,7 @@ export function createGitScm(options) {
     async changes({ scope = 'working-tree', baseRef, repository, signal } = {}) {
       if (!VALID_SCOPES.has(scope)) throw new TypeError(`unsupported SCM scope: ${scope}`);
       const repositoryRoot = await resolveRepository(repository, signal);
+      const resolvedWorkspace = await realpathImpl(workspace);
       let output;
       if (scope === 'staged') {
         output = await run(repositoryRoot, ['diff', '--cached', '--name-status', '-z', '--'], signal);
@@ -283,7 +284,7 @@ export function createGitScm(options) {
       return {
         schemaVersion: 1,
         status: normalized.length === 0 ? 'clean' : 'changed',
-        repository: relative(workspace, repositoryRoot).replaceAll('\\', '/') || '.',
+        repository: relative(resolvedWorkspace, repositoryRoot).replaceAll('\\', '/') || '.',
         scope: { kind: scope, baseRef: scope === 'branch' ? baseRef : null },
         files: normalized,
       };

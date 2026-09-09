@@ -117,6 +117,29 @@ test('SCM discovers multiple real repositories and requires an explicit selectio
   assert.equal((await scm.changes({ repository: one, scope: 'staged' })).repository, 'one');
 });
 
+test('SCM reports a repository relative to its canonical workspace spelling', async () => {
+  const workspace = process.platform === 'win32' ? 'C:\\alias\\workspace' : '/alias/workspace';
+  const canonicalWorkspace = process.platform === 'win32' ? 'C:\\real\\workspace' : '/real/workspace';
+  const requestedRepository = join(workspace, 'one');
+  const canonicalRepository = join(canonicalWorkspace, 'one');
+  const scm = createGitScm({
+    workspace,
+    repositories: [requestedRepository],
+    execute: async (_cwd, args) => ({
+      stdout: args.includes('--show-toplevel') ? `${canonicalRepository}\n` : '',
+      stderr: '',
+    }),
+    realpathImpl: async (candidate) => resolve(candidate) === resolve(workspace)
+      ? canonicalWorkspace
+      : canonicalRepository,
+    inspectFile: async () => ({ binary: false }),
+  });
+
+  const result = await scm.changes({ repository: requestedRepository, scope: 'staged' });
+
+  assert.equal(result.repository, 'one');
+});
+
 test('SCM reads staged source up to the declared 20 MiB limit', async () => {
   const workspace = await mkdtemp(join(tmpdir(), 'pea-scm-large-staged-'));
   execFileSync('git', ['init', workspace], { windowsHide: true });
