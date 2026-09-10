@@ -84,6 +84,15 @@ As a release approver, I can reproduce the decision.
 
 - WHEN release readiness is evaluated THEN a versioned checklist records commands, counts, blockers and final GO/NO-GO.
 
+### PUB-011: Discoverable, truthful public product surface
+
+As a prospective adopter, I can discover a precise product promise, safe installation path and support route without mistaking a preview for a production claim.
+
+- WHEN the GitHub repository is made public THEN its description, topics and social preview identify the ADVPL/TLPP engineering scope without implying vendor affiliation.
+- WHEN the Marketplace listing is proposed THEN the title, description, category, keywords, walkthrough, real screenshots and channel flag agree with the checked-in manifest and release evidence.
+- WHEN an adoption target is documented THEN stars and installs are labeled as dated discovery proxies, not as proof of quality, productivity, security or market leadership.
+- WHEN a public launch is proposed THEN a versioned operational procedure requires post-visibility security checks, branch protection restoration, downloaded-asset verification and separately named authorization for GitHub Release and Marketplace submission.
+
 ## Edge Cases
 
 - Hermes executable is not on PATH: use `PEA_HERMES_COMMAND`; never hardcode a developer path.
@@ -107,3 +116,4 @@ As a release approver, I can reproduce the decision.
 | PUB-008 | Hermes adapter/runtime/MCP tests |
 | PUB-009 | docs link and content checks |
 | PUB-010 | versioned release evidence file |
+| PUB-011 | public launch operations document + Marketplace manifest/README + release gate |

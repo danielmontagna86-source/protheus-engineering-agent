@@ -21,6 +21,7 @@ const requiredFiles = [
   'NOTICE',
   'THIRD_PARTY_NOTICES.md',
   'docs/brand-positioning.md',
+  'docs/public-launch-operations.md',
   'docs/code-review-production-readiness.md',
   'docs/qa-test-quality-review.md',
   'docs/security/dependency-license-review.md',

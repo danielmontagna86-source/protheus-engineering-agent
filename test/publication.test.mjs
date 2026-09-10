@@ -32,6 +32,7 @@ const requiredFiles = [
   'NOTICE',
   'THIRD_PARTY_NOTICES.md',
   'docs/brand-positioning.md',
+  'docs/public-launch-operations.md',
   'docs/code-review-production-readiness.md',
   'docs/qa-test-quality-review.md',
   'docs/security/dependency-license-review.md',
@@ -997,6 +998,28 @@ test('public product metadata declares the canonical brand and repository', asyn
   assert.match(extension.bugs?.url ?? '', /^https:\/\/github\.com\//);
 });
 
+test('public discovery contract makes the Marketplace and GitHub launch actionable without unsupported claims', async () => {
+  const productRoot = new URL('..', import.meta.url);
+  const launchOperations = await (await import('node:fs/promises')).readFile(
+    new URL('docs/public-launch-operations.md', productRoot),
+    'utf8',
+  );
+  const extensionReadme = await (await import('node:fs/promises')).readFile(
+    new URL('apps/vscode-extension/README.md', productRoot),
+    'utf8',
+  );
+
+  assert.match(launchOperations, /GitHub topics/i);
+  assert.match(launchOperations, /social preview/i);
+  assert.match(launchOperations, /Marketplace publisher/i);
+  assert.match(launchOperations, /release evidence/i);
+  assert.match(launchOperations, /1,000 stars/i);
+  assert.match(launchOperations, /not a release gate/i);
+  assert.match(launchOperations, /do not.*productivity/i);
+  assert.match(extensionReadme, /independent community project/i);
+  assert.match(extensionReadme, /does not replace VS Code/i);
+});
+
 test('publication audit rejects a Marketplace-incompatible prerelease version', async () => {
   const root = await fixture();
   for (const relativePath of ['package.json', 'apps/vscode-extension/package.json']) {
@@ -1039,6 +1062,13 @@ test('Marketplace icon is a real 128 by 128 PNG', async () => {
   assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
   assert.equal(bytes.readUInt32BE(16), 128);
   assert.equal(bytes.readUInt32BE(20), 128);
+});
+
+test('Apache license file starts with the canonical license text for GitHub detection', async () => {
+  const license = await readFile(new URL('../LICENSE.md', import.meta.url), 'utf8');
+
+  assert.match(license, /^\s*Apache License\s+Version 2\.0, January 2004/);
+  assert.match(license, /SPDX-License-Identifier: Apache-2\.0/);
 });
 
 test('extension staging copies Marketplace media into the VSIX root', async () => {

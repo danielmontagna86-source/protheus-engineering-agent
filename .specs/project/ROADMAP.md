@@ -32,6 +32,7 @@
 - Remoção de referências privadas e auditoria de publicação.
 - Licença e proprietário do repositório definidos; evidência final e autorização externa permanecem pendentes.
 - Metadados Marketplace `0.3.0`, ícone e walkthrough automatizado concluídos; screenshots, UAT TDS e aprovação externa permanecem pendentes.
+- Contrato de divulgação pública rastreável concluído: tópicos, preview social, mídia real, publisher, segurança pública, proteção de `main`, proveniência, release/Marketplace e adoção ética agora possuem procedimento e critérios explícitos. A execução externa permanece bloqueada até o gate de release.
 
 ---
 

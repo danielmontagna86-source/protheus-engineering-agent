@@ -2,17 +2,17 @@
 
 **Date:** 2026-09-09
 **Environment:** Windows, Node.js 22.23.2
-**Decision:** executable development MVP PASS; public release NO-GO.
+**Decision:** executable development MVP PASS; public release and Marketplace submission NO-GO.
 
 ## Latest clean gate
 
 | Gate | Result | Evidence |
 |---|---|---|
-| Full automated suite | PASS | 304 tests passed, 0 failed, 0 skipped in the fresh local run |
+| Full automated suite | PASS | 309 tests passed, 0 failed, 0 skipped in the fresh local run |
 | Source/manifests | PASS | 57 source files and 16 manifests syntax/structure checked |
-| Development publication audit | PASS | 219 publishable files, 0 findings after mutation cleanup |
+| Development publication audit | PASS | clean-checkout audit passed; the active worktree is intentionally re-audited before release |
 | Critical-path smoke | PASS | doctor, index, review, source MCP and bundled MCP passed in 921 ms |
-| Mutation testing | PASS | 870 mutants: 822 killed, 8 timeout, 40 survived, 0 errors; 95.40% overall; breaking threshold 95% |
+| Mutation testing | PASS | 889 mutants: 837 killed, 8 timeout, 44 survived, 0 errors; 95.05% overall; breaking threshold 95% |
 | Dependency audit | PASS | 0 known vulnerabilities after lockfile resolution |
 | MCP stdio process | PASS | real child process initialized and listed tools using newline-delimited JSON-RPC |
 | Standalone core contract | PASS | CLI/MCP, live Skills/Rules and Electron-as-Node propagation covered without requiring Hermes |
@@ -20,12 +20,12 @@
 | Local code/security review | PASS WITH ACCEPTED PREVIEW LIMITS | Review found and fixed the `DbEval` loop-scope leak and unsafe colon-bearing changed-file boundary test-first; exact-commit audit and candidate PR evidence remain required before GO |
 | Release publication audit | BLOCKED AS DESIGNED | candidate CI/OSV, clean-commit manifest, final reviews, downloaded-asset reproduction and named approval remain missing |
 | `actionlint` | NOT RUN | executable is not installed in this environment |
-| GitHub Actions live matrix | PASS ON BASE | latest `main` [run 34151775373](https://github.com/danielmontagna86-source/protheus-engineering-agent/actions/runs/34151775373); candidate branch matrix and OSV remain pending |
+| GitHub Actions live matrix | PASS ON CANDIDATE | PR [#4](https://github.com/danielmontagna86-source/protheus-engineering-agent/pull/4) passed the Windows/Linux × Node 22/24 matrix, mutation/dependency audit, VS Code host, OSV and verified-secret scans for the prior candidate revision; any subsequent commit requires its own full run |
 | Packaged VSIX fresh install | PASS LOCALLY | v0.3.0 installed without Hermes on VS Code 1.95.3 and 1.136.2; all 19 public commands registered and 7 invocations across 5 core commands passed |
 | Package lifecycle | PASS LOCALLY | isolated 0.2.0-alpha.1 install, 0.3.0 upgrade, uninstall, reinstall and rollback passed on VS Code 1.136.2 |
 | Official TDS coexistence | PASS LOCALLY | TDS 2.1.2 activated beside the packaged extension; zero command conflicts, multi-root selection and CP1252/LF preservation passed |
 | Product benchmark | PASS WITH CLAIM LIMITS | Seven Apache-2.0 synthetic cases reached 1.0 precision/recall and symbol/call recall; productivity uplift and market leadership remain `NOT_PROVEN` pending the documented human pilot |
-| Public CodeQL | PENDING VISIBILITY | Pinned CodeQL v4.36.0 `security-extended` workflow is present and automatically activates only when the repository is public |
+| Public CodeQL and dependency review | PENDING VISIBILITY | pinned workflows are present but correctly skipped while the repository remains private; no public scan result exists |
 | Optional Hermes compatibility | PASS, NON-GATING | installed Hermes previously returned `Hermes ACP check OK` from an isolated temporary workspace and profile |
 | ADVPL/TLPP corpus exploration | INCONCLUSIVE FOR ACCURACY | 955 candidates traversed in about six seconds; recovered corpus contamination prevents valid precision/recall claims |
 | External product integrations | CONTRACT PASS / LIVE NOT RUN | TDN/Dictionary snapshots, Oracle allowlist, AI gateway, subagent and durable build contracts pass; real compiler, AppServer/RPO, customer Oracle and live provider remain unconfigured and fail-closed |
@@ -72,7 +72,7 @@ node scripts/publication-check.mjs
 node scripts/publication-check.mjs --release
 ```
 
-The test, smoke, mutation and structural commands must exit zero. The development-publication command must pass on the exact committed archive; the active development worktree may correctly reject old ignored local state. The release command must remain non-zero until every external proof is real.
+The test, smoke, mutation and structural commands must exit zero. The development-publication command must pass on the exact committed archive; the active development worktree may correctly reject old ignored local state. The release command must remain non-zero until every external proof is real. The current public-repository and Marketplace controls are recorded in [public launch operations](public-launch-operations.md).
 
 ## Honest boundary
 

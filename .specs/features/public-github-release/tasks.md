@@ -15,6 +15,7 @@
 | T8 | Select/apply license and repository owner metadata. | owner decision | SPDX metadata and URL are consistent | release | COMPLETE: Apache-2.0 and canonical repository configured |
 | T9 | Execute code review, automated/manual smokes and release checklist. | T5-T8 | no blocking findings and signed GO | release | IN PROGRESS: local code/security review and CLI/MCP smoke PASS; manual/external gates pending |
 | T10 | Publish `v0.3.0` as a Marketplace pre-release only after explicit authorization. | T9 | protected main, tag, release notes, artifacts and checksums exist | release | PLANNED |
+| T11 | Close public discovery and launch-operations contract. | T6, T9 | truthful discovery checklist is audited with Marketplace metadata; GitHub topics/social preview/security controls and real product media are evidenced at launch | release | IN PROGRESS: tracked contract and static checks complete; live public settings and real accessible captures pending |
 
 ## Atomic Verification
 

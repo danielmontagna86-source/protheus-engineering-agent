@@ -136,6 +136,12 @@
 **Reason:** A stable product requires a defined public contract, proven install/upgrade/rollback and support lifecycle; changing the version or Marketplace flag is insufficient.
 **Impact:** `.specs/features/stable-1-0-launch/` is the promotion contract. Publication remains separately authorized.
 
+### AD-021: Adoption targets are measurable, never release evidence (2026-09-09)
+
+**Decision:** Treat 1,000 GitHub stars as an adoption target supported by a documented first-value, community and distribution loop; do not use stars, installs or generic AI claims as quality, readiness or productivity proof.
+**Reason:** A professional developer product earns durable adoption through reproducible value, support and trustworthy claims. Repository visibility and Marketplace distribution also expose security and governance responsibilities.
+**Impact:** `docs/public-launch-operations.md` is a required publication artifact. Its live GitHub/Marketplace settings, real product captures, legal/publisher checks and post-publication verification stay fail-closed until recorded for the exact release.
+
 ## Active Blockers
 
 ### B-003: External release evidence is incomplete
