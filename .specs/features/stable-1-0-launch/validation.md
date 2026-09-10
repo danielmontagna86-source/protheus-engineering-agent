@@ -81,3 +81,4 @@ Detailed current local evidence: `docs/qa/stable-candidate-local-validation-2026
 - `folegini/Protheus_Docker`: permanent no-run reference unless a new maintained, licensed revision is independently re-reviewed.
 - `endersonmaia/totvs-protheus-docker`: permanent no-run reference while archived/obsolete.
 - `juliansantosinfo/*`: quarantine only; execution needs explicit legal/provenance and security admission and never satisfies G6.
+- `feliperaposo/*`: executed once on 2026-09-10 with explicit owner authorization, exact upstream compose topology and isolated teardown. The AppServer failed its REST startup; the result is a negative compatibility record, never G6 proof.

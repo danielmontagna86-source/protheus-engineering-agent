@@ -4,6 +4,8 @@
 
 ## Admission decision
 
+**Superseded in part on 2026-09-10:** the owner explicitly authorized a one-time isolated execution of the supplied `feliperaposo` stack. The execution, exact image digests, startup sequence, negative AppServer result and teardown are recorded in [Docker, Marketplace and publication validation](../research/docker-marketplace-and-publication-validation-2026-09-10.md). That authorization does not turn the community image into a supported product dependency or licensed TOTVS evidence.
+
 The owner-provided community images remain excluded from execution:
 
 - `folegini/Protheus_Docker` and `endersonmaia/totvs-protheus-docker`: rejected as obsolete historical references with no acceptable license detected in the reviewed repositories.

@@ -1,7 +1,7 @@
 # Protheus test lab and stable-launch review
 
 **Date:** 2026-09-08  
-**Decision status:** architecture and admission decision complete; community images were not executed  
+**Decision status:** architecture and admission decision complete; superseded for a user-authorized isolated `feliperaposo` experiment on 2026-09-10, whose negative AppServer result is recorded in [the follow-up validation](docker-marketplace-and-publication-validation-2026-09-10.md)
 **Scope:** the three community projects supplied by the owner, official TOTVS EngPro development images, VS Code stable distribution and GitHub release assurance
 
 ## Executive decision

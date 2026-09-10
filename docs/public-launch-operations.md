@@ -6,7 +6,8 @@ This is the operating checklist for turning the repository and VS Code listing i
 
 ## Current observed state
 
-- The canonical GitHub repository is private, has a clear description, nine focused GitHub topics and a 100% Community Profile, but has no social preview, branch protection/ruleset, CodeQL result, Dependabot alerts, or private vulnerability reporting enabled.
+- The canonical GitHub repository is private, has a clear description, nine focused GitHub topics, a 100% Community Profile and Dependabot alerts enabled. A reviewed 1280 × 640 source social-preview asset is versioned at [`media/social-preview.png`](../media/social-preview.png), but it has not yet been assigned in GitHub's repository settings. It has no branch protection/ruleset or public CodeQL result.
+- Private vulnerability reporting is unavailable for this private repository under the current GitHub plan: its API endpoint returned `404` on 2026-09-10. The versioned `SECURITY.md` private-report route remains the disclosure path until a supported GitHub reporting URL can be verified.
 - CI, OSV scanning, verified-secret scanning, local release-artifact verification and isolated VSIX smoke evidence exist for the candidate branch. The public-only CodeQL and dependency-review workflows correctly skip while the repository is private.
 - The Marketplace extension identifier and publisher identity have not been verified as a live Marketplace listing. No Marketplace version is claimed as published.
 
@@ -17,9 +18,9 @@ These observations must be refreshed immediately before every visibility or rele
 Before changing visibility, the release owner must verify these exact GitHub settings and record the API/UI evidence in the release receipt:
 
 1. Keep the repository description focused on the verified scope and add these GitHub topics: `advpl`, `tlpp`, `protheus`, `totvs`, `vscode-extension`, `mcp`, `code-review`, `static-analysis`, and `developer-tools`.
-2. Add a reviewed 1280 × 640 PNG social preview, under 1 MB, with an independent visual identity. It must say neither “official” nor imply TOTVS endorsement. Use real installed-product captures or an abstract product mark; never use a fabricated UI screenshot.
+2. Upload the reviewed [`media/social-preview.png`](../media/social-preview.png) source (1280 × 640 PNG, under 1 MB) as the repository social preview. Its abstract engineering graphic deliberately has no fabricated UI, vendor logo, “official” statement or implied TOTVS endorsement. Verify the rendered public card after visibility changes.
 3. Confirm README, `README.en.md`, `LICENSE.md`, `NOTICE`, third-party notices, `SECURITY.md`, `SUPPORT.md`, contribution guide, governance, issue forms, pull-request template, changelog, citation and Code Owners are present and link correctly from the default branch.
-4. Enable Dependabot alerts and private vulnerability reporting, then verify the Security reporting URL works before inviting public reports.
+4. Keep Dependabot alerts enabled. Enable private vulnerability reporting where GitHub supports it, then verify the Security reporting URL works before inviting public reports. If the endpoint remains unavailable, retain the versioned private-report route in `SECURITY.md`; do not claim a GitHub security-reporting form exists.
 5. After visibility changes, restore a `main` ruleset or branch protection requiring an up-to-date pull request, one approval, resolution of review conversations, the CI matrix, mutation/dependency audit, VS Code host, OSV, secret scan, CodeQL and dependency review. Block force-push and branch deletion.
 6. Keep Actions default permissions read-only and do not expose secrets to fork-origin pull requests. The release workflow remains manually dispatched and uses GitHub artifact attestations.
 

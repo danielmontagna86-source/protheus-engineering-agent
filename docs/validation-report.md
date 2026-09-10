@@ -1,6 +1,6 @@
 # Validation Report
 
-**Date:** 2026-09-09
+**Date:** 2026-09-10
 **Environment:** Windows, Node.js 22.23.2
 **Decision:** executable development MVP PASS; public release and Marketplace submission NO-GO.
 
@@ -8,7 +8,7 @@
 
 | Gate | Result | Evidence |
 |---|---|---|
-| Full automated suite | PASS | 309 tests passed, 0 failed, 0 skipped in the fresh local run |
+| Full automated suite | PASS | 311 tests passed, 0 failed, 0 skipped in the fresh local run on 2026-09-10 |
 | Source/manifests | PASS | 57 source files and 16 manifests syntax/structure checked |
 | Development publication audit | PASS | clean-checkout audit passed; the active worktree is intentionally re-audited before release |
 | Critical-path smoke | PASS | doctor, index, review, source MCP and bundled MCP passed in 921 ms |
@@ -20,7 +20,7 @@
 | Local code/security review | PASS WITH ACCEPTED PREVIEW LIMITS | Review found and fixed the `DbEval` loop-scope leak and unsafe colon-bearing changed-file boundary test-first; exact-commit audit and candidate PR evidence remain required before GO |
 | Release publication audit | BLOCKED AS DESIGNED | candidate CI/OSV, clean-commit manifest, final reviews, downloaded-asset reproduction and named approval remain missing |
 | `actionlint` | NOT RUN | executable is not installed in this environment |
-| GitHub Actions live matrix | PASS ON CANDIDATE | PR [#4](https://github.com/danielmontagna86-source/protheus-engineering-agent/pull/4) passed the Windows/Linux × Node 22/24 matrix, mutation/dependency audit, VS Code host, OSV and verified-secret scans for the prior candidate revision; any subsequent commit requires its own full run |
+| GitHub Actions live matrix | PASS ON PRIOR CANDIDATE | PR [#4](https://github.com/danielmontagna86-source/protheus-engineering-agent/pull/4) revision `6725f86d16133f6188b27cda7e6311434617f646` passed the Windows/Linux × Node 22/24 matrix, mutation/dependency audit, VS Code host, OSV and verified-secret scans; the current adjustment must produce its own full run before merge |
 | Packaged VSIX fresh install | PASS LOCALLY | v0.3.0 installed without Hermes on VS Code 1.95.3 and 1.136.2; all 19 public commands registered and 7 invocations across 5 core commands passed |
 | Package lifecycle | PASS LOCALLY | isolated 0.2.0-alpha.1 install, 0.3.0 upgrade, uninstall, reinstall and rollback passed on VS Code 1.136.2 |
 | Official TDS coexistence | PASS LOCALLY | TDS 2.1.2 activated beside the packaged extension; zero command conflicts, multi-root selection and CP1252/LF preservation passed |

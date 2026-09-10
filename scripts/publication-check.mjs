@@ -22,6 +22,7 @@ const requiredFiles = [
   'THIRD_PARTY_NOTICES.md',
   'docs/brand-positioning.md',
   'docs/public-launch-operations.md',
+  'media/social-preview.png',
   'docs/code-review-production-readiness.md',
   'docs/qa-test-quality-review.md',
   'docs/security/dependency-license-review.md',
@@ -48,7 +49,7 @@ const localStateDirectories = new Set(['.pea', '.stryker-tmp', '.worktrees', 'wo
 const textExtensions = new Set([
   '.aph', '.apw', '.cff', '.cjs', '.css', '.html', '.js', '.json', '.md', '.mjs', '.ppp', '.ppx', '.prg', '.prw', '.prx', '.sql', '.svg', '.tlpp', '.toml', '.ts', '.txt', '.yaml', '.yml',
 ]);
-const allowedBinaryFiles = new Set(['apps/vscode-extension/media/icon.png']);
+const allowedBinaryFiles = new Set(['apps/vscode-extension/media/icon.png', 'media/social-preview.png']);
 const extensionlessTextNames = new Set([
   '.editorconfig', '.env.example', '.gitattributes', '.gitignore', '.vscodeignore', 'CODEOWNERS', 'NOTICE',
 ]);

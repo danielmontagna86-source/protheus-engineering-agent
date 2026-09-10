@@ -33,6 +33,7 @@ const requiredFiles = [
   'THIRD_PARTY_NOTICES.md',
   'docs/brand-positioning.md',
   'docs/public-launch-operations.md',
+  'media/social-preview.png',
   'docs/code-review-production-readiness.md',
   'docs/qa-test-quality-review.md',
   'docs/security/dependency-license-review.md',
@@ -1013,6 +1014,8 @@ test('public discovery contract makes the Marketplace and GitHub launch actionab
   assert.match(launchOperations, /social preview/i);
   assert.match(launchOperations, /Marketplace publisher/i);
   assert.match(launchOperations, /release evidence/i);
+  assert.match(launchOperations, /Dependabot alerts enabled/i);
+  assert.match(launchOperations, /private vulnerability reporting is unavailable/i);
   assert.match(launchOperations, /1,000 stars/i);
   assert.match(launchOperations, /not a release gate/i);
   assert.match(launchOperations, /do not.*productivity/i);
@@ -1062,6 +1065,17 @@ test('Marketplace icon is a real 128 by 128 PNG', async () => {
   assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
   assert.equal(bytes.readUInt32BE(16), 128);
   assert.equal(bytes.readUInt32BE(20), 128);
+});
+
+test('GitHub social preview is a compact 1280 by 640 PNG without a fabricated product screenshot', async () => {
+  const bytes = await (await import('node:fs/promises')).readFile(
+    new URL('../media/social-preview.png', import.meta.url),
+  );
+
+  assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+  assert.equal(bytes.readUInt32BE(16), 1280);
+  assert.equal(bytes.readUInt32BE(20), 640);
+  assert.ok(bytes.length < 1_000_000);
 });
 
 test('Apache license file starts with the canonical license text for GitHub detection', async () => {

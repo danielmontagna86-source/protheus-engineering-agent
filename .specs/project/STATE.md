@@ -142,6 +142,12 @@
 **Reason:** A professional developer product earns durable adoption through reproducible value, support and trustworthy claims. Repository visibility and Marketplace distribution also expose security and governance responsibilities.
 **Impact:** `docs/public-launch-operations.md` is a required publication artifact. Its live GitHub/Marketplace settings, real product captures, legal/publisher checks and post-publication verification stay fail-closed until recorded for the exact release.
 
+### AD-022: User-authorized community Docker validation remains non-gating (2026-09-10)
+
+**Decision:** Execute the owner-authorized `feliperaposo` AppServer stack only in a disposable internal Docker network and retain its exact negative result.
+**Reason:** The staged topology started PostgreSQL, License Server and DBAccess, then AppServer failed `FAILURE TO START REST SERVER` / `Invalid REST Port`.
+**Impact:** The product does not depend on this stack and it cannot close the licensed AppServer, TDS or stable-release gate.
+
 ## Active Blockers
 
 ### B-003: External release evidence is incomplete
