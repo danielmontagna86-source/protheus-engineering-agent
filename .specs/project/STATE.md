@@ -1,7 +1,7 @@
 # State
 
-**Last Updated:** 2026-09-09
-**Current Work:** Internal Docker QA evidence reconciled with the Stable 1.0 candidate; external promotion gates remain NO-GO
+**Last Updated:** 2026-09-10
+**Current Work:** Code candidate 7123805 passed CI, installed VS Code/TDS/lifecycle and workflow lint; complete production acceptance remains NO-GO
 
 ---
 
@@ -149,6 +149,8 @@
 **Impact:** The product does not depend on this stack and it cannot close the licensed AppServer, TDS or stable-release gate.
 
 ## Active Blockers
+
+Current evidence: [VS Code, Git and production validation](../../docs/qa/vscode-git-production-validation-2026-09-10.md). Code candidate `7123805` passed the complete CI matrix and 95.05% mutation. Fresh installed VSIX tests passed on VS Code 1.95.3/1.136.2, with TDS 2.1.2 and Windows lifecycle/rollback. actionlint 1.7.12 passed. The owner has requested publication repeatedly; further general permission to continue is not the blocker. Working AppServer/product integration, assistive/representative UAT, remote/Linux lifecycle, publisher access and final release receipts remain incomplete. Historical progress below is retained as history and does not supersede this candidate record.
 
 ### B-003: External release evidence is incomplete
 

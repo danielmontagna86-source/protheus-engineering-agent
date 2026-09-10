@@ -18,9 +18,9 @@
 | Standalone core contract | PASS | CLI/MCP, live Skills/Rules and Electron-as-Node propagation covered without requiring Hermes |
 | Workspace containment | PASS | source symlink and `.pea` junction escape regressions covered |
 | Local code/security review | PASS WITH ACCEPTED PREVIEW LIMITS | Review found and fixed the `DbEval` loop-scope leak and unsafe colon-bearing changed-file boundary test-first; exact-commit audit and candidate PR evidence remain required before GO |
-| Release publication audit | BLOCKED AS DESIGNED | candidate CI/OSV, clean-commit manifest, final reviews, downloaded-asset reproduction and named approval remain missing |
-| `actionlint` | NOT RUN | executable is not installed in this environment |
-| GitHub Actions live matrix | PASS ON PRIOR CANDIDATE | PR [#4](https://github.com/danielmontagna86-source/protheus-engineering-agent/pull/4) revision `6725f86d16133f6188b27cda7e6311434617f646` passed the Windows/Linux × Node 22/24 matrix, mutation/dependency audit, VS Code host, OSV and verified-secret scans; the current adjustment must produce its own full run before merge |
+| Release publication audit | BLOCKED AS DESIGNED | isolated code candidate returned zero source errors and RELEASE_EVIDENCE_INCOMPLETE; final reviews, public security, UAT, live integrations and downloaded-asset receipts remain incomplete |
+| `actionlint` | PASS | 1.7.12 official Windows binary, checksum and attestation verified; repository workflows exited zero on 2026-09-10 |
+| GitHub Actions live matrix | PASS ON CODE CANDIDATE | PR [#4](https://github.com/danielmontagna86-source/protheus-engineering-agent/pull/4) revision `71238051a98458fab48c75321200050fd53e1c3c` passed the Windows/Linux × Node 22/24 matrix, mutation/dependency audit, installed VS Code host, OSV and verified-secret scans; later revisions require their own checks |
 | Packaged VSIX fresh install | PASS LOCALLY | v0.3.0 installed without Hermes on VS Code 1.95.3 and 1.136.2; all 19 public commands registered and 7 invocations across 5 core commands passed |
 | Package lifecycle | PASS LOCALLY | isolated 0.2.0-alpha.1 install, 0.3.0 upgrade, uninstall, reinstall and rollback passed on VS Code 1.136.2 |
 | Official TDS coexistence | PASS LOCALLY | TDS 2.1.2 activated beside the packaged extension; zero command conflicts, multi-root selection and CP1252/LF preservation passed |
@@ -54,6 +54,8 @@
 - Integration cancellation is honored before a warm snapshot-cache return.
 
 ## Reproduce
+
+The exact code-candidate VSIX hash, fresh installed VS Code/TDS/lifecycle checks and remaining production work are recorded in [the 2026-09-10 validation](qa/vscode-git-production-validation-2026-09-10.md).
 
 From the product root:
 

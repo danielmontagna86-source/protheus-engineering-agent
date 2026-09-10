@@ -18,9 +18,9 @@
 
 | Gate | Required proof | Current status |
 |---|---|---|
-| G0 baseline integrity | lint/type/build/tests, configured mutation >=95%, `git diff --check` | Current candidate CI passed on Windows/Linux and Node 22/24; local suite passed 304 tests and structural check passed. Exact release evidence still must be rebuilt after future release-only changes. |
+| G0 baseline integrity | lint/type/build/tests, configured mutation >=95%, `git diff --check` | Code candidate 7123805 passed 311 tests, Windows/Linux Node 22/24 CI, 95.05% mutation and workflow lint on 2026-09-10. Exact release evidence must be rebuilt after later changes. |
 | G1 premium P0 | PC-010..PC-019 and installed offline journey | Automated implementation and installed journey complete; human timed/accessibility and public Action checks remain |
-| G2 semantic P1 | PC-020..PC-026, corpus accuracy and performance | Declared contract/corpus and Windows performance gate complete; Linux and live-provider evidence remain |
+| G2 semantic P1 | PC-020..PC-026, corpus accuracy and performance | Declared contract/corpus and Windows/Linux CI performance gates passed for 7123805; live-provider evidence remains |
 | G3 Tier 0 virtualization | zero-network success/error matrix | PASS for deterministic offline contracts |
 | G4 official analyzer | pinned-digest clean/failing/cancel/timeout parity | PARTIAL — 2026-09-09 direct lab rerun proved the image's blank clean-result sentinel and a complete failing diagnostic. The product has no analyzer adapter/parity claim; timeout/cancel adapter evidence remains. |
 | G5 official Postgres | loopback/read-only/named-query/teardown evidence | PARTIAL — 2026-09-09 direct lab rerun passed `pg_isready`, SX2/SX3 reads, write denial and teardown under a non-root/read-only container. A live driver/dialect product gate remains. |
@@ -31,9 +31,9 @@
 | G10 compatibility/support | published VS Code/TDS/Node/OS/Protheus matrix, support and deprecation drill | PARTIAL — public policy/matrix documented; live support drill and external matrix remain |
 | G11 effectiveness/claims | preregistered representative pilot and approved claims table | UNPROVEN |
 | G12 exact release | immutable source/VSIX/SBOM/manifest/evidence, hashes and download verification | PARTIAL — source-to-commit reproduction, commit-stamped VSIX rebuilt in an isolated source-archive checkout after clean `npm ci`, full npm-resolved production lock graph reconciliation and a five-subject attestation-verification workflow are enforced; public attestation/download verification not run |
-| G13 publication | legal/brand/publisher and named owner authorization | EXTERNAL / NOT AUTHORIZED |
+| G13 publication | legal/brand/publisher and named owner authorization | INCOMPLETE — owner requests to prepare and publish are present; publisher access, legal/brand records and final bound receipt remain unverified |
 
-Detailed current local evidence: `docs/qa/stable-candidate-local-validation-2026-09-09.md`.
+Detailed code-candidate evidence: `docs/qa/vscode-git-production-validation-2026-09-10.md`; earlier records remain historical.
 
 ## QA battery by layer
 

@@ -29,7 +29,7 @@
 
 ### SL-110 — Execute semantic and knowledge depth
 
-- **Status:** Automated implementation complete for the declared contracts; Linux/live-provider evidence remains
+- **Status:** Automated implementation and Windows/Linux performance CI passed for code candidate 7123805; live-provider evidence remains
 - **Delegates to:** PC-020..PC-026
 - **Depends on:** SL-100
 - **Output:** legal conformance corpus, honest incremental parser, optional TDS enrichment, Memory/Journal UX, TDN/dictionary onboarding, generic read-only DB adapters and performance budgets.
@@ -80,7 +80,7 @@ Nothing in this track is packaged as a user feature or required by the VSIX/runt
 
 ### SL-240 — Implement internal community-container admission without default execution
 
-- **Status:** Planning/admission policy complete; no community image was admitted or executed
+- **Status:** Owner-authorized isolated feliperaposo experiment executed on 2026-09-10; AppServer REST startup failed. Default admission policy remains unchanged; see the recorded negative compatibility evidence.
 - **Files:** test-only admission schema/tool/tests and security decision record
 - **Depends on:** SL-200
 - **Tests:** reject unknown license, floating tag, root-required, broad ports, default password, missing SBOM/signature/readiness/teardown and proprietary payload ambiguity.
@@ -98,7 +98,7 @@ Nothing in this track is packaged as a user feature or required by the VSIX/runt
 
 ### SL-310 — Prove install, upgrade, rollback and remote compatibility
 
-- **Status:** Partial; clean install on minimum/current VS Code and TDS coexistence passed, lifecycle/Linux/remote matrix remains
+- **Status:** Partial; fresh Windows minimum/current VSIX, TDS coexistence and complete Windows lifecycle/rollback passed for 7123805; Linux minimum host CI passed; Linux lifecycle and remote matrix remain
 - **Files:** VSIX smoke harness, CI matrices, migration tests, user rollback guide
 - **Depends on:** SL-300
 - **Tests:** clean install; upgrade from latest preview; uninstall/reinstall; rollback; minimum/current VS Code; Windows/Linux; local and declared remote modes; offline first value.

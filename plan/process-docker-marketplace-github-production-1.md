@@ -43,7 +43,7 @@ This plan executes every release-preparation action possible from the repository
 |---|---|---|---|
 | TASK-005 | Set truthful GitHub description/topics and enable Dependabot alerts. | ✅ | 2026-09-10 |
 | TASK-006 | Add a size-checked 1280 × 640 social-preview source, exact license detection and launch-operation documentation. | ✅ | 2026-09-10 |
-| TASK-007 | Re-run tests, structural checks, clean-checkout publication audit and exact candidate CI after the final commit. |  |  |
+| TASK-007 | Re-run tests, structural checks, clean-checkout publication audit and exact candidate CI; code candidate 7123805 passed. Later release revisions must repeat their required checks. | ✅ | 2026-09-10 |
 | TASK-008 | Make repository public, set protection, assign social preview and inspect public CodeQL/dependency-review runs. |  |  |
 
 ### Implementation Phase 3
