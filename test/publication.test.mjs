@@ -1115,6 +1115,7 @@ test('mutation testing always removes its local sandbox', async () => {
   );
 
   assert.match(config, /cleanTempDir:\s*['"]always['"]/);
+  assert.match(config, /tempDirName:\s*join\(tmpdir\(\),\s*['"]pea-stryker-tmp['"]\)/);
   assert.match(config, /high:\s*95/);
   assert.match(config, /break:\s*95/);
 });

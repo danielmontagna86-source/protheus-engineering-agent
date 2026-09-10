@@ -1,3 +1,6 @@
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 /** @type {import('@stryker-mutator/api/core').PartialStrykerOptions} */
 const config = {
   testRunner: 'command',
@@ -6,6 +9,7 @@ const config = {
   },
   coverageAnalysis: 'off',
   cleanTempDir: 'always',
+  tempDirName: join(tmpdir(), 'pea-stryker-tmp'),
   mutate: [
     'packages/policy/src/index.mjs',
     'packages/review/src/index.mjs',
