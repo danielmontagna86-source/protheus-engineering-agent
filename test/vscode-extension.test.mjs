@@ -905,7 +905,10 @@ test('package lifecycle harness proves install, upgrade, uninstall, reinstall an
   assert.match(lifecycle, /previous and current VSIX versions must differ/);
   assert.match(lifecycle, /isolated: true/);
   assert.match(lifecycle, /downloadAndUnzipVSCode/);
-  assert.match(workflow, /run-vscode-lifecycle\.mjs --previous-vsix release-artifacts\/protheus-engineering-agent-v0\.2\.0-alpha\.1\.vsix --version 1\.95\.3/);
+  assert.match(workflow, /ref: 1a6836576049c213af49abfb8e7d3350890770ac/);
+  assert.match(workflow, /npm ci --prefix previous-preview/);
+  assert.match(workflow, /npm run --prefix previous-preview package:extension/);
+  assert.match(workflow, /run-vscode-lifecycle\.mjs --previous-vsix previous-preview\/release-artifacts\/protheus-engineering-agent-v0\.2\.0-alpha\.1\.vsix --version 1\.95\.3/);
 });
 
 test('package lifecycle accepts an exact hosted VS Code version and provisions it when no local executable exists', async () => {
