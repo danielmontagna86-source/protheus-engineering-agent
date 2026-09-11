@@ -1143,7 +1143,7 @@ test('supply-chain workflows are pinned, least-privilege and fail closed', async
   assert.doesNotMatch(secretScan, /extra_args:.*--fail/);
   assert.match(provenance, /id-token: write/);
   assert.match(provenance, /attestations: write/);
-  assert.match(provenance, /artifact-metadata: write/);
+  assert.doesNotMatch(provenance, /artifact-metadata: write/);
   assert.match(provenance, /npm run build:release/);
   assert.match(provenance, /release-artifacts\/\*-source\.zip/);
   assert.match(provenance, /release-artifacts\/release-manifest-\*\.json/);
