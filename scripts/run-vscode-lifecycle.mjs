@@ -3,7 +3,10 @@ import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-import { resolveCliArgsFromVSCodeExecutablePath } from '@vscode/test-electron';
+import {
+  downloadAndUnzipVSCode,
+  resolveCliArgsFromVSCodeExecutablePath,
+} from '@vscode/test-electron';
 
 import { packageExtension } from './package-extension.mjs';
 import { readZipArchive } from './zip.mjs';
@@ -27,7 +30,37 @@ function requireSuccess(result, step) {
   }
 }
 
-export async function runVsCodeLifecycle({ previousVsix, vscodeExecutable } = {}) {
+export function parseVsCodeLifecycleArgs(argv = process.argv) {
+  const previousIndex = argv.indexOf('--previous-vsix');
+  const versionIndex = argv.indexOf('--version');
+  const previousVsix = previousIndex >= 0 ? argv[previousIndex + 1] : null;
+  const vscodeVersion = versionIndex >= 0 ? argv[versionIndex + 1] : null;
+  if (versionIndex >= 0 && !/^\d+\.\d+\.\d+$/.test(vscodeVersion ?? '')) {
+    throw new Error('--version requires an exact VS Code version such as 1.95.3');
+  }
+  return { previousVsix, vscodeVersion };
+}
+
+export async function resolveLifecycleVsCodeExecutable({
+  vscodeVersion = null,
+  vscodeExecutable = null,
+  localExecutable = localVsCodeExecutable,
+  downloadExecutable = downloadAndUnzipVSCode,
+} = {}) {
+  if (vscodeExecutable) return vscodeExecutable;
+  const local = await localExecutable(vscodeVersion);
+  if (local) return local;
+  return downloadExecutable(vscodeVersion ?? process.env.PEA_VSCODE_VERSION ?? '1.95.3');
+}
+
+export function requireExactVsCodeVersion(requestedVersion, detectedVersion) {
+  if (requestedVersion && detectedVersion !== requestedVersion) {
+    throw new Error(`VS Code ${detectedVersion} does not match requested ${requestedVersion}`);
+  }
+  return detectedVersion;
+}
+
+export async function runVsCodeLifecycle({ previousVsix, vscodeExecutable, vscodeVersion } = {}) {
   if (!previousVsix) throw new Error('a previous VSIX is required to prove upgrade and rollback');
   const previousPath = resolve(previousVsix);
   const current = await packageExtension();
@@ -38,8 +71,7 @@ export async function runVsCodeLifecycle({ previousVsix, vscodeExecutable } = {}
     throw new Error('previous and current VSIX identities differ');
   }
   if (previousIdentity.version === currentIdentity.version) throw new Error('previous and current VSIX versions must differ');
-  const executable = vscodeExecutable ?? await localVsCodeExecutable(null);
-  if (!executable) throw new Error('a local VS Code executable is required for lifecycle validation');
+  const executable = await resolveLifecycleVsCodeExecutable({ vscodeVersion, vscodeExecutable });
   const sandbox = await mkdtemp(resolve(tmpdir(), 'pea-vscode-lifecycle-'));
   const userData = resolve(sandbox, 'user-data');
   const extensions = resolve(sandbox, 'extensions');
@@ -52,6 +84,10 @@ export async function runVsCodeLifecycle({ previousVsix, vscodeExecutable } = {}
   const listedAs = (version) => run(['--list-extensions', '--show-versions'], 'list extensions')
     .toLowerCase().split(/\r?\n/).includes(`${currentIdentity.id}@${version}`.toLowerCase());
   try {
+    const actualVscodeVersion = requireExactVsCodeVersion(
+      vscodeVersion,
+      run(['--version'], 'VS Code version').trim().split(/\r?\n/)[0],
+    );
     run(['--install-extension', previousPath, '--force'], 'install previous');
     if (!listedAs(previousIdentity.version)) throw new Error('previous version was not installed');
     run(['--install-extension', current.path, '--force'], 'upgrade');
@@ -64,7 +100,7 @@ export async function runVsCodeLifecycle({ previousVsix, vscodeExecutable } = {}
     if (!listedAs(previousIdentity.version)) throw new Error('previous version was not restored during rollback');
     return {
       status: 'PASS',
-      vscode: run(['--version'], 'VS Code version').trim().split(/\r?\n/)[0],
+      vscode: actualVscodeVersion,
       extension: currentIdentity.id,
       previousVersion: previousIdentity.version,
       currentVersion: currentIdentity.version,
@@ -77,7 +113,7 @@ export async function runVsCodeLifecycle({ previousVsix, vscodeExecutable } = {}
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const index = process.argv.indexOf('--previous-vsix');
-  const report = await runVsCodeLifecycle({ previousVsix: index >= 0 ? process.argv[index + 1] : null });
+  const { previousVsix, vscodeVersion } = parseVsCodeLifecycleArgs();
+  const report = await runVsCodeLifecycle({ previousVsix, vscodeVersion });
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 }

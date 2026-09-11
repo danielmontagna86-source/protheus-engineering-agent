@@ -81,3 +81,5 @@ jobs:
         run: npm run package:extension
       - name: Exercise core extension journeys in VS Code
         run: xvfb-run -a npm run test:vscode:minimum
+      - name: Exercise installed VSIX upgrade and rollback on Linux
+        run: xvfb-run -a node scripts/run-vscode-lifecycle.mjs --previous-vsix release-artifacts/protheus-engineering-agent-v0.2.0-alpha.1.vsix --version 1.95.3

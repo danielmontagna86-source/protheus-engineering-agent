@@ -5,6 +5,11 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mkdtemp, readFile, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import {
+  parseVsCodeLifecycleArgs,
+  requireExactVsCodeVersion,
+  resolveLifecycleVsCodeExecutable,
+} from '../scripts/run-vscode-lifecycle.mjs';
 
 const require = createRequire(import.meta.url);
 const productRoot = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -891,6 +896,7 @@ test('real host smoke installs the packaged VSIX before exercising commands', as
 
 test('package lifecycle harness proves install, upgrade, uninstall, reinstall and rollback', async () => {
   const lifecycle = await readFile(join(productRoot, 'scripts', 'run-vscode-lifecycle.mjs'), 'utf8');
+  const workflow = await readFile(join(productRoot, '.github', 'workflows', 'ci.yml'), 'utf8');
   for (const operation of ['install previous', 'upgrade', 'uninstall', 'reinstall', 'rollback']) {
     assert.match(lifecycle, new RegExp(operation));
   }
@@ -898,6 +904,27 @@ test('package lifecycle harness proves install, upgrade, uninstall, reinstall an
   assert.match(lifecycle, /--show-versions/);
   assert.match(lifecycle, /previous and current VSIX versions must differ/);
   assert.match(lifecycle, /isolated: true/);
+  assert.match(lifecycle, /downloadAndUnzipVSCode/);
+  assert.match(workflow, /run-vscode-lifecycle\.mjs --previous-vsix release-artifacts\/protheus-engineering-agent-v0\.2\.0-alpha\.1\.vsix --version 1\.95\.3/);
+});
+
+test('package lifecycle accepts an exact hosted VS Code version and provisions it when no local executable exists', async () => {
+  assert.deepEqual(
+    parseVsCodeLifecycleArgs(['node', 'lifecycle', '--previous-vsix', 'previous.vsix', '--version', '1.95.3']),
+    { previousVsix: 'previous.vsix', vscodeVersion: '1.95.3' },
+  );
+  assert.throws(
+    () => parseVsCodeLifecycleArgs(['node', 'lifecycle', '--previous-vsix', 'previous.vsix', '--version', 'latest']),
+    /--version requires an exact VS Code version/,
+  );
+  const executable = await resolveLifecycleVsCodeExecutable({
+    vscodeVersion: '1.95.3',
+    localExecutable: async () => null,
+    downloadExecutable: async (version) => `/tmp/vscode-${version}/code`,
+  });
+  assert.equal(executable, '/tmp/vscode-1.95.3/code');
+  assert.equal(requireExactVsCodeVersion('1.95.3', '1.95.3'), '1.95.3');
+  assert.throws(() => requireExactVsCodeVersion('1.95.3', '1.96.0'), /does not match requested/);
 });
 
 test('in-process runtime runner does not depend on the VS Code Electron executable', async () => {
