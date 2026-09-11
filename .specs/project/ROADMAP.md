@@ -88,6 +88,10 @@
 
 **QA plan:** `docs/plans/2026-09-08-stable-1-0-qa-plan.md`
 
+**End-to-end execution ledger:** `.specs/features/end-to-end-validation-program-v1/`
+
+**Current full QA plan:** `docs/plans/2026-09-11-end-to-end-validation-qa-plan.md`
+
 ---
 
 ## Specialist Integrations

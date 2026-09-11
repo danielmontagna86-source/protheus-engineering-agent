@@ -1,7 +1,7 @@
 # State
 
 **Last Updated:** 2026-09-11
-**Current Work:** Commit a1a4f4a passed CI, installed VS Code/TDS/lifecycle, GitHub-hosted Linux preview-to-current rollback and workflow lint; complete production acceptance remains NO-GO
+**Current Work:** Commit `2e0f9e6` passed CI, installed VS Code/TDS/lifecycle, GitHub-hosted Linux preview-to-current rollback and workflow lint. The end-to-end validation program now maps deterministic, environment, human, public supply-chain and publisher gates; complete production acceptance remains NO-GO until the external gates have exact evidence.
 
 ---
 
