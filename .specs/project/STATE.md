@@ -1,7 +1,7 @@
 # State
 
-**Last Updated:** 2026-09-10
-**Current Work:** Code candidate 7123805 passed CI, installed VS Code/TDS/lifecycle and workflow lint; complete production acceptance remains NO-GO
+**Last Updated:** 2026-09-11
+**Current Work:** Commit a1a4f4a passed CI, installed VS Code/TDS/lifecycle, GitHub-hosted Linux preview-to-current rollback and workflow lint; complete production acceptance remains NO-GO
 
 ---
 

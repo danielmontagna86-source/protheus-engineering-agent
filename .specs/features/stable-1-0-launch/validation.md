@@ -18,14 +18,14 @@
 
 | Gate | Required proof | Current status |
 |---|---|---|
-| G0 baseline integrity | lint/type/build/tests, configured mutation >=95%, `git diff --check` | Code candidate 7123805 passed 311 tests, Windows/Linux Node 22/24 CI, 95.05% mutation and workflow lint on 2026-09-10. Exact release evidence must be rebuilt after later changes. |
+| G0 baseline integrity | lint/type/build/tests, configured mutation >=95%, `git diff --check` | Commit `a1a4f4a` passed Windows/Linux Node 22/24 CI, installed VS Code host, mutation and workflow lint on 2026-09-11. Exact release evidence must be rebuilt after later changes. |
 | G1 premium P0 | PC-010..PC-019 and installed offline journey | Automated implementation and installed journey complete; human timed/accessibility and public Action checks remain |
 | G2 semantic P1 | PC-020..PC-026, corpus accuracy and performance | Declared contract/corpus and Windows/Linux CI performance gates passed for 7123805; live-provider evidence remains |
 | G3 Tier 0 virtualization | zero-network success/error matrix | PASS for deterministic offline contracts |
 | G4 official analyzer | pinned-digest clean/failing/cancel/timeout parity | PARTIAL — 2026-09-09 direct lab rerun proved the image's blank clean-result sentinel and a complete failing diagnostic. The product has no analyzer adapter/parity claim; timeout/cancel adapter evidence remains. |
 | G5 official Postgres | loopback/read-only/named-query/teardown evidence | PARTIAL — 2026-09-09 direct lab rerun passed `pg_isready`, SX2/SX3 reads, write denial and teardown under a non-root/read-only container. A live driver/dialect product gate remains. |
 | G6 licensed AppServer | compile success/error + RPO/TDS/CP1252 evidence | BLOCKED — licensed environment/artifacts required |
-| G7 package lifecycle | actual VSIX install/upgrade/uninstall/rollback on supported matrix | PARTIAL — isolated install/upgrade/uninstall/reinstall/rollback passed on Windows VS Code 1.136.2, and clean install passed on 1.95.3; Linux/remote repetition remains |
+| G7 package lifecycle | actual VSIX install/upgrade/uninstall/rollback on supported matrix | PARTIAL — isolated lifecycle passed locally on Windows 1.136.2 and 1.95.3; commit `a1a4f4a` passed the same packaged preview-to-current lifecycle on GitHub-hosted Linux 1.95.3. Declared remote-mode repetition remains. |
 | G8 UX/accessibility | pt-BR/en, keyboard, screen reader, contrast, zoom, three-user first value | PARTIAL — automated localization/host journey passed; assistive and human UAT not run |
 | G9 security/supply chain | dependency review, secret scan, OSV/npm, CodeQL, SBOM, pinned workflows, attestations | PARTIAL — local audit/license/pinning/package controls and pinned dependency-review/secret-scan/attestation workflows pass; receipts require GitHub API run/workflow/repository/commit identity; exact public runs remain |
 | G10 compatibility/support | published VS Code/TDS/Node/OS/Protheus matrix, support and deprecation drill | PARTIAL — public policy/matrix documented; live support drill and external matrix remain |

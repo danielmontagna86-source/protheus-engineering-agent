@@ -98,7 +98,7 @@ Nothing in this track is packaged as a user feature or required by the VSIX/runt
 
 ### SL-310 — Prove install, upgrade, rollback and remote compatibility
 
-- **Status:** Partial; fresh Windows minimum/current VSIX, TDS coexistence and complete Windows lifecycle/rollback passed for 7123805; Linux minimum host CI passed; Linux lifecycle and remote matrix remain
+- **Status:** Partial; fresh Windows minimum/current VSIX, TDS coexistence and complete Windows lifecycle/rollback passed locally. Commit `a1a4f4a` passed the GitHub-hosted Linux 1.95.3 installed-VSIX lifecycle (preview package build, install, upgrade, uninstall, reinstall and rollback); remote matrix remains.
 - **Files:** VSIX smoke harness, CI matrices, migration tests, user rollback guide
 - **Depends on:** SL-300
 - **Tests:** clean install; upgrade from latest preview; uninstall/reinstall; rollback; minimum/current VS Code; Windows/Linux; local and declared remote modes; offline first value.
