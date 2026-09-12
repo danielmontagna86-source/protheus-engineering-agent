@@ -8,7 +8,7 @@
 | EV-002 | EVT-002, EVT-003, EVT-006 | Package, artifact verification, host/lifecycle scripts | Normal-user install confirmation | VERIFIED Windows/local and Linux/hosted; current/minimum host rerun is required per exact candidate. |
 | EV-003 | EVT-001, EVT-004, EVT-005 | OSV, secret scan, check, publication audit | Public security controls | VERIFIED local scope; public controls UNPROVEN. |
 | EV-004 | EVT-001, EVT-006 | Contract/security regression suite | Licensed providers when enabled | VERIFIED contract only. |
-| EV-005 | EVT-101 | None may substitute for host proof | Remote Extension Host protocol | UNPROVEN. |
+| EV-005 | EVT-101 | Exact VSIX installed in WSL Remote endpoint; bundled runtime contract passes there | Operator-facing Remote Extension Host and reconnect protocol | PARTIAL-WORKSPACE-REMOTE; final UI evidence UNPROVEN. |
 | EV-006 | EVT-102 | Existing fail-closed contracts | Licensed AppServer/RPO/DBAccess matrix | UNPROVEN. |
 | EV-007 | EVT-103 | Localization/static checks | Keyboard, screen reader, zoom, contrast and UAT | UNPROVEN. |
 | EV-008 | EVT-104 | Pilot instrumentation/protocol only | Representative study | UNPROVEN. |

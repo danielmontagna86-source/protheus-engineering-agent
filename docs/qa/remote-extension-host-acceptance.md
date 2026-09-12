@@ -13,8 +13,8 @@ container.
 
 ## Candidate under test
 
-- Commit: `3d38c7c7279b0dbf7127a6ed74376b55f2014851`
-- VSIX: build the artifact from this exact commit before the interactive test.
+- Commit: `51f7907f78bf2fcfec7f3f4edb6fb3daec28705d`
+- VSIX SHA-256: `45c175034adb370fd97b459c4be298a91ccf5124cf1d8197401dbf720ac75104`.
 - Declared remote modes: WSL, Dev Container, and SSH when a supported host is
   available. The test record must name every mode actually exercised.
 
@@ -22,14 +22,18 @@ container.
 
 | Check | Result | Evidence |
 |---|---|---|
-| Hosted VS Code Extension Host journeys | PASS | GitHub Actions CI run `34665203281`, job `VS Code Extension Host`, completed 2026-09-12. |
+| Hosted VS Code Extension Host journeys | PASS | GitHub Actions CI run `34666226351`, job `VS Code Extension Host`, completed 2026-09-12 for this candidate. |
 | Hosted installed-VSIX upgrade and rollback on Linux | PASS | Same CI run, `Exercise installed VSIX upgrade and rollback on Linux`. |
+| WSL Remote endpoint deployment | PASS | VS Code Server 1.136.2 installed the exact VSIX in its remote extension directory; its manifest declares `extensionKind: ["workspace"]` and the embedded release commit matches the candidate. |
+| WSL packaged runtime contract | PASS | The VS Code Server Node 24.18.1 on Linux/WSL executed `doctor`, `index`, `review`, and `context` against the isolated candidate checkout. The controlled review returned one INFO finding; unavailable TDN and an absent build-approval resolver failed closed. |
 | Local Docker runtime | READY | Docker Desktop 29.7.2, Linux engine, and the official JavaScript Node 22 Dev Container image were verified. |
-| Local Dev Container workspace mount | BLOCKED-HOST-PERMISSION | Docker Desktop requested confirmation to share the candidate workspace directory before it would create the container. No product container was created and no user service was changed. |
+| Local Dev Container workspace mount | BLOCKED-HOST-RUNTIME | Docker Desktop recorded the folder-sharing approval, but a Windows bind mount still stalled before container creation. No product container was created and no user service was changed. The WSL endpoint provides independent remote-host evidence. |
 
-The hosted checks are strong regression evidence, but they do **not** prove
-the local Remote Extension Host placement. The local result remains unproven
-until the host permission is approved and the protocol below completes.
+The hosted checks and WSL evidence prove package placement and the deterministic
+runtime contract in a genuine remote endpoint. They do **not** prove the final
+operator-facing UI observation: `Developer: Show Running Extensions`, command
+invocation through the remote VS Code window, and reconnect behavior. Those
+items remain required for full EV-005 acceptance.
 
 ## Interactive protocol
 
@@ -67,6 +71,9 @@ until the host permission is approved and the protocol below completes.
 
 ## Current decision
 
-`EV-005 = BLOCKED-HOST-PERMISSION` locally. This does not alter the technical
-P0 result and keeps Stable/Marketplace at `NO-GO` until the interactive record
-is completed for the final release candidate.
+`EV-005 = PARTIAL-WORKSPACE-REMOTE` for this candidate: the exact VSIX was
+installed in a WSL Remote Extension Host and its packaged runtime passed the
+bounded critical contract. The final UI/reconnect observation remains
+`UNPROVEN`. This does not alter the technical P0 result and keeps
+Stable/Marketplace at `NO-GO` until the interactive record is completed for the
+final release candidate.
