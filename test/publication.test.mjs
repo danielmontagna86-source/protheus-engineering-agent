@@ -1032,6 +1032,16 @@ test('public product metadata declares the canonical brand and repository', asyn
   assert.match(extension.bugs?.url ?? '', /^https:\/\/github\.com\//);
 });
 
+test('source attributes canonicalize every textual release file to LF', async () => {
+  const attributes = await (await import('node:fs/promises')).readFile(
+    new URL('.gitattributes', new URL('..', import.meta.url)),
+    'utf8',
+  );
+  assert.match(attributes, /^\* text=auto eol=lf\r?$/m);
+  assert.match(attributes, /\*\.png binary/);
+  assert.match(attributes, /\*\.prw text working-tree-encoding=windows-1252 eol=lf/);
+});
+
 test('public discovery contract makes the Marketplace and GitHub launch actionable without unsupported claims', async () => {
   const productRoot = new URL('..', import.meta.url);
   const launchOperations = await (await import('node:fs/promises')).readFile(
