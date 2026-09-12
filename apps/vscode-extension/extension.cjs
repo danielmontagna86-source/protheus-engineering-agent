@@ -545,9 +545,15 @@ function createExtension(vscode, options = {}) {
       throw new TypeError('AI connection manifest is invalid');
     }
     const { validateConnection, validateRoute } = require('./dist/ai-connections.cjs');
-    const providers = registry.list().map((provider) => provider.id);
+    const descriptors = new Map(registry.list().map((provider) => [provider.id, provider]));
+    const providers = [...descriptors.keys()];
     const connections = manifest.connections.map((connection) => validateConnection(connection, { providers }));
     if (new Set(connections.map((connection) => connection.id)).size !== connections.length) throw new TypeError('AI connection identifiers must be unique');
+    for (const connection of connections) {
+      if (descriptors.get(connection.provider).connection !== connection.mode) {
+        throw new TypeError(`AI connection mode does not match ${connection.provider}`);
+      }
+    }
     const ids = connections.map((connection) => connection.id);
     const routes = manifest.routes.map((route) => validateRoute(route, { connections: ids }));
     if (new Set(routes.map((route) => route.id)).size !== routes.length) throw new TypeError('AI route identifiers must be unique');

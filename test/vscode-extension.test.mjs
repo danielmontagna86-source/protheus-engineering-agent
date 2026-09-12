@@ -273,6 +273,11 @@ test('extension rejects persisted AI routes that would invoke an external host o
   }), /external host/i);
   assert.throws(() => validate({
     schemaVersion: 1,
+    connections: [{ schemaVersion: 1, id: 'cline-api', provider: 'cline', mode: 'api-key', secretRef: 'cline-api.api-key', model: 'not-supported' }],
+    routes: [],
+  }), /mode does not match/i);
+  assert.throws(() => validate({
+    schemaVersion: 1,
     connections: [{ schemaVersion: 1, id: 'openrouter-default', provider: 'openrouter', mode: 'api-key', secretRef: 'openrouter-default.api-key', model: 'openai/gpt-test' }],
     routes: [{ schemaVersion: 1, id: 'openrouter-analysis', profile: 'analysis', primary: 'openrouter-default', fallbacks: [], allowedProviders: ['gemini-api'], maxInputBytes: 1, maxOutputBytes: 1, maxCostUsd: null }],
   }), /does not allow/i);
