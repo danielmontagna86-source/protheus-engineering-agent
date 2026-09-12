@@ -1147,8 +1147,8 @@ test('dependency security gate uses pinned actions, fails closed and supports a 
     'utf8',
   );
 
-  assert.match(workflow, /actions\/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8/);
-  assert.match(workflow, /google\/osv-scanner-action\/osv-scanner-action@06b2ab4348248b456ee06c9e953637f55e03504f/);
+  assert.match(workflow, /actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1/);
+  assert.match(workflow, /google\/osv-scanner-action\/osv-scanner-action@8e5cf47b818121e8b405931c82126c2630b0b20d/);
   assert.match(workflow, /--lockfile=package-lock\.json/);
   assert.doesNotMatch(workflow, /continue-on-error:\s*true/);
   assert.doesNotMatch(workflow, /security-events:\s*write/);
@@ -1162,8 +1162,8 @@ test('CodeQL is pinned, least-privilege and activates automatically when the rep
   );
 
   assert.match(workflow, /if: github\.event\.repository\.private == false/);
-  assert.match(workflow, /github\/codeql-action\/init@f52b05f4acaaa234e44466e66d29050e135ea9ef # v4\.36\.0/);
-  assert.match(workflow, /github\/codeql-action\/analyze@f52b05f4acaaa234e44466e66d29050e135ea9ef # v4\.36\.0/);
+  assert.match(workflow, /github\/codeql-action\/init@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4\.36\.0/);
+  assert.match(workflow, /github\/codeql-action\/analyze@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4\.36\.0/);
   assert.match(workflow, /languages: javascript-typescript/);
   assert.match(workflow, /queries: security-extended/);
   assert.match(workflow, /security-events: write/);
