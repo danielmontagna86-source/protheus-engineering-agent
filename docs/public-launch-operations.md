@@ -1,65 +1,148 @@
-# Public launch operations
+# Operações de lançamento público
 
-**Status:** Prepared repository contract; public launch is blocked until the exact release gate is green.
+**Status:** O repositório público e o GitHub preview existem; Stable e
+Marketplace continuam bloqueados até o gate do candidato exato estar verde.
 
-This is the operating checklist for turning the repository and VS Code listing into a credible public product. It does not change the current `NO-GO` decision, create an endorsement, or authorize a release by itself.
+Este é o checklist operacional para transformar o repositório e a listing do VS
+Code em um produto público confiável. Ele não altera a decisão `NO-GO`, não cria
+endosso e não autoriza uma release por si só.
 
-## Current observed state
+## Estado observado em 2026-09-12
 
-- The canonical GitHub repository is private. Its About description is `Engenharia para Protheus ADVPL/TLPP no VS Code, baseada em evidências: CodeGraph, revisão, memória de projeto e integrações governadas.` It has 15 capability-specific topics, a 100% Community Profile and Dependabot alerts enabled. The homepage remains blank until there is a verified product site, rather than linking the repository to itself. A reviewed 1280 × 640 source social-preview asset is versioned at [`media/social-preview.png`](../media/social-preview.png), but it has not yet been assigned in GitHub's repository settings. It has no branch protection/ruleset or public CodeQL result.
-- Private vulnerability reporting is unavailable for this private repository under the current GitHub plan: its API endpoint returned `404` on 2026-09-10. The versioned `SECURITY.md` private-report route remains the disclosure path until a supported GitHub reporting URL can be verified.
-- CI, OSV scanning, workflow-based secret scanning, local release-artifact verification and isolated VSIX smoke evidence exist for the candidate branch. GitHub-native secret scanning and code scanning are unavailable on the current private plan; the public-only CodeQL and dependency-review workflows correctly skip while the repository is private.
-- Every external GitHub Action is pinned to a full commit SHA and the repository now requires SHA-pinned Actions. This is verified against the active workflow set; local actions remain allowed.
-- The Marketplace extension identifier and publisher identity have not been verified as a live Marketplace listing. No Marketplace version is claimed as published.
+- O repositório canônico é público. O Community Profile marca 100%, há 15
+  tópicos específicos e o homepage permanece vazio até existir site de produto
+  verificável. O preview social 1280 × 640 está versionado em
+  [`media/social-preview.png`](../media/social-preview.png), mas sua atribuição
+  e renderização no card do GitHub ainda precisam de confirmação manual.
+- A proteção de `main` exige pull request, conversas resolvidas, admin
+  enforcement e nove checks: matriz Windows/Linux × Node 22/24, mutação/audit,
+  VS Code Extension Host, CodeQL, segredo verificado e OSV. Force-push e
+  exclusão estão bloqueados. A aprovação obrigatória permanece em zero somente
+  pela exceção pública de mantenedor único em `GOVERNANCE.md`.
+- Dependabot, secret scanning, push protection, CodeQL e private vulnerability
+  reporting estão ativos. Checks verdes devem sempre ser lidos no commit do
+  candidato, não herdados de uma revisão anterior.
+- A prévia pública `v0.3.0` no GitHub possui source ZIP, VSIX, SBOM, manifesto
+  e `SHA256SUMS`. Ela não é uma release Stable nem uma publicação Marketplace.
+- Toda Action externa continua fixada por SHA completo; Actions locais seguem
+  permitidas conforme a política do repositório.
+- Publisher e identificador da extensão no Marketplace não estão verificados
+  como listing vivo. Nenhuma versão Marketplace é alegada como publicada.
 
-These observations must be refreshed immediately before every visibility or release decision. GitHub visibility exposes source and Actions history, disables push rulesets, and permits public forks; it is a disclosure event, not a cosmetic setting.
+Estas observações devem ser atualizadas imediatamente antes de cada decisão de
+release. Visibilidade no GitHub expõe fontes e histórico de Actions, permite
+forks públicos e é um evento de divulgação, não uma mudança cosmética.
 
-## Public repository baseline
+## Baseline do repositório público
 
-Before changing visibility, the release owner must verify these exact GitHub settings and record the API/UI evidence in the release receipt:
+Antes de promover um candidato, o responsável pela release deve atualizar estas
+evidências por API/UI e registrá-las no recibo:
 
-1. Keep the repository description in Portuguese and focused on the verified scope: `Engenharia para Protheus ADVPL/TLPP no VS Code, baseada em evidências: CodeGraph, revisão, memória de projeto e integrações governadas.` Keep only capability-specific GitHub topics: `advpl`, `tlpp`, `protheus`, `totvs`, `vscode-extension`, `visual-studio-code`, `developer-tools`, `code-review`, `static-analysis`, `codegraph`, `model-context-protocol`, `mcp`, `developer-productivity`, `software-quality`, and `local-first`.
-2. Upload the reviewed [`media/social-preview.png`](../media/social-preview.png) source (1280 × 640 PNG, under 1 MB) as the repository social preview. Its abstract engineering graphic deliberately has no fabricated UI, vendor logo, “official” statement or implied TOTVS endorsement. Verify the rendered public card after visibility changes.
-3. Confirm README, `README.en.md`, `LICENSE.md`, `NOTICE`, third-party notices, `SECURITY.md`, `SUPPORT.md`, contribution guide, governance, issue forms, pull-request template, changelog, citation and Code Owners are present and link correctly from the default branch.
-4. Keep Dependabot alerts enabled. Enable private vulnerability reporting where GitHub supports it, then verify the Security reporting URL works before inviting public reports. If the endpoint remains unavailable, retain the versioned private-report route in `SECURITY.md`; do not claim a GitHub security-reporting form exists.
-5. After visibility changes, restore a `main` ruleset or branch protection requiring an up-to-date pull request, one approval, resolution of review conversations, the CI matrix, mutation/dependency audit, VS Code host, OSV, secret scan, CodeQL and dependency review. Block force-push and branch deletion.
-6. Keep Actions default permissions read-only, require SHA-pinned Actions and do not expose secrets to fork-origin pull requests. The release workflow remains manually dispatched and uses GitHub artifact attestations.
+1. Manter a descrição do repositório em português e centrada no escopo
+   verificado: `Extensão VS Code independente para engenharia ADVPL/TLPP baseada
+   em evidências: CodeGraph, revisão e contexto de projeto.` Manter apenas os
+   tópicos específicos: `advpl`, `tlpp`, `protheus`, `totvs`,
+   `vscode-extension`, `visual-studio-code`, `developer-tools`, `code-review`,
+   `static-analysis`, `codegraph`, `model-context-protocol`, `mcp`,
+   `developer-productivity`, `software-quality` e `local-first`.
+2. Atribuir o [`media/social-preview.png`](../media/social-preview.png) revisado
+   (1280 × 640 PNG, menos de 1 MB) como preview social do repositório e conferir
+   o card renderizado. O gráfico abstrato não contém UI fabricada, logo de
+   fornecedor, declaração “oficial” ou endosso implícito.
+3. Confirmar que README, `README.en.md`, `LICENSE.md`, `NOTICE`, avisos de
+   terceiros, `SECURITY.md`, `SUPPORT.md`, guia de contribuição, governança,
+   formulários de issue, template de pull request, changelog, citação e Code
+   Owners existem e possuem links corretos na branch padrão.
+4. Manter Dependabot e private vulnerability reporting ativos e confirmar o URL
+   de segurança antes de convidar relatos públicos. `SECURITY.md` continua a
+   rota versionada de divulgação responsável.
+5. Manter a proteção de `main` com PR atualizado, conversas resolvidas, matriz
+   CI, mutação/audit, host VS Code, OSV, secret scan e CodeQL. Bloquear
+   force-push e exclusão. Ao entrar um segundo mantenedor, exigir ao menos uma
+   aprovação como definido em `GOVERNANCE.md`.
+6. Manter permissões padrão de Actions em leitura, SHA pinning e nenhuma
+   exposição de segredo a pull requests originados de forks. O workflow de
+   release permanece manual e usa atestações de artefato.
 
-## Marketplace listing contract
+## Contrato de listing no Marketplace
 
-The Marketplace page is a product surface. Its first pre-release may be submitted only after the public repository baseline and the release evidence gate pass.
+A página do Marketplace é uma superfície de produto. A primeira prévia só pode
+ser submetida depois que o baseline público e o gate de evidência de release
+passarem.
 
-- **Name:** Protheus Engineering Agent
-- **Short description:** Ferramentas independentes de engenharia para projetos ADVPL/TLPP no VS Code, com evidências reproduzíveis.
-- **Category/keywords:** retain the current `Linters` and `Testing` categories; publish only the manifest keywords that describe shipped capabilities.
-- **Channel:** numeric `0.x.y` with the Marketplace pre-release flag while preview is true. A stable listing uses a distinct `1.0.0` or later version with preview disabled.
-- **Publisher:** create or confirm the immutable Marketplace publisher under the release owner's Microsoft identity. Store no token in Git; use federated publishing where available rather than a long-lived credential.
-- **Media:** upload real, sanitized captures of the installed VSIX: Engineering Center, an offline changed-files review in Problems/Output, and the first-value walkthrough. Validate keyboard focus, high contrast, 200% zoom and screen-reader labels in the same supported VS Code matrix before calling them production-ready.
-- **Claims:** state only that deterministic, offline capabilities are available without Hermes or a model. Do not claim compilation, production safety, support by TOTVS, productivity improvement, defect prevention, market leadership, or compatibility beyond the published evidence.
+- **Nome:** Protheus Engineering Agent
+- **Descrição curta:** Ferramentas independentes de engenharia para projetos ADVPL/TLPP no VS Code, com evidências reproduzíveis.
+- **Categorias/palavras-chave:** usar `Programming Languages`, `Linters` e `Testing`;
+  publicar somente palavras-chave que descrevem capacidades já entregues.
+- **Canal:** versão numérica `0.x.y` com a flag de prévia enquanto `preview` for
+  verdadeiro. Uma listing estável usa versão distinta `1.0.0` ou posterior com
+  `preview` desligado.
+- **Publisher:** criar ou confirmar o publisher imutável sob a identidade
+  Microsoft do responsável pela release. Não guardar token no Git; usar
+  publicação federada quando houver suporte, em vez de credencial duradoura.
+- **Mídia:** enviar capturas reais e sanitizadas do VSIX instalado: Central de
+  Engenharia, revisão offline de arquivos alterados em Problemas/Saída e o
+  walkthrough de primeiro valor. Validar foco por teclado, alto contraste,
+  zoom de 200% e rótulos de leitor de tela na mesma matriz VS Code suportada
+  antes de chamá-las de prontas para produção.
+- **Alegações:** afirmar somente que capacidades determinísticas/offline estão
+  disponíveis sem Hermes ou modelo. Não alegar compilação, segurança de
+  produção, suporte TOTVS, melhoria de produtividade, prevenção de defeito,
+  liderança de mercado ou compatibilidade além da evidência publicada.
 
-Marketplace submission is a separate action from a GitHub Release. Package and inspect the exact VSIX first; publish that checksum-identical file; then re-download the Marketplace package and record its identity/version.
+A submissão ao Marketplace é separada de uma GitHub Release. Empacotar e
+inspecionar primeiro o VSIX exato, publicar esse arquivo idêntico por checksum e
+então baixar novamente o pacote do Marketplace, registrando sua identidade e
+versão.
 
-## Adoption plan toward 1,000 stars
+## Plano de adoção rumo a 1.000 estrelas
 
-**1,000 stars is an adoption target, not a release gate, quality metric, or promise.** Stars can signal discoverability, but they do not establish product effectiveness, active usage, security, or market leadership.
+**1.000 estrelas é uma meta de adoção, não gate de release, métrica de qualidade
+ou promessa.** Estrelas podem sinalizar descoberta, mas não comprovam eficácia,
+uso ativo, segurança ou liderança de mercado.
 
-The growth plan is therefore a series of evidence-led loops:
+O crescimento, portanto, é uma sequência de ciclos guiados por evidência:
 
-1. **First value:** make the documented five-minute offline walkthrough reproducible from a clean VS Code profile and publish the measured outcome, caveats and supported matrix.
-2. **Proof:** publish one small legal sample and a short screen recording from the real VSIX showing index → changed-files review → native Problems. Link the source, version, command and limitations.
-3. **Community:** triage issues with the existing bug/feature forms, label `good first issue` only after a reproducer and expected outcome are defined, and publish a monthly changelog/release note with resolved evidence gaps.
-4. **Distribution:** publish bilingual technical articles and targeted demonstrations for ADVPL/TLPP communities, TDS users and maintainers. Each article leads to one verified workflow rather than generic AI claims.
-5. **Retention:** invite representative users to the preregistered pilot, publish aggregate findings and limitations, and prioritize the top reproducible friction points. Do not solicit stars in exchange for access, support or product claims.
+1. **Primeiro valor:** tornar o walkthrough offline de cinco minutos
+   reproduzível a partir de perfil VS Code limpo e publicar resultado medido,
+   ressalvas e matriz suportada.
+2. **Prova:** publicar uma amostra legal pequena e vídeo curto do VSIX real
+   mostrando `indexação → revisão de mudanças → Problemas` nativos. Vincular
+   fonte, versão, comando e limites.
+3. **Comunidade:** triar issues pelos formulários existentes, aplicar `good
+   first issue` somente após reproducer e resultado esperado e publicar nota de
+   versão mensal com lacunas de evidência fechadas.
+4. **Distribuição:** publicar artigos técnicos bilíngues e demonstrações para
+   comunidades ADVPL/TLPP, usuários TDS e mantenedores. Cada material conduz a
+   um fluxo verificado, não a alegações genéricas de IA.
+5. **Retenção:** convidar usuários representativos ao piloto pré-registrado,
+   publicar achados agregados e limites e priorizar os maiores atritos
+   reproduzíveis. Não solicitar estrelas em troca de acesso, suporte ou
+   alegações de produto.
 
-Track impressions, clone-to-install conversion, first-value completion, retained weekly users, issue response time, reproducible bug rate, review false-positive rate and qualitative pilot feedback. Report stars and Marketplace installs separately as dated adoption proxies.
+Monitorar impressões, conversão de clone para instalação, conclusão do primeiro
+valor, usuários semanais retidos, tempo de resposta de issue, taxa de bug
+reproduzível, falsos positivos de review e feedback qualitativo do piloto.
+Reportar estrelas e instalações Marketplace separadamente como proxies datados
+de adoção.
 
-## Ordered release procedure
+## Procedimento ordenado de release
 
-1. Merge only the reviewed candidate after all required CI checks pass for its exact `main` commit.
-2. Build source ZIP, VSIX, SBOM, manifest and checksums from that clean commit; execute fresh-install, lifecycle, TDS coexistence and required human UAT.
-3. Complete external compatibility, legal/trademark, security-reporting, accessibility and pilot gates; record named owner approval in the ignored final release evidence.
-4. Make the repository public, immediately restore/verify protection, trigger and inspect public CodeQL/dependency review, and verify the public repository contents and social preview.
-5. Dispatch provenance, verify its attestation, create the immutable tag and GitHub Release, download every asset and verify all hashes again.
-6. Submit the same verified VSIX as the approved Marketplace channel, verify the public listing/install, then publish the bilingual announcement with the exact version, limitations and support path.
+1. Fazer merge somente do candidato revisado após todos os checks CI exigidos
+   passarem em seu commit `main` exato.
+2. Gerar source ZIP, VSIX, SBOM, manifesto e checksums desse commit limpo;
+   executar fresh-install, ciclo de vida, coexistência TDS e UAT humana exigida.
+3. Completar os gates de compatibilidade externa, marca/jurídico, reporte de
+   segurança, acessibilidade e piloto; registrar aprovação nominal do
+   responsável na evidência final ignorada.
+4. Atualizar a prova dos controles públicos, atribuir/verificar o preview social
+   e inspecionar CodeQL, dependências, segredos e proteção no commit candidato.
+5. Disparar a proveniência, verificar sua atestação, criar tag imutável e
+   GitHub Release, baixar cada artefato e conferir todos os hashes novamente.
+6. Submeter o mesmo VSIX verificado no canal Marketplace aprovado, verificar a
+   listing/instalação pública e então publicar o anúncio bilíngue com versão,
+   limites e rota de suporte exatos.
 
-Any failed hash, scan, download, review, UAT or authorization stops the sequence. Withdraw or fix forward; never rewrite a consumed tag or silently replace a Marketplace build.
+Qualquer hash, scan, download, review, UAT ou autorização que falhe interrompe a
+sequência. Retirar ou corrigir adiante; nunca reescrever tag consumida ou trocar
+silenciosamente um build do Marketplace.

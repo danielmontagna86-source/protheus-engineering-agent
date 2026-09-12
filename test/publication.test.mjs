@@ -1024,7 +1024,7 @@ test('public product metadata declares the canonical brand and repository', asyn
   assert.match(readme, /não exige Hermes, conta de IA, modelo, Python/i);
   assert.match(extensionReadme, /Interface VS Code autônoma para engenharia ADVPL\/TLPP/i);
   assert.match(extensionLocale['extension.description'], /^Ferramentas independentes de engenharia para projetos ADVPL\/TLPP/);
-  assert.deepEqual(extension.categories, ['Linters', 'Testing']);
+  assert.deepEqual(extension.categories, ['Programming Languages', 'Linters', 'Testing']);
   assert.equal(extension.preview, true);
   assert.equal(extension.pricing, 'Free');
   assert.equal(extension.qna, 'marketplace');
@@ -1054,15 +1054,17 @@ test('public discovery contract makes the Marketplace and GitHub launch actionab
     'utf8',
   );
 
-  assert.match(launchOperations, /GitHub topics/i);
-  assert.match(launchOperations, /social preview/i);
-  assert.match(launchOperations, /Marketplace publisher/i);
-  assert.match(launchOperations, /release evidence/i);
-  assert.match(launchOperations, /Dependabot alerts enabled/i);
-  assert.match(launchOperations, /private vulnerability reporting is unavailable/i);
-  assert.match(launchOperations, /1,000 stars/i);
-  assert.match(launchOperations, /not a release gate/i);
-  assert.match(launchOperations, /do not.*productivity/i);
+  assert.match(launchOperations, /tópicos específicos/i);
+  assert.match(launchOperations, /preview social/i);
+  assert.match(launchOperations, /publisher imutável/i);
+  assert.match(launchOperations, /evidência.*release/i);
+  assert.match(launchOperations, /Dependabot.*ativos/i);
+  assert.match(launchOperations, /private vulnerability reporting.*ativos/i);
+  assert.doesNotMatch(launchOperations, /canonical GitHub repository is private/i);
+  assert.doesNotMatch(launchOperations, /private vulnerability reporting is unavailable/i);
+  assert.match(launchOperations, /1\.000 estrelas/i);
+  assert.match(launchOperations, /não gate de release/i);
+  assert.match(launchOperations, /não alegar compilação[\s\S]*produtividade/i);
   assert.match(extensionReadme, /projeto comunitário independente/i);
   assert.match(extensionReadme, /não substitui.*VS Code/i);
 });

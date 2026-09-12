@@ -46,6 +46,9 @@ All notable changes are recorded here. The project follows Semantic Versioning a
 
 ### Changed
 
+- A apresentação pública foi reconciliada com o repositório GitHub já público:
+  descrição pt-BR, estado de segurança/CI, caminho de primeiro valor e categoria
+  `Programming Languages` do VS Code agora têm regressões de publicação.
 - Release ZIPs and CycloneDX SBOMs are now canonical across Windows and Linux, avoiding platform-specific compression and npm metadata drift.
 - CodeGraph line lookup now uses an indexed binary search, preserves exact declaration lines, and meets the 5,000-symbol sub-second budget.
 - The VSIX is now explicitly standalone; Hermes is optional compatibility and no longer a core release gate.

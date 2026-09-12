@@ -26,7 +26,7 @@
   "engines": {
     "vscode": "^1.95.0"
   },
-  "categories": ["Linters", "Testing"],
+  "categories": ["Programming Languages", "Linters", "Testing"],
   "keywords": ["advpl", "tlpp", "protheus", "totvs", "vscode", "visual-studio-code", "mcp", "code-review", "codegraph", "static-analysis", "engineering"],
   "extensionKind": ["workspace"],
   "capabilities": {
