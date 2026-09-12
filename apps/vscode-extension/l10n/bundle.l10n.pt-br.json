@@ -120,5 +120,12 @@
   "A question is required.": "Uma pergunta é obrigatória.",
   "Codex did not complete the request.": "O Codex não concluiu a solicitação.",
   "Codex context request is unavailable: {0}": "A solicitação de contexto ao Codex está indisponível: {0}",
-  "doctor": "diagnóstico"
+  "doctor": "diagnóstico",
+  "{0} API key (stored only in VS Code SecretStorage)": "Chave API de {0} (guardada somente no SecretStorage do VS Code)",
+  "Model identifier for {0}": "Identificador do modelo para {0}",
+  "A model identifier is required.": "Um identificador de modelo é obrigatório.",
+  "{0} was configured with a bounded analysis route. The key is not saved in workspace settings or logs.": "{0} foi configurado com uma rota de análise limitada. A chave não é salva nas configurações do workspace ou nos logs.",
+  "Configure an API connection before asking an AI route.": "Configure uma conexão de API antes de consultar uma rota de IA.",
+  "Select a configured AI route for bounded engineering context": "Selecione uma rota de IA configurada para o contexto de engenharia limitado",
+  "Question for route {0} using bounded Protheus engineering context": "Pergunta para a rota {0} usando contexto de engenharia Protheus limitado"
 }

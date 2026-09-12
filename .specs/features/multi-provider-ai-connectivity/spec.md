@@ -21,6 +21,8 @@ por API guardada no cofre do VS Code.
 | Cline | host/CLI externo via MCP | Cline | PEA não lê estado ou chaves do Cline |
 | OpenCode | host/servidor externo via MCP | OpenCode | PEA não lê `auth.json` nem automatiza OAuth |
 | OpenRouter | HTTP API | PEA SecretStorage | chave nunca entra no projeto, log ou configuração |
+| Anthropic API | HTTP API | PEA SecretStorage | chave nunca entra no projeto, log ou configuração |
+| Gemini API | HTTP API | PEA SecretStorage | chave nunca entra no projeto, log ou configuração |
 
 “Login” significa o fluxo documentado e iniciado pelo cliente do fornecedor.
 Não significa capturar cookies, reutilizar uma assinatura onde os termos não
@@ -51,13 +53,17 @@ permitem, ou apresentar uma API como se fosse login de conta.
   deployment ou ferramentas MCP em razão de resposta de modelo.
 - **MPAI-010:** A documentação deve registrar as restrições de terceiros: em
   particular, PEA não deve incentivar Claude Pro/Max via plugins OpenCode.
+- **MPAI-011:** Uma conexão HTTP direta deve persistir somente `id`, provider,
+  referência de segredo e modelo escolhido; deve criar uma rota explícita de
+  análise, com egress, bytes e ferramentas somente leitura limitados.
 
 ## Critérios de aceite P0
 
 1. Registro determinístico enumera Codex, Claude Code, Gemini, Cline,
    OpenCode e OpenRouter com modo, aviso e capacidades corretos.
-2. OpenRouter envia somente o contrato OpenAI-compatible documentado, rejeita
-   URL/modelo/saída inválidos, redige falhas e nunca registra a chave.
+2. OpenRouter, Anthropic API e Gemini API enviam somente seus contratos HTTPS
+   documentados, rejeitam URL/modelo/saída inválidos, redigem falhas e nunca
+   registram a chave.
 3. Uma chave é salva/removida apenas pelo SecretStorage da extensão e a UI não
    a revela após a entrada inicial.
 4. Os clientes de host recebem uma configuração MCP de prévia; nenhuma pasta
@@ -66,6 +72,9 @@ permitem, ou apresentar uma API como se fosse login de conta.
    segredo em erro, timeout, cancelamento, manifesto/pt-BR e compatibilidade
    da ponte Codex existente.
 6. Os testes empacotados de VSIX continuam sem exigir qualquer conta ou chave.
+7. Uma rota persistida não pode invocar host MCP, login gerido ou provider fora
+   da allowlist; falhas de policy, credencial, cancelamento e schema não usam
+   fallback.
 
 ## Fora de escopo P0
 

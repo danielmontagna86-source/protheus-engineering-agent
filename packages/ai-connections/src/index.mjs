@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-const CONNECTION_FIELDS = new Set(['schemaVersion', 'id', 'provider', 'mode', 'secretRef']);
+const CONNECTION_FIELDS = new Set(['schemaVersion', 'id', 'provider', 'mode', 'secretRef', 'model']);
 const ROUTE_FIELDS = new Set(['schemaVersion', 'id', 'profile', 'primary', 'fallbacks', 'allowedProviders', 'maxInputBytes', 'maxOutputBytes', 'maxCostUsd']);
 const RECEIPT_FIELDS = new Set(['schemaVersion', 'status', 'routeId', 'attempt', 'connectionId', 'provider', 'model', 'durationMs', 'inputSha256', 'outputSha256', 'usage', 'errorCode']);
 const RETRYABLE_CODES = new Set(['AI_TIMEOUT', 'AI_PROVIDER_UNAVAILABLE', 'AI_RATE_LIMITED', 'AI_PROVIDER_TRANSIENT']);
@@ -23,6 +23,11 @@ function rejectUnknown(value, fields, name) {
 
 function identifier(value, name) {
   if (typeof value !== 'string' || !/^[a-z][a-z0-9.-]{0,79}$/.test(value)) throw new TypeError(`${name} is invalid`);
+  return value;
+}
+
+function modelIdentifier(value, name) {
+  if (typeof value !== 'string' || !/^[A-Za-z0-9._/-]{1,160}$/.test(value)) throw new TypeError(`${name} is invalid`);
   return value;
 }
 
@@ -49,8 +54,13 @@ export function validateConnection(value, options = {}) {
   if (!Array.isArray(options.providers) || !options.providers.includes(provider)) throw new TypeError(`unsupported provider: ${provider}`);
   if (!['api-key', 'managed-login', 'external-host'].includes(value.mode)) throw new TypeError('connection mode is invalid');
   if (value.mode === 'api-key' && typeof value.secretRef !== 'string') throw new TypeError('api-key connection requires secretRef');
+  if (value.mode === 'api-key' && typeof value.model !== 'string') throw new TypeError('api-key connection requires model');
   if (value.secretRef !== undefined) identifier(value.secretRef, 'secretRef');
-  return Object.freeze({ schemaVersion: 1, id: identifier(value.id, 'connection id'), provider, mode: value.mode, ...(value.secretRef ? { secretRef: value.secretRef } : {}) });
+  return Object.freeze({
+    schemaVersion: 1, id: identifier(value.id, 'connection id'), provider, mode: value.mode,
+    ...(value.secretRef ? { secretRef: value.secretRef } : {}),
+    ...(value.model ? { model: modelIdentifier(value.model, 'connection model') } : {}),
+  });
 }
 
 export function validateRoute(value, options = {}) {

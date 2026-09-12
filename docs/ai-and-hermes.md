@@ -89,8 +89,9 @@ um código sanitizado.
 
 Uma rota é limitada por bytes de entrada/saída e por teto de custo quando o
 adaptador puder fornecer custo verificável. Sem preço verificável, o PEA não
-inventa uma estimativa nem afirma que o teto financeiro foi aplicado. A UI
-mostrará isso antes do envio.
+inventa uma estimativa nem afirma que o teto financeiro foi aplicado. As rotas
+criadas hoje deixam o teto financeiro como `null`; uma UX de orçamento e preço
+antes do envio ainda é trabalho posterior, não uma garantia atual.
 
 As instruções e os endpoints são verificáveis nas documentações oficiais do
 [Claude Code](https://code.claude.com/docs/en/cli-usage),
@@ -101,3 +102,7 @@ As instruções e os endpoints são verificáveis nas documentações oficiais d
 Os contratos HTTP diretos seguem as referências oficiais de
 [Anthropic Messages](https://platform.claude.com/docs/en/api/messages) e
 [Gemini generateContent](https://ai.google.dev/api/generate-content).
+
+O roteiro que separa teste automatizado de homologação de conta/host está em
+[provider-uat.md](provider-uat.md). Enquanto ele não tiver evidências externas
+para o commit e VSIX exatos, a integração não é declarada homologada.

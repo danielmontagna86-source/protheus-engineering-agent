@@ -12,13 +12,14 @@ import { createConnectionManifestStore } from '../packages/ai-connections/src/st
 
 test('connection contract stores a secret reference but rejects secret values and unknown providers', () => {
   const connection = validateConnection({
-    schemaVersion: 1, id: 'openrouter-main', provider: 'openrouter', mode: 'api-key', secretRef: 'openrouter.main',
+    schemaVersion: 1, id: 'openrouter-main', provider: 'openrouter', mode: 'api-key', secretRef: 'openrouter.main', model: 'openai/gpt-test',
   }, { providers: ['openrouter'] });
   assert.deepEqual(connection, {
-    schemaVersion: 1, id: 'openrouter-main', provider: 'openrouter', mode: 'api-key', secretRef: 'openrouter.main',
+    schemaVersion: 1, id: 'openrouter-main', provider: 'openrouter', mode: 'api-key', secretRef: 'openrouter.main', model: 'openai/gpt-test',
   });
   assert.throws(() => validateConnection({ ...connection, apiKey: 'not-allowed' }, { providers: ['openrouter'] }), /unsupported connection field/i);
   assert.throws(() => validateConnection({ ...connection, provider: 'unknown' }, { providers: ['openrouter'] }), /unsupported provider/i);
+  assert.throws(() => validateConnection({ ...connection, model: undefined }, { providers: ['openrouter'] }), /model/i);
 });
 
 test('route provider tries only explicit transient fallback and writes content-free receipts', async () => {

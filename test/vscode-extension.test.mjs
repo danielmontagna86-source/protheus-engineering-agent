@@ -209,16 +209,23 @@ test('extension registers only thin orchestration commands and delegates doctor 
   assert.equal(fake.output.join('\n').includes('"ok":true'), true);
 });
 
-test('extension manages AI connections by mode and keeps an OpenRouter key only in VS Code SecretStorage', async () => {
+test('extension persists a bounded API route while keeping its key only in VS Code SecretStorage', async () => {
   const fake = fakeVscode();
   const secrets = new Map();
+  let manifest = { schemaVersion: 1, connections: [], routes: [] };
   const registry = {
     list() { return [{ id: 'openrouter', label: 'OpenRouter', connection: 'api-key', limitations: 'API key only.' }]; },
     get() { return this.list()[0]; },
   };
-  fake.inputBoxResponses.push('key-entered-once');
+  fake.inputBoxResponses.push('key-entered-once', 'openai/gpt-test');
   extension.createExtension(fake.api, {
     providerRegistryFactory: () => registry,
+    aiManifestStoreFactory({ validate }) {
+      return {
+        async read() { return manifest; },
+        async write(value) { manifest = validate(value); return manifest; },
+      };
+    },
     mcpPreviewFactory: () => ({ cline: { mcpServers: {} }, opencode: { mcp: {} } }),
   }).activate({
     subscriptions: [],
@@ -231,10 +238,44 @@ test('extension manages AI connections by mode and keeps an OpenRouter key only 
 
   await fake.handlers.get('pea.manageAiConnections')();
 
-  assert.equal(secrets.get('pea.credential.openrouter.api-key'), 'key-entered-once');
+  assert.equal(secrets.get('pea.credential.openrouter-default.api-key'), 'key-entered-once');
+  assert.deepEqual(manifest.connections, [{
+    schemaVersion: 1, id: 'openrouter-default', provider: 'openrouter', mode: 'api-key',
+    secretRef: 'openrouter-default.api-key', model: 'openai/gpt-test',
+  }]);
+  assert.deepEqual(manifest.routes.map(({ id, primary, allowedProviders, profile }) => ({ id, primary, allowedProviders, profile })), [{
+    id: 'openrouter-default-analysis', primary: 'openrouter-default', allowedProviders: ['openrouter'], profile: 'analysis',
+  }]);
   assert.match(fake.informationMessages.at(-1).message, /OpenRouter/i);
   assert.equal(fake.inputBoxes[0].password, true);
   assert.doesNotMatch(JSON.stringify(fake.output), /key-entered-once/);
+});
+
+test('extension rejects persisted AI routes that would invoke an external host or an unapproved provider', async () => {
+  const fake = fakeVscode();
+  let validate;
+  extension.createExtension(fake.api, {
+    providerRegistryFactory: () => ({ list: () => [
+      { id: 'cline', label: 'Cline', connection: 'external-host' },
+      { id: 'openrouter', label: 'OpenRouter', connection: 'api-key' },
+    ] }),
+    aiManifestStoreFactory(options) {
+      validate = options.validate;
+      return { async read() { return { schemaVersion: 1, connections: [], routes: [] }; }, async write() {} };
+    },
+  }).activate({ subscriptions: [], secrets: { async get() {}, async store() {}, async delete() {} } });
+
+  await fake.handlers.get('pea.askAi')();
+  assert.throws(() => validate({
+    schemaVersion: 1,
+    connections: [{ schemaVersion: 1, id: 'cline-default', provider: 'cline', mode: 'external-host' }],
+    routes: [{ schemaVersion: 1, id: 'cline-analysis', profile: 'analysis', primary: 'cline-default', fallbacks: [], allowedProviders: ['cline'], maxInputBytes: 1, maxOutputBytes: 1, maxCostUsd: null }],
+  }), /external host/i);
+  assert.throws(() => validate({
+    schemaVersion: 1,
+    connections: [{ schemaVersion: 1, id: 'openrouter-default', provider: 'openrouter', mode: 'api-key', secretRef: 'openrouter-default.api-key', model: 'openai/gpt-test' }],
+    routes: [{ schemaVersion: 1, id: 'openrouter-analysis', profile: 'analysis', primary: 'openrouter-default', fallbacks: [], allowedProviders: ['gemini-api'], maxInputBytes: 1, maxOutputBytes: 1, maxCostUsd: null }],
+  }), /does not allow/i);
 });
 
 test('extension sends governed bounded context through configured OpenRouter without exposing its key', async () => {
@@ -243,6 +284,14 @@ test('extension sends governed bounded context through configured OpenRouter wit
   fake.inputBoxResponses.push('Revise o risco desta alteração.');
   extension.createExtension(fake.api, {
     providerRegistryFactory: () => ({ list: () => [{ id: 'openrouter', label: 'OpenRouter', connection: 'api-key' }] }),
+    aiManifestStoreFactory({ validate }) {
+      const manifest = validate({
+        schemaVersion: 1,
+        connections: [{ schemaVersion: 1, id: 'openrouter-default', provider: 'openrouter', mode: 'api-key', secretRef: 'openrouter-default.api-key', model: 'openai/gpt-test' }],
+        routes: [{ schemaVersion: 1, id: 'openrouter-default-analysis', profile: 'analysis', primary: 'openrouter-default', fallbacks: [], allowedProviders: ['openrouter'], maxInputBytes: 65536, maxOutputBytes: 131072, maxCostUsd: null }],
+      });
+      return { async read() { return manifest; }, async write() { throw new Error('not expected'); } };
+    },
     aiProviderFactory({ id }) {
       assert.equal(id, 'openrouter');
       return { id, async complete() { return { model: 'safe-model', output: { summary: 'Resposta segura.' } }; } };
@@ -260,7 +309,7 @@ test('extension sends governed bounded context through configured OpenRouter wit
   await fake.handlers.get('pea.askAi')();
 
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].provider.id, 'openrouter');
+  assert.equal(calls[0].provider.id, 'pea-route.openrouter-default-analysis');
   assert.equal(calls[0].request.context.context.source, 'evidence');
   assert.doesNotMatch(JSON.stringify(fake.output), /not-exposed/);
 });
@@ -1012,7 +1061,7 @@ test('real host smoke installs the packaged VSIX before exercising commands', as
   assert.match(runner, /windows1252/i);
   assert.match(host, /vscode\.extensions\.getExtension\('danielmontagna86-source\.protheus-engineering-agent'\)/);
   assert.match(host, /execute\('pea\.doctor', workspace\.uri\)/);
-  assert.match(host, /declaredCommandIds\.length, 21/);
+  assert.match(host, /declaredCommandIds\.length, 23/);
 });
 
 test('package lifecycle harness proves install, upgrade, uninstall, reinstall and rollback', async () => {

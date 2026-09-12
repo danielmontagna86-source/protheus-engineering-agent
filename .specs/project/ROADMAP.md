@@ -122,9 +122,12 @@
 
 **Codex/ChatGPT bounded-context bridge** - IMPLEMENTED AND PACKAGED; OFFICIAL-CLI LIVE LOGIN/UAT EXTERNAL
 
-**Multi-provider AI connectivity** - P0 IMPLEMENTED; OPENROUTER API + CLINE/OPENCODE MCP PREVIEW; OFFICIAL PROVIDER UAT EXTERNAL
+**Multi-provider AI connectivity** - P0 IMPLEMENTATION IN PROGRESS; DIRECT API ROUTES + CLINE/OPENCODE MCP PREVIEW; OFFICIAL PROVIDER UAT EXTERNAL
 
-- Registro explícito para Codex, Claude Code, Gemini CLI, Cline, OpenCode e OpenRouter.
+- Registro explícito para Codex, Claude Code, Gemini CLI, Cline, OpenCode,
+  OpenRouter, Anthropic API e Gemini API.
+- Conexões HTTP diretas persistem referência de segredo/modelo e uma rota de
+  análise limitada; Cline/OpenCode continuam apenas como prévia MCP explícita.
 - Login oficial, API SecretStorage e host MCP são modos distintos; credenciais e arquivos de autenticação externos não são lidos.
 - Runners diretos Claude/Gemini e servidor OpenCode aguardam perfis versionados de somente leitura e UAT.
 - Especificação: `.specs/features/multi-provider-ai-connectivity/`.

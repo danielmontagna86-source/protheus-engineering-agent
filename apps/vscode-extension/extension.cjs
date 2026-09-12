@@ -512,13 +512,18 @@ function createExtension(vscode, options = {}) {
     return createAiGateway({ provider, authorize: broker });
   }
 
-  function providerForAi(descriptor, workspace, context) {
-    if (descriptor.id === 'openai-codex-app-server') return providerForCodex(workspace, context);
-    if (typeof options.aiProviderFactory === 'function') return options.aiProviderFactory({ ...descriptor, workspace, context });
-    if (descriptor.id !== 'openrouter') throw new Error(t('{0} must be used through its own official client or MCP host.', descriptor.label));
-    const { createOpenRouterProvider } = require('./dist/ai-providers.cjs');
-    const store = createCredentialStore(context.secrets);
-    return createOpenRouterProvider({ getApiKey: () => store.get('openrouter.api-key') });
+  function providerForAi(connection, workspace, context) {
+    const providerId = connection.provider ?? connection.id;
+    if (providerId === 'openai-codex-app-server') return providerForCodex(workspace, context);
+    if (typeof options.aiProviderFactory === 'function') return options.aiProviderFactory({ ...connection, id: providerId, connectionId: connection.id, workspace, context });
+    const { createAnthropicProvider, createGeminiProvider, createOpenRouterProvider } = require('./dist/ai-providers.cjs');
+    const credentials = createCredentialStore(context.secrets);
+    const providerOptions = { getApiKey: () => credentials.get(connection.secretRef) };
+    const configuration = { model: connection.model };
+    if (providerId === 'openrouter') return createOpenRouterProvider(providerOptions, configuration);
+    if (providerId === 'anthropic-api') return createAnthropicProvider(providerOptions, configuration);
+    if (providerId === 'gemini-api') return createGeminiProvider(providerOptions, configuration);
+    throw new Error(t('{0} must be used through its own official client or MCP host.', connection.label ?? providerId));
   }
 
   function providerRegistry() {
@@ -531,6 +536,60 @@ function createExtension(vscode, options = {}) {
     if (typeof options.mcpPreviewFactory === 'function') return options.mcpPreviewFactory();
     const { createMcpConnectionPreview } = require('./dist/ai-providers.cjs');
     return createMcpConnectionPreview({ command: process.execPath, serverPath: mcpServerPath });
+  }
+
+  function validateAiManifest(manifest, registry) {
+    if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)
+      || manifest.schemaVersion !== 1 || !Array.isArray(manifest.connections) || !Array.isArray(manifest.routes)
+      || Object.keys(manifest).some((key) => !['schemaVersion', 'connections', 'routes'].includes(key))) {
+      throw new TypeError('AI connection manifest is invalid');
+    }
+    const { validateConnection, validateRoute } = require('./dist/ai-connections.cjs');
+    const providers = registry.list().map((provider) => provider.id);
+    const connections = manifest.connections.map((connection) => validateConnection(connection, { providers }));
+    if (new Set(connections.map((connection) => connection.id)).size !== connections.length) throw new TypeError('AI connection identifiers must be unique');
+    const ids = connections.map((connection) => connection.id);
+    const routes = manifest.routes.map((route) => validateRoute(route, { connections: ids }));
+    if (new Set(routes.map((route) => route.id)).size !== routes.length) throw new TypeError('AI route identifiers must be unique');
+    for (const route of routes) {
+      for (const connectionId of [route.primary, ...route.fallbacks]) {
+        const connection = connections.find((candidate) => candidate.id === connectionId);
+        if (connection.mode !== 'api-key') throw new TypeError('AI routes cannot invoke an external host or managed login');
+        if (!route.allowedProviders.includes(connection.provider)) throw new TypeError(`AI route does not allow ${connection.provider}`);
+      }
+    }
+    return { schemaVersion: 1, connections, routes };
+  }
+
+  function aiManifestStore(workspace, registry) {
+    const validate = (manifest) => validateAiManifest(manifest, registry);
+    if (typeof options.aiManifestStoreFactory === 'function') return options.aiManifestStoreFactory({ workspace, validate });
+    const { createConnectionManifestStore } = require('./dist/ai-connection-store.cjs');
+    return createConnectionManifestStore({ workspace, validate });
+  }
+
+  function defaultRoute(connection) {
+    return {
+      schemaVersion: 1,
+      id: `${connection.id}-analysis`,
+      profile: 'analysis',
+      primary: connection.id,
+      fallbacks: [],
+      allowedProviders: [connection.provider],
+      maxInputBytes: 65_536,
+      maxOutputBytes: 131_072,
+      maxCostUsd: null,
+    };
+  }
+
+  function routeProviderForAi(route, manifest, workspace, context) {
+    const { createRouteProvider } = require('./dist/ai-connections.cjs');
+    const connections = new Map(manifest.connections.map((connection) => [connection.id, connection]));
+    return createRouteProvider({
+      route,
+      connections,
+      resolveProvider: (connection) => providerForAi(connection, workspace, context),
+    });
   }
 
   async function manageAiConnection(context) {
@@ -546,15 +605,33 @@ function createExtension(vscode, options = {}) {
     const selected = await vscode.window.showQuickPick(candidates, { placeHolder: t('Select an AI connection') });
     if (!selected?.provider) return undefined;
     const provider = selected.provider;
-    if (provider.id === 'openrouter') {
+    if (provider.connection === 'api-key') {
+      const workspace = await workspacePath();
+      if (!workspace) return vscode.window.showWarningMessage(t('Open a workspace first.'));
       const apiKey = await vscode.window.showInputBox({
-        prompt: t('OpenRouter API key (stored only in VS Code SecretStorage)'), password: true,
+        prompt: t('{0} API key (stored only in VS Code SecretStorage)', provider.label), password: true,
         ignoreFocusOut: true,
         validateInput: (value) => value?.trim() ? null : t('An API key is required.'),
       });
       if (!apiKey) return undefined;
-      await createCredentialStore(context.secrets).set('openrouter.api-key', apiKey.trim());
-      return vscode.window.showInformationMessage(t('{0} was configured. The key is not saved in workspace settings or logs.', provider.label));
+      const model = await vscode.window.showInputBox({
+        prompt: t('Model identifier for {0}', provider.label),
+        ignoreFocusOut: true,
+        validateInput: (value) => /^[A-Za-z0-9._/-]{1,160}$/.test(value?.trim() ?? '') ? null : t('A model identifier is required.'),
+      });
+      if (!model) return undefined;
+      const connection = {
+        schemaVersion: 1, id: `${provider.id}-default`, provider: provider.id, mode: 'api-key',
+        secretRef: `${provider.id}-default.api-key`, model: model.trim(),
+      };
+      const store = aiManifestStore(workspace, registry);
+      const manifest = await store.read();
+      const connections = [...manifest.connections.filter((candidate) => candidate.id !== connection.id), connection];
+      const route = defaultRoute(connection);
+      const routes = [...manifest.routes.filter((candidate) => candidate.id !== route.id), route];
+      await createCredentialStore(context.secrets).set(connection.secretRef, apiKey.trim());
+      await store.write({ schemaVersion: 1, connections, routes });
+      return vscode.window.showInformationMessage(t('{0} was configured with a bounded analysis route. The key is not saved in workspace settings or logs.', provider.label));
     }
     if (provider.connection === 'external-host') {
       const preview = mcpConnectionPreview();
@@ -615,15 +692,14 @@ function createExtension(vscode, options = {}) {
         const workspace = await workspacePath();
         if (!workspace) return vscode.window.showWarningMessage(t('Open a workspace first.'));
         const registry = providerRegistry();
-        const selected = await vscode.window.showQuickPick(registry.list().map((provider) => ({
-          label: provider.label, description: provider.connection, provider,
-        })), { placeHolder: t('Select an AI provider for bounded engineering context') });
-        if (!selected?.provider) return undefined;
-        if (!['openrouter', 'openai-codex-app-server'].includes(selected.provider.id)) {
-          return vscode.window.showInformationMessage(t('{0} must be used through its own official client or MCP host.', selected.provider.label));
-        }
+        const manifest = await aiManifestStore(workspace, registry).read();
+        if (manifest.routes.length === 0) return vscode.window.showWarningMessage(t('Configure an API connection before asking an AI route.'));
+        const selected = await vscode.window.showQuickPick(manifest.routes.map((route) => ({
+          label: route.id, description: route.profile, route,
+        })), { placeHolder: t('Select a configured AI route for bounded engineering context') });
+        if (!selected?.route) return undefined;
         const instruction = await vscode.window.showInputBox({
-          prompt: t('Question for {0} using bounded Protheus engineering context', selected.provider.label),
+          prompt: t('Question for route {0} using bounded Protheus engineering context', selected.route.id),
           validateInput: (value) => value?.trim() ? null : t('A question is required.'),
         });
         if (!instruction) return undefined;
@@ -631,8 +707,8 @@ function createExtension(vscode, options = {}) {
           const [sessionOutput, doctorOutput] = await Promise.all([
             runCli(['session', workspace], workspace), runCli(['doctor', workspace], workspace),
           ]);
-          const provider = providerForAi(selected.provider, workspace, context);
-          const result = await codexGateway(workspace, provider, () => approveAiContext(selected.provider.label)).run({
+          const provider = routeProviderForAi(selected.route, manifest, workspace, context);
+          const result = await codexGateway(workspace, provider, () => approveAiContext(selected.route.id)).run({
             instruction: instruction.trim(), context: parseRuntimeJson(sessionOutput, t('session')),
             outputSchema: { type: 'object', properties: { summary: { type: 'string' } }, required: ['summary'], additionalProperties: false },
           }, { environment: parseRuntimeJson(doctorOutput, t('doctor')).configuration?.environment ?? 'development' });
