@@ -18,6 +18,10 @@ inputs:
     description: Highest tolerated severity (critical, major or never).
     required: false
     default: major
+  policy-path:
+    description: Optional workspace-relative review policy with temporary, fingerprint-bound waivers.
+    required: false
+    default: .pea/review-policy.json
 
 outputs:
   json:
@@ -26,12 +30,27 @@ outputs:
   sarif:
     description: Absolute path to the SARIF 2.1.0 evidence.
     value: ${{ steps.review.outputs.sarif }}
+  gate:
+    description: Absolute path to governed review-gate evidence.
+    value: ${{ steps.review.outputs.gate }}
   assessment:
     description: Deterministic review assessment.
     value: ${{ steps.review.outputs.assessment }}
   findings:
     description: Number of deterministic findings.
     value: ${{ steps.review.outputs.findings }}
+  blocked:
+    description: Number of findings that block the selected threshold after policy evaluation.
+    value: ${{ steps.review.outputs.blocked }}
+  waived:
+    description: Number of findings admitted by current documented waivers.
+    value: ${{ steps.review.outputs.waived }}
+  expired:
+    description: Number of expired waivers that matched blocking findings.
+    value: ${{ steps.review.outputs.expired }}
+  ambiguous:
+    description: Number of waiver fingerprints that matched more than one blocking finding.
+    value: ${{ steps.review.outputs.ambiguous }}
 
 runs:
   using: composite
@@ -49,6 +68,7 @@ runs:
         INPUT_BASE_REF: ${{ inputs.base-ref }}
         INPUT_OUTPUT_DIRECTORY: ${{ inputs.output-directory }}
         INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_POLICY_PATH: ${{ inputs.policy-path }}
       run: node "$GITHUB_ACTION_PATH/scripts/ci-review.mjs"
 
 branding:

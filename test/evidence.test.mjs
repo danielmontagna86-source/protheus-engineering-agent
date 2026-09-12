@@ -2,12 +2,14 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import {
+import * as evidence from '../packages/evidence/src/index.mjs';
+
+const {
   exportChangeReview,
   findingFingerprint,
   stableStringify,
   toSarif,
-} from '../packages/evidence/src/index.mjs';
+} = evidence;
 
 function reportAt(line = 4) {
   const finding = {
@@ -98,6 +100,20 @@ test('repository ships a strict public change-review JSON schema', async () => {
   assert.equal(schema.properties.evidence.items.additionalProperties, false);
 });
 
+test('repository ships strict public review policy and gate schemas', async () => {
+  const [policy, gate] = await Promise.all([
+    readFile(new URL('../schemas/review-policy.schema.json', import.meta.url), 'utf8').then(JSON.parse),
+    readFile(new URL('../schemas/review-gate.schema.json', import.meta.url), 'utf8').then(JSON.parse),
+  ]);
+  assert.equal(policy.$id, 'https://protheus-engineering-agent.dev/schemas/review-policy.schema.json');
+  assert.equal(policy.additionalProperties, false);
+  assert.deepEqual(policy.required, ['schemaVersion', 'waivers']);
+  assert.equal(policy.properties.waivers.items.additionalProperties, false);
+  assert.equal(gate.$id, 'https://protheus-engineering-agent.dev/schemas/review-gate.schema.json');
+  assert.equal(gate.additionalProperties, false);
+  assert.deepEqual(gate.required, ['schemaVersion', 'kind', 'status', 'threshold', 'review', 'policy', 'summary', 'blocked', 'waived', 'expiredWaivers', 'ambiguousWaivers', 'unusedWaivers']);
+});
+
 test('change-review exporter enforces enums, integer counts and reconciled summaries', () => {
   const invalidStatus = reportAt();
   invalidStatus.status = 'maybe';
@@ -126,4 +142,115 @@ test('change-review exporter enforces enums, integer counts and reconciled summa
   const invalidEvidenceScope = reportAt();
   invalidEvidenceScope.evidence[0].scope = { kind: 'everything', baseRef: null };
   assert.throws(() => exportChangeReview(invalidEvidenceScope), /scope kind/);
+});
+
+test('review gate blocks an in-scope major finding when no waiver exists', () => {
+  assert.equal(typeof evidence.evaluateReviewGate, 'function');
+  const report = reportAt();
+  report.reviews[0].findings[0].severity = 'MAJOR';
+  report.reviews[0].findings[1].severity = 'MAJOR';
+  report.reviews[0].counts = { CRITICAL: 0, MAJOR: 2, MINOR: 0, INFO: 0 };
+
+  const gate = evidence.evaluateReviewGate(report, undefined, {
+    failOn: 'major', now: '2026-09-12T12:00:00.000Z',
+  });
+
+  assert.equal(gate.kind, 'review-gate');
+  assert.equal(gate.status, 'FAIL');
+  assert.equal(gate.blocked.length, 2);
+  assert.equal(gate.waived.length, 0);
+  assert.equal(gate.policy.status, 'absent');
+});
+
+test('review gate keeps raw findings and admits only a current, documented fingerprint waiver', () => {
+  assert.equal(typeof evidence.evaluateReviewGate, 'function');
+  assert.equal(typeof evidence.parseReviewPolicy, 'function');
+  const report = reportAt();
+  report.reviews[0].findings[0].severity = 'MAJOR';
+  report.reviews[0].findings = [report.reviews[0].findings[0]];
+  report.reviews[0].counts = { CRITICAL: 0, MAJOR: 1, MINOR: 0, INFO: 0 };
+  report.summary.findings = 1;
+  const exported = exportChangeReview(report);
+  const policy = evidence.parseReviewPolicy({
+    schemaVersion: 1,
+    waivers: [{
+      fingerprint: exported.reviews[0].findings[0].fingerprint,
+      reason: 'False positive confirmed against the supported compiler behavior.',
+      approvedBy: 'release-manager@example.invalid',
+      expiresAt: '2026-10-01T00:00:00.000Z',
+    }],
+  });
+
+  const gate = evidence.evaluateReviewGate(report, policy, {
+    failOn: 'major', now: '2026-09-12T12:00:00.000Z',
+  });
+
+  assert.equal(exportChangeReview(report).reviews[0].findings.length, 1);
+  assert.equal(gate.status, 'PASS');
+  assert.equal(gate.blocked.length, 0);
+  assert.equal(gate.waived.length, 1);
+  assert.equal(gate.waived[0].reason, policy.waivers[0].reason);
+  assert.equal(gate.waived[0].approvedBy, policy.waivers[0].approvedBy);
+});
+
+test('review gate fails closed when a waiver fingerprint identifies multiple findings', () => {
+  assert.equal(typeof evidence.evaluateReviewGate, 'function');
+  const report = reportAt();
+  report.reviews[0].findings[0].severity = 'MAJOR';
+  report.reviews[0].findings[1].severity = 'MAJOR';
+  report.reviews[0].counts = { CRITICAL: 0, MAJOR: 2, MINOR: 0, INFO: 0 };
+  const fingerprint = exportChangeReview(report).reviews[0].findings[0].fingerprint;
+  const policy = evidence.parseReviewPolicy({
+    schemaVersion: 1,
+    waivers: [{
+      fingerprint,
+      reason: 'One occurrence was reviewed; multiple matching findings require separate remediation.',
+      approvedBy: 'reviewer@example.invalid',
+      expiresAt: '2026-10-01T00:00:00.000Z',
+    }],
+  });
+
+  const gate = evidence.evaluateReviewGate(report, policy, {
+    failOn: 'major', now: '2026-09-12T12:00:00.000Z',
+  });
+  assert.equal(gate.status, 'FAIL');
+  assert.equal(gate.blocked.length, 2);
+  assert.equal(gate.waived.length, 0);
+  assert.deepEqual(gate.ambiguousWaivers, [policy.waivers[0]]);
+});
+
+test('review gate reports expired waivers and fails closed for malformed policy data', () => {
+  assert.equal(typeof evidence.evaluateReviewGate, 'function');
+  assert.equal(typeof evidence.parseReviewPolicy, 'function');
+  const report = reportAt();
+  report.reviews[0].findings[0].severity = 'CRITICAL';
+  report.reviews[0].findings[1].severity = 'CRITICAL';
+  report.reviews[0].counts = { CRITICAL: 2, MAJOR: 0, MINOR: 0, INFO: 0 };
+  const fingerprint = exportChangeReview(report).reviews[0].findings[0].fingerprint;
+  const expired = evidence.parseReviewPolicy({
+    schemaVersion: 1,
+    waivers: [{
+      fingerprint,
+      reason: 'Temporary exception awaiting vendor patch.',
+      approvedBy: 'security@example.invalid',
+      expiresAt: '2026-09-01T00:00:00.000Z',
+    }],
+  });
+
+  const gate = evidence.evaluateReviewGate(report, expired, {
+    failOn: 'critical', now: '2026-09-12T12:00:00.000Z',
+  });
+  assert.equal(gate.status, 'FAIL');
+  assert.equal(gate.expiredWaivers.length, 1);
+  assert.equal(gate.blocked.length, 2);
+
+  assert.throws(() => evidence.parseReviewPolicy({ schemaVersion: 1, waivers: [{
+    fingerprint, reason: 'x', approvedBy: 'owner', expiresAt: 'invalid',
+  }] }), /expiresAt/);
+  assert.throws(() => evidence.parseReviewPolicy({ schemaVersion: 1, waivers: [{
+    fingerprint, reason: 'valid reason', approvedBy: 'owner', expiresAt: '2026-10-01T00:00:00.000Z',
+  }, {
+    fingerprint, reason: 'valid reason', approvedBy: 'owner', expiresAt: '2026-10-02T00:00:00.000Z',
+  }] }), /duplicate/);
+  assert.throws(() => evidence.parseReviewPolicy({ schemaVersion: 1, waivers: [], bypassAll: true }), /unsupported fields/);
 });

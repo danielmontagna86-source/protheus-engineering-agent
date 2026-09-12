@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://protheus-engineering-agent.dev/schemas/review-gate.schema.json",
+  "title": "Protheus Engineering Agent review gate receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "status", "threshold", "review", "policy", "summary", "blocked", "waived", "expiredWaivers", "ambiguousWaivers", "unusedWaivers"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "review-gate" },
+    "status": { "enum": ["PASS", "FAIL"] },
+    "threshold": { "enum": ["critical", "major", "never"] },
+    "review": { "type": "object" },
+    "policy": { "type": "object" },
+    "summary": { "type": "object" },
+    "blocked": { "type": "array" },
+    "waived": { "type": "array" },
+    "expiredWaivers": { "type": "array" },
+    "ambiguousWaivers": { "type": "array" },
+    "unusedWaivers": { "type": "array" }
+  }
+}

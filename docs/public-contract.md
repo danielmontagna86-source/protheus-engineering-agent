@@ -5,6 +5,7 @@
 - `.pea/config.json`, schema version 1;
 - CodeGraph tolerant lexical IR, schema version 2;
 - change-review JSON and SARIF 2.1.0 exports;
+- review-policy and review-gate JSON schema version 1;
 - documented CLI commands and MCP tool JSON Schemas;
 - attributed `memory.jsonl` and `journal.jsonl`, schema version 1;
 - snapshot kinds `pea.tdn.snapshot` and `pea.protheus.dictionary`, schema version 1.

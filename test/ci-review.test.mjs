@@ -75,6 +75,53 @@ test('CI review runner atomically replaces linked output files without overwriti
   assert.equal(JSON.parse(await readFile(join(outputDirectory, 'review.json'), 'utf8')).kind, 'change-review');
 });
 
+test('CI review gate writes auditable policy evidence and only accepts a current fingerprint waiver', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-action-policy-'));
+  const outputs = join(workspace, 'github-output.txt');
+  const source = join(workspace, 'changed.prw');
+  await writeFile(source, 'User Function Changed()\nReturn\n');
+  await execFileAsync('git', ['init', workspace]);
+  await execFileAsync('git', ['-C', workspace, 'add', 'changed.prw']);
+  await execFileAsync('git', [
+    '-C', workspace, '-c', 'user.name=PEA Tests', '-c', 'user.email=pea@example.invalid',
+    'commit', '-m', 'fixture',
+  ]);
+  await writeFile(source, 'User Function Changed()\n    DbCreate()\nReturn\n');
+
+  const environment = {
+    ...process.env,
+    GITHUB_WORKSPACE: workspace,
+    GITHUB_OUTPUT: outputs,
+    INPUT_SCOPE: 'unstaged',
+    INPUT_OUTPUT_DIRECTORY: '.pea-results',
+    INPUT_FAIL_ON: 'major',
+    INPUT_POLICY_PATH: '.pea/review-policy.json',
+  };
+  await assert.rejects(execFileAsync(process.execPath, [script], { env: environment }));
+  const rawReview = JSON.parse(await readFile(join(workspace, '.pea-results', 'review.json'), 'utf8'));
+  const fingerprint = rawReview.reviews[0].findings[0].fingerprint;
+  await mkdir(join(workspace, '.pea'), { recursive: true });
+  await writeFile(join(workspace, '.pea', 'review-policy.json'), JSON.stringify({
+    schemaVersion: 1,
+    waivers: [{
+      fingerprint,
+      reason: 'False positive validated against the supported compiler.',
+      approvedBy: 'release-manager@example.invalid',
+      expiresAt: '2026-10-01T00:00:00.000Z',
+    }],
+  }), 'utf8');
+
+  const run = await execFileAsync(process.execPath, [script], { env: environment });
+  const gate = JSON.parse(await readFile(join(workspace, '.pea-results', 'review-gate.json'), 'utf8'));
+  const actionOutputs = await readFile(outputs, 'utf8');
+  assert.match(run.stdout, /"status": "PASS"/);
+  assert.equal(gate.status, 'PASS');
+  assert.equal(gate.waived.length, 1);
+  assert.equal(gate.waived[0].fingerprint, fingerprint);
+  assert.match(actionOutputs, /gate=.*review-gate\.json/);
+  assert.match(actionOutputs, /waived=1/);
+});
+
 test('GitHub Action contract is composite, offline and permission neutral', async () => {
   const action = await readFile(join(productRoot, 'action.yml'), 'utf8');
   assert.match(action, /using:\s*["']?composite/);
@@ -82,6 +129,8 @@ test('GitHub Action contract is composite, offline and permission neutral', asyn
   assert.match(action, /default:\s*["']?auto/);
   assert.match(action, /actions\/setup-node@820762786026740c76f36085b0efc47a31fe5020/);
   assert.match(action, /default:\s*["']?major/);
+  assert.match(action, /policy-path:/);
+  assert.match(action, /\n  gate:\n/);
   assert.doesNotMatch(action, /github\.token|GITHUB_TOKEN|npm (?:ci|install)|curl|wget|Invoke-WebRequest/i);
   assert.doesNotMatch(action, /security-events:\s*write|contents:\s*write/);
   assert.equal(parseYaml(action).runs.using, 'composite');

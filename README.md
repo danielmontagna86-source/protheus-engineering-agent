@@ -45,6 +45,10 @@ node packages/runtime/src/cli.mjs session /path/to/workspace
 node packages/runtime/src/cli.mjs review /path/to/source.prw /path/to/workspace
 ```
 
+### Gate de review governado no GitHub
+
+A Action de review pode avaliar `.pea/review-policy.json`: exceções são temporárias, por fingerprint estável, justificadas e registradas em `review-gate.json`, sem remover o finding de JSON ou SARIF. Veja [a política de review](docs/ci/review-policy.md). Ela continua offline e não substitui compilação nem aprovação humana.
+
 ### Compatibilidade opcional com Hermes
 
 Hermes não participa dos comandos normais nem dos critérios de publicação. Para testar voluntariamente o adaptador experimental:

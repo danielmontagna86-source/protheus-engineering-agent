@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://protheus-engineering-agent.dev/schemas/review-policy.schema.json",
+  "title": "Protheus Engineering Agent review policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "waivers"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "waivers": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fingerprint", "reason", "approvedBy", "expiresAt"],
+        "properties": {
+          "fingerprint": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "approvedBy": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "expiresAt": { "type": "string", "format": "date-time", "maxLength": 40 }
+        }
+      }
+    }
+  }
+}
