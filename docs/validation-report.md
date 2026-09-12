@@ -1,8 +1,16 @@
 # Validation Report
 
-**Date:** 2026-09-10
-**Environment:** Windows, Node.js 22.23.2
-**Decision:** executable development MVP PASS; public release and Marketplace submission NO-GO.
+**Data do snapshot:** 2026-09-10
+**Ambiente do snapshot:** Windows, Node.js 22.23.2
+**Decisão do snapshot:** MVP executável de desenvolvimento PASS; Stable e
+Marketplace NO-GO.
+
+> Este é um relatório histórico de execução local, preservado para
+> rastreabilidade. Em 2026-09-12 o repositório já é público, CodeQL, secret
+> scanning e private vulnerability reporting estão ativos e o GitHub preview
+> `v0.3.0` foi publicado. Isso não converte este snapshot em evidência de um
+> candidato Stable/Marketplace: a prova deve estar vinculada ao commit e aos
+> artefatos exatos da próxima promoção.
 
 ## Latest clean gate
 
@@ -25,7 +33,7 @@
 | Package lifecycle | PASS LOCALLY | isolated 0.2.0-alpha.1 install, 0.3.0 upgrade, uninstall, reinstall and rollback passed on VS Code 1.136.2 |
 | Official TDS coexistence | PASS LOCALLY | TDS 2.1.2 activated beside the packaged extension; zero command conflicts, multi-root selection and CP1252/LF preservation passed |
 | Product benchmark | PASS WITH CLAIM LIMITS | Seven Apache-2.0 synthetic cases reached 1.0 precision/recall and symbol/call recall; productivity uplift and market leadership remain `NOT_PROVEN` pending the documented human pilot |
-| Public CodeQL and dependency review | PENDING VISIBILITY | pinned workflows are present but correctly skipped while the repository remains private; no public scan result exists |
+| CodeQL e revisão de dependências públicos | PASS NO `main` OBSERVADO EM 2026-09-12 | CodeQL, OSV, secret scan e a matriz CI passaram no commit público `975f9f1`; essa prova não é transferível automaticamente para outro candidato |
 | Optional Hermes compatibility | PASS, NON-GATING | installed Hermes previously returned `Hermes ACP check OK` from an isolated temporary workspace and profile |
 | ADVPL/TLPP corpus exploration | INCONCLUSIVE FOR ACCURACY | 955 candidates traversed in about six seconds; recovered corpus contamination prevents valid precision/recall claims |
 | External product integrations | CONTRACT PASS / LIVE NOT RUN | TDN/Dictionary snapshots, Oracle allowlist, AI gateway, subagent and durable build contracts pass; real compiler, AppServer/RPO, customer Oracle and live provider remain unconfigured and fail-closed |
@@ -78,4 +86,8 @@ The test, smoke, mutation and structural commands must exit zero. The developmen
 
 ## Honest boundary
 
-The CodeGraph remains lexical, review remains a deterministic pre-gate, and no real AdvPL/TLPP compilation or customer-system integration is claimed. The VSIX is locally verified and fresh-installed but has not been published. Apache-2.0 is active, but this preparation must not be presented as a released preview until the release audit reaches GO.
+O CodeGraph permanece léxico, a revisão é um pre-gate determinístico e não há
+alegação de compilação ADVPL/TLPP real ou integração com sistema de cliente. O
+VSIX foi validado localmente e a prévia GitHub `v0.3.0` está publicada; ela não
+é publicação Marketplace nem release Stable. Apache-2.0 está ativa, mas a
+próxima promoção não pode ser anunciada antes do audit de release atingir GO.

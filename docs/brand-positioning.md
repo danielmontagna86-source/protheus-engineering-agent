@@ -1,56 +1,79 @@
-# Brand and Market Positioning
+# Marca e posicionamento de mercado
 
-**Decision date:** 2026-09-07
-**Public name:** Protheus Engineering Agent
-**Repository:** `danielmontagna86-source/protheus-engineering-agent`
-**Category:** standalone open-source VS Code extension for ADVPL/TLPP engineering
+**Decisão inicial:** 2026-09-07
+**Revisão de descoberta:** 2026-09-12
+**Nome público:** Protheus Engineering Agent
+**Repositório:** `danielmontagna86-source/protheus-engineering-agent`
+**Categoria:** extensão VS Code aberta para engenharia ADVPL/TLPP baseada em evidências
 
-## Naming decision
+## Decisão de nome
 
-The selected name wins on immediate comprehension and search intent: a Protheus developer can identify the audience, purpose and product category without learning an invented brand. Searches on GitHub and the public web found adjacent projects around Protheus agents, specialists and skills, but no repository or product with the exact name on the decision date.
+O nome vence por compreensão imediata e intenção de busca: quem desenvolve para
+Protheus identifica público, propósito e categoria sem precisar aprender uma
+marca inventada. `PEA` pode ser usado apenas como abreviação técnica em
+comandos e identificadores; não deve ser a identidade pública isolada.
 
-Alternatives considered:
-
-| Name | Clarity | Scope | Differentiation | Main drawback |
+| Nome | Clareza | Escopo | Diferenciação | Principal risco |
 |---|---:|---:|---:|---|
-| Protheus Engineering Agent | High | High | Medium | Uses a third-party product mark prominently |
-| ADVPL Engineering Agent | High | Medium | Medium | Understates TLPP, runtime and broader engineering scope |
-| PEA | Low | High | Low | Generic acronym with weak searchability |
+| Protheus Engineering Agent | Alta | Alta | Média | usa marca de terceiro de forma proeminente |
+| ADVPL Engineering Agent | Alta | Média | Média | reduz TLPP, runtime e o contexto de engenharia |
+| PEA | Baixa | Alta | Baixa | sigla genérica e difícil de descobrir |
 
-The repository slug remains descriptive. `PEA` may be used only as a technical shorthand in commands and internal identifiers, never as the sole public identity.
+Não há autorização implícita de marca por esta decisão. Antes de campanha
+comercial relevante, mudança de publisher ou remoção do estágio preview, é
+necessária revisão jurídica de marca. O projeto não usa a identidade visual da
+TOTVS e mantém aviso de independência no README, NOTICE e listing.
 
-## Positioning model
+## Modelo de posicionamento
 
-**Audience:** ADVPL/TLPP developers, consultants, maintainers and QA teams working with Protheus customizations.
+**Público:** pessoas desenvolvedoras, consultores, mantenedores e QA que
+trabalham com fontes ADVPL/TLPP e customizações Protheus.
 
-**Problem:** engineering knowledge, source context, reviews and execution controls are fragmented across IDE actions, documentation, scripts and individual experience.
+**Problema:** contexto de projeto, conhecimento de domínio, revisão e controles
+de execução ficam dispersos entre IDE, documentação, scripts e experiência
+individual.
 
-**Promise:** bring evidence-backed code understanding and supervised engineering workflows into the VS Code environment teams already use.
+**Promessa verificável:** trazer entendimento de código e mudanças ADVPL/TLPP
+baseado em evidências para o VS Code que a equipe já utiliza.
 
-**Positioning statement:** Protheus Engineering Agent is an independent, open-source VS Code extension for ADVPL/TLPP teams that brings project memory, code analysis, reviews, skills and controlled integrations into the editor, with a reusable MCP-compatible runtime underneath.
+**Frase de posicionamento:** o Protheus Engineering Agent é uma extensão VS
+Code independente e aberta para equipes ADVPL/TLPP que oferece CodeGraph,
+contexto de projeto, revisão determinística e integrações governadas, sustentada
+por um runtime reutilizável e compatível com MCP.
 
-**Proof pillars:**
+**Headline:** Evidências de engenharia para ADVPL/TLPP, dentro do VS Code.
 
-1. One-VSIX start, engine-agnostic and independently useful; no replacement IDE.
-2. Evidence before automation: file/line findings, checksums and explicit release gates.
-3. Protheus-specific context: ADVPL/TLPP CodeGraph, rules and integration ports.
-4. Safe adoption: external capabilities are fail-closed and permissions are environment-scoped.
-5. Portable foundation: Node.js standard-library runtime with no mandatory npm runtime dependencies in the alpha.
+## Pilares de prova
 
-## Public messaging guardrails
+1. Começo por um VSIX: útil sem Hermes, modelo, conta, Python, Docker, Oracle,
+   TDN ou AppServer.
+2. Evidência antes de automação: achados por arquivo/linha, hashes e gates de
+   release explícitos.
+3. Contexto específico de Protheus: CodeGraph ADVPL/TLPP, rules, skills e
+   portas de integração limitadas.
+4. Adoção segura: capacidades externas falham fechadas e permissões são
+   delimitadas por ambiente.
+5. Coexistência: complementa TDS e hosts de IA escolhidos pelo usuário; não
+   recria editor, compilador, debugger, terminal, explorer, Git ou chat.
 
-- Always describe the project as independent and community maintained.
-- Never use TOTVS visual identity, imply endorsement, or call the project an official Protheus product.
-- Prefer “for ADVPL/TLPP projects” and “for teams working with Protheus” over ownership language.
-- Mark unavailable adapters, compiler integration and full ACP chat as planned or unverified.
-- Treat generated findings as engineering assistance that requires human review.
+## Regras de mensagem pública
 
-`Protheus` and `TOTVS` are third-party marks. The README, NOTICE and repository description must retain the independent-project disclaimer. This positioning review is not a trademark clearance or legal opinion; a formal commercial launch should obtain professional trademark review.
+- Descrever sempre o projeto como independente e comunitário.
+- Preferir “para projetos ADVPL/TLPP” e “para equipes que trabalham com
+  Protheus” a linguagem de posse ou produto oficial.
+- Não alegar endosso, suporte ou filiação da TOTVS, Protheus ou Hermes.
+- Indicar adapters, compilação, AppServer, banco, login de provider e resultados
+  de produtividade como planejados, limitados ou não verificados quando for o
+  caso.
+- Tratar findings como assistência de engenharia que exige revisão humana.
+- Não disputar o espaço de “agente que faz tudo”; o diferencial público é a
+  confiança da mudança Protheus, não a autonomia genérica.
 
-## Launch message
+## Chamada inicial
 
-**Headline:** Engineering context for ADVPL/TLPP, inside VS Code.
-
-**One-line description:** A standalone open-source VS Code extension for evidence-backed ADVPL/TLPP CodeGraph, project context, reviews and controlled integrations.
-
-**Initial call to action:** Clone the alpha, run the local gate, and help validate real ADVPL/TLPP workflows before Marketplace distribution.
+Instale a prévia do GitHub, complete o walkthrough offline de cinco minutos e
+valide `diagnóstico → indexação → revisão` em uma amostra legal. Depois, abra
+uma issue com reprodução sanitizada ou participe do piloto de fluxos reais.
+O Visual Studio Marketplace e uma campanha comercial permanecem posteriores aos
+gates publicados de publisher, acessibilidade, evidência de ambiente e revisão
+jurídica.

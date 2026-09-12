@@ -185,4 +185,7 @@
 - **Status:** Planned and intentionally external.
 - **Depends on:** T-041.
 - **Done when:** Maintainer explicitly authorizes the requested external action.
-- **Gate:** Without authorization, repository remains private and no merge/tag/release/Marketplace submission occurs.
+- **Gate histórico:** antes da autorização de 2026-09-12, o repositório deveria
+  permanecer privado e não haver merge/tag/release/Marketplace. O repositório
+  agora é público e há GitHub preview; Stable/Marketplace continuam dependentes
+  dos gates externos documentados.

@@ -4,9 +4,22 @@ Extensão VS Code autônoma para engenharia ADVPL/TLPP, com runtime aberto e reu
 
 > Projeto comunitário independente, em estágio alpha. Não é afiliado, patrocinado ou mantido pela TOTVS, pela marca Protheus ou pelo projeto Hermes Agent. As marcas pertencem aos seus respectivos titulares.
 
-[English](README.en.md) · [Começar](docs/getting-started.md) · [IA e Hermes](docs/ai-and-hermes.md) · [Homologação de providers](docs/provider-uat.md) · [Contrato público](docs/public-contract.md) · [Compatibilidade](docs/compatibility.md) · [Limites](docs/limitations.md) · [Roadmap](docs/roadmap.md) · [Segurança](SECURITY.md) · [Como contribuir](CONTRIBUTING.md)
+[English](README.en.md) · [Instalar a prévia](RELEASE-v0.3.0.md) · [Começar](docs/getting-started.md) · [IA e Hermes](docs/ai-and-hermes.md) · [Homologação de providers](docs/provider-uat.md) · [Contrato público](docs/public-contract.md) · [Compatibilidade](docs/compatibility.md) · [Limites](docs/limitations.md) · [Roadmap](docs/roadmap.md) · [Segurança](SECURITY.md) · [Como contribuir](CONTRIBUTING.md)
 
 O caminho principal exige somente o VSIX: não exige Hermes, conta de IA, modelo, Python, Oracle, TDN ou AppServer. O runtime determinístico é empacotado junto da extensão.
+
+## Primeiro valor em cinco minutos
+
+Baixe o VSIX da [prévia publicada no GitHub](RELEASE-v0.3.0.md), instale-o em
+um perfil isolado do VS Code e use o walkthrough **Comece pela revisão Protheus
+baseada em evidências**. Ele cria uma amostra legal e offline para mostrar
+`diagnóstico → indexação → revisão → Problemas`, sem rede, Docker, banco,
+Protheus ou modelo. Veja o roteiro detalhado em [Começando em cinco
+minutos](docs/getting-started.md).
+
+O canal atual é uma prévia do GitHub. A extensão ainda não está no Visual Studio
+Marketplace e não é apresentada como release estável; os gates abertos estão no
+[plano de publicação](docs/publication-plan.md).
 
 ## O que já executa
 
