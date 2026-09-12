@@ -46,6 +46,7 @@ All notable changes are recorded here. The project follows Semantic Versioning a
 
 ### Changed
 
+- Release ZIPs and CycloneDX SBOMs are now canonical across Windows and Linux, avoiding platform-specific compression and npm metadata drift.
 - CodeGraph line lookup now uses an indexed binary search, preserves exact declaration lines, and meets the 5,000-symbol sub-second budget.
 - The VSIX is now explicitly standalone; Hermes is optional compatibility and no longer a core release gate.
 - CodeGraph now prefers same-file static functions, rejects inaccessible cross-file statics, and leaves duplicate global targets ambiguous.
