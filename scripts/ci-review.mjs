@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { appendFile, lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { constants as fsConstants } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { createRequire } from 'node:module';
@@ -26,22 +27,27 @@ async function loadOptionalPolicy(policySetting) {
   const policyPath = resolve(workspace, policySetting);
   assertWorkspaceRelative(policyPath, 'policy-path');
   await assertNoLinkPath(workspace, policyPath);
-  let state;
+  let handle;
   try {
-    state = await lstat(policyPath);
+    handle = await open(policyPath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
   } catch (error) {
     if (error?.code === 'ENOENT') return { path: policyPath, policy: undefined };
     throw error;
   }
-  if (!state.isFile()) throw new Error('policy-path must reference a regular file');
-  if (state.size > 128 * 1024) throw new Error('review policy exceeds the 128 KiB limit');
-  let parsed;
   try {
-    parsed = JSON.parse(await readFile(policyPath, 'utf8'));
-  } catch {
-    throw new Error('review policy must contain valid JSON');
+    const state = await handle.stat();
+    if (!state.isFile()) throw new Error('policy-path must reference a regular file');
+    if (state.size > 128 * 1024) throw new Error('review policy exceeds the 128 KiB limit');
+    let parsed;
+    try {
+      parsed = JSON.parse(await handle.readFile({ encoding: 'utf8' }));
+    } catch {
+      throw new Error('review policy must contain valid JSON');
+    }
+    return { path: policyPath, policy: parseReviewPolicy(parsed) };
+  } finally {
+    await handle.close();
   }
-  return { path: policyPath, policy: parseReviewPolicy(parsed) };
 }
 
 let scope = process.env.INPUT_SCOPE || 'auto';
