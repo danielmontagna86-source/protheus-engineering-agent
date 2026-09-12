@@ -2,7 +2,7 @@ name: Dependency Security
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, fix/reproducible-release-artifacts]
   push:
     branches: [main]
   schedule:
