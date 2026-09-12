@@ -1062,6 +1062,8 @@ test('real host smoke installs the packaged VSIX before exercising commands', as
   assert.match(runner, /totvs\.tds-vscode-/);
   assert.match(runner, /PEA_SMOKE_RECEIPT/);
   assert.match(runner, /executedCommandIds/);
+  assert.match(runner, /expectedCommandIds/);
+  assert.doesNotMatch(runner, /hostReceipt\.commandIds\.length !== 21/);
   assert.match(host, /TOTVS\.tds-vscode/);
   assert.match(runner, /windows1252/i);
   assert.match(host, /vscode\.extensions\.getExtension\('danielmontagna86-source\.protheus-engineering-agent'\)/);

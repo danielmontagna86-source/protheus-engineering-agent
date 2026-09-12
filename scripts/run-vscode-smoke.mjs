@@ -176,10 +176,13 @@ export async function runVsCodeSmoke() {
       },
     });
     const hostReceipt = JSON.parse(await readFile(hostReceiptPath, 'utf8'));
+    const extensionManifest = JSON.parse(await readFile(join(root, 'apps', 'vscode-extension', 'package.json'), 'utf8'));
+    const expectedCommandIds = (extensionManifest.contributes?.commands ?? []).map((item) => item.command).sort();
     if (hostReceipt.schemaVersion !== 1
       || !Array.isArray(hostReceipt.commandIds)
-      || hostReceipt.commandIds.length !== 21
-      || new Set(hostReceipt.commandIds).size !== 21
+      || hostReceipt.commandIds.length !== expectedCommandIds.length
+      || new Set(hostReceipt.commandIds).size !== expectedCommandIds.length
+      || expectedCommandIds.some((command) => !hostReceipt.commandIds.includes(command))
       || !Array.isArray(hostReceipt.executedCommandIds)
       || hostReceipt.executedCommandIds.length < 5
       || hostReceipt.invocations !== 7) {
