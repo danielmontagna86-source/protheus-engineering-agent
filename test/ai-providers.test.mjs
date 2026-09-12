@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { resolve } from 'node:path';
 
 import {
   createAnthropicProvider,
@@ -24,10 +25,11 @@ test('provider registry describes every supported connection without credential 
 });
 
 test('MCP connection preview is explicit and never names external authentication files', () => {
-  const preview = createMcpConnectionPreview({ command: 'node', serverPath: 'C:\\pea\\mcp-stdio.mjs' });
+  const serverPath = resolve('pea', 'mcp-stdio.mjs');
+  const preview = createMcpConnectionPreview({ command: 'node', serverPath });
   assert.deepEqual(Object.keys(preview).sort(), ['cline', 'opencode']);
   assert.equal(preview.cline.mcpServers.protheusEngineeringAgent.command, 'node');
-  assert.deepEqual(preview.opencode.mcp.protheusEngineeringAgent.args, ['C:\\pea\\mcp-stdio.mjs']);
+  assert.deepEqual(preview.opencode.mcp.protheusEngineeringAgent.args, [serverPath]);
   assert.doesNotMatch(JSON.stringify(preview), /auth\.json|token|secret|password/i);
   assert.throws(() => createMcpConnectionPreview({ command: 'node', serverPath: '../mcp.mjs' }), /absolute path/i);
 });
