@@ -23,6 +23,7 @@ jornada de instalação do usuário.
 | Sessão WebApp | PASS | Seleção `P12` abriu sessão autenticada e a aplicação apresentou a área de Construção e Projetos. |
 | Banco Protheus | PASS limitado | PostgreSQL respondeu com codificação `WIN1252`, 150 tabelas públicas e oito tabelas candidatas Protheus; consulta somente leitura. |
 | Host VS Code/TDS | PASS limitado | VS Code 1.137.0 carregou o VSIX instalado, ativou TDS 2.1.3 e concluiu o smoke de comandos, CP1252/LF e multi-root. |
+| Reconexão TDS para compilação | BLOCKED | Em host VS Code isolado, o TDS ativou e alcançou o fluxo de reconexão para o AppServer local de teste, mas o servidor recusou a sessão salva. Nenhuma senha, token, fonte de cliente ou objeto de RPO foi exposto. |
 
 ## Ajuste de infraestrutura aplicado
 
@@ -40,12 +41,16 @@ subiu, que uma sessão WebApp foi alcançada, que o banco responde em leitura e
 que o produto coexiste com TDS instalado. Ele **não** prova licença/entitlement,
 compatibilidade oficial, acesso exclusivo ao RPO, compilação real de fonte pelo
 TDS, comportamento de um adapter de build, nem aprovação para Stable/Marketplace.
+O ensaio automatizado de compilação não pode prosseguir até que o operador renove
+a sessão no fluxo interativo suportado do TDS; a automação não lê, armazena ou
+retransmite senhas.
 O fechamento desses itens segue exclusivamente
 [o protocolo de homologação](appserver-homologation-acceptance.md).
 
 ## Próxima execução admissível
 
-Quando houver um laboratório licenciado com janela de RPO, executar todos os
-casos do protocolo, inclusive falha, include, lock, timeout/cancelamento e
+No laboratório atual, renovar a conexão do AppServer local de teste no TDS com
+a conta de teste e repetir a fixture CP1252/LF. Somente depois, executar todos
+os casos do protocolo, inclusive falha, include, lock, timeout/cancelamento e
 redação. O artefato público deve conter apenas o veredito e hashes; a evidência
 operacional permanece privada.
