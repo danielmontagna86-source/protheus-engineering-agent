@@ -964,7 +964,8 @@ test('repository CI has a least-privilege cross-platform matrix', async () => {
   assert.match(workflow, /actions\/checkout@[0-9a-f]{40} # v7\.0\.1/);
   assert.match(workflow, /actions\/setup-node@[0-9a-f]{40} # v7\.0\.0/);
   assert.doesNotMatch(workflow, /pull_request_target/);
-  assert.match(workflow, /node --test/);
+  assert.ok(workflow.indexOf('npm run build:extension') < workflow.indexOf('node --test'));
+  assert.match(workflow, /node --test --test-concurrency=1/);
   assert.match(workflow, /node scripts\/smoke\.mjs/);
   assert.match(workflow, /node scripts\/check\.mjs/);
   assert.match(workflow, /npm ci/);

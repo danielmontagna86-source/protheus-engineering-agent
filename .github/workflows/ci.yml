@@ -33,8 +33,10 @@ jobs:
           package-manager-cache: false
       - name: Install locked dependencies
         run: npm ci
+      - name: Build extension runtime for tests
+        run: npm run build:extension
       - name: Test
-        run: node --test
+        run: node --test --test-concurrency=1
       - name: Smoke critical CLI and MCP path
         run: node scripts/smoke.mjs
       - name: Enforce large-repository performance budget
