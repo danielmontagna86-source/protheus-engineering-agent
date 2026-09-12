@@ -4,7 +4,7 @@ import { lstat, readFile } from 'node:fs/promises';
 import { basename, isAbsolute, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-import { readZipArchive, writeZipArchive } from './zip.mjs';
+import { createZipBuffer, readZipArchive, writeZipArchive } from './zip.mjs';
 
 const forbiddenArchivePatterns = [
   /(?:^|\/)\.git(?:\/|$)/i,
@@ -17,7 +17,9 @@ const forbiddenArchivePatterns = [
   /(?:^|\/)work(?:\/|$)/i,
 ];
 
-const NORMALIZED_ZIP_TIME = new Date('2000-01-01T00:00:00.000Z');
+// ZIP stores legacy DOS local date/time fields. Construct this in local time so
+// every host emits the same 2000-01-01 00:00:00 header bytes.
+const NORMALIZED_ZIP_TIME = new Date(2000, 0, 1, 0, 0, 0);
 const PUBLIC_COMMAND_IDS = Object.freeze([
   'pea.doctor', 'pea.indexWorkspace', 'pea.openContext', 'pea.addMemoryEntry',
   'pea.addJournalEntry', 'pea.promoteJournalEntry', 'pea.expireMemory', 'pea.importSnapshot',
@@ -63,15 +65,22 @@ export function createReleaseEvidenceTemplate({ version, commit, artifacts, mani
   return evidence;
 }
 
-export async function normalizeZipArchive(path) {
-  const entries = await readZipArchive(await readFile(path));
-  await writeZipArchive(path, entries
+function normalizedZipEntries(entries) {
+  return entries
     .sort((left, right) => left.name.localeCompare(right.name))
     .map((entry) => ({
       ...entry,
       mtime: NORMALIZED_ZIP_TIME,
       mode: entry.isDirectory ? 0o40755 : 0o100644,
-    })));
+    }));
+}
+
+export async function normalizeZipArchive(path) {
+  const entries = await readZipArchive(await readFile(path));
+  await writeZipArchive(path, normalizedZipEntries(entries), {
+    compress: false,
+    forceDosTimestamp: true,
+  });
 }
 
 export function git(root, args) {
@@ -174,8 +183,16 @@ export async function verifySourceArchive(path, version, { root, commit } = {}) 
       });
       if (reproduced.error || reproduced.status !== 0) {
         errors.push('source archive could not be reproduced from the declared commit');
-      } else if (!Buffer.from(reproduced.stdout).equals(bytes)) {
-        errors.push('source archive does not byte-match git archive of the declared commit');
+      } else {
+        const rawReproduction = Buffer.from(reproduced.stdout);
+        const reproducedEntries = await readZipArchive(rawReproduction);
+        const normalizedReproduction = await createZipBuffer(normalizedZipEntries(reproducedEntries), {
+          compress: false,
+          forceDosTimestamp: true,
+        });
+        if (!rawReproduction.equals(bytes) && !normalizedReproduction.equals(bytes)) {
+          errors.push('source archive does not byte-match git archive of the declared commit');
+        }
       }
     }
   }
