@@ -2,7 +2,7 @@
 
 **Status:** Approved; external release evidence pending
 **Owner:** Montagna
-**Target:** `v0.2.0-alpha.1`
+**Target:** `v0.3.0`
 
 ## User Stories and Acceptance Criteria
 
@@ -50,9 +50,10 @@ As a user, I know what rights I have.
 
 As a maintainer, I can cut a traceable release without publishing from an unreviewed branch.
 
-- WHEN `v0.2.0-alpha.1` is proposed THEN CI, code review, security review, smoke tests and changelog are complete.
-- WHEN artifacts are uploaded THEN checksums and source provenance accompany them.
-- WHEN release readiness runs THEN it recalculates the declared artifact SHA-256 and rejects an external, missing or symlinked artifact.
+- WHEN `v0.3.0` is proposed THEN CI, code review, security review, smoke tests and changelog are complete.
+- WHEN source ZIP, VSIX, and CycloneDX SBOM are uploaded THEN checksums and source provenance accompany them.
+- WHEN release readiness runs THEN it recalculates every declared artifact and manifest SHA-256 and rejects an outside-root, missing or symlinked artifact.
+- WHEN final evidence is completed THEN it lives outside the tracked source tree and matches the exact commit and artifact set recorded by the release manifest.
 - WHEN main is configured THEN required checks and pull-request review protect it.
 
 ### PUB-007: Thin VS Code experience
@@ -83,6 +84,15 @@ As a release approver, I can reproduce the decision.
 
 - WHEN release readiness is evaluated THEN a versioned checklist records commands, counts, blockers and final GO/NO-GO.
 
+### PUB-011: Discoverable, truthful public product surface
+
+As a prospective adopter, I can discover a precise product promise, safe installation path and support route without mistaking a preview for a production claim.
+
+- WHEN the GitHub repository is made public THEN its description, topics and social preview identify the ADVPL/TLPP engineering scope without implying vendor affiliation.
+- WHEN the Marketplace listing is proposed THEN the title, description, category, keywords, walkthrough, real screenshots and channel flag agree with the checked-in manifest and release evidence.
+- WHEN an adoption target is documented THEN stars and installs are labeled as dated discovery proxies, not as proof of quality, productivity, security or market leadership.
+- WHEN a public launch is proposed THEN a versioned operational procedure requires post-visibility security checks, branch protection restoration, downloaded-asset verification and separately named authorization for GitHub Release and Marketplace submission.
+
 ## Edge Cases
 
 - Hermes executable is not on PATH: use `PEA_HERMES_COMMAND`; never hardcode a developer path.
@@ -106,3 +116,4 @@ As a release approver, I can reproduce the decision.
 | PUB-008 | Hermes adapter/runtime/MCP tests |
 | PUB-009 | docs link and content checks |
 | PUB-010 | versioned release evidence file |
+| PUB-011 | public launch operations document + Marketplace manifest/README + release gate |

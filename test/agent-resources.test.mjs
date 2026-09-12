@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 let snapshotAgentResources;
 try {
@@ -36,6 +37,124 @@ test('agent resources are rediscovered on every session snapshot', async (t) => 
   assert.equal(first.skills[0].content, '# Review\nFirst version');
   assert.equal(second.skills[0].content, '# Review\nSecond version');
   assert.notEqual(first.skills[0].sha256, second.skills[0].sha256);
+});
+
+test('agent resources discover standard project skill roots with deterministic precedence', async (t) => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-standard-skills-'));
+  t.after(() => rm(workspace, { recursive: true, force: true }));
+  const roots = [
+    ['.agents', 'agents'],
+    ['.github', 'github'],
+    ['.pea', 'pea'],
+  ];
+  for (const [root, marker] of roots) {
+    const directory = join(workspace, root, 'skills', 'review');
+    await mkdir(directory, { recursive: true });
+    await writeFile(join(directory, 'SKILL.md'), `# Review\n${marker}`, 'utf8');
+  }
+  const additional = join(workspace, '.github', 'skills', 'compile');
+  await mkdir(additional, { recursive: true });
+  await writeFile(join(additional, 'SKILL.md'), '# Compile\n', 'utf8');
+
+  const snapshot = await snapshotAgentResources({ workspace });
+
+  assert.deepEqual(snapshot.skills.map(({ name, path, source }) => ({ name, path, source })), [
+    {
+      name: 'review',
+      path: '.agents/skills/review/SKILL.md',
+      source: 'agents-standard',
+    },
+    {
+      name: 'compile',
+      path: '.github/skills/compile/SKILL.md',
+      source: 'github-standard',
+    },
+  ]);
+  assert.match(snapshot.skills[0].content, /agents/);
+});
+
+test('agent resources reject a standard skill root junction that escapes the workspace', async (t) => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-standard-junction-workspace-'));
+  const external = await mkdtemp(join(tmpdir(), 'pea-standard-junction-target-'));
+  t.after(() => rm(workspace, { recursive: true, force: true }));
+  t.after(() => rm(external, { recursive: true, force: true }));
+  await mkdir(join(workspace, '.agents'), { recursive: true });
+  await symlink(external, join(workspace, '.agents', 'skills'), 'junction');
+
+  await assert.rejects(
+    snapshotAgentResources({ workspace }),
+    /resource root must not be a symlink/,
+  );
+});
+
+test('agent resources expose pinned external skill provider provenance', async (t) => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-provider-catalog-'));
+  t.after(() => rm(workspace, { recursive: true, force: true }));
+  await mkdir(join(workspace, 'config'), { recursive: true });
+  await writeFile(join(workspace, 'config', 'skill-providers.json'), JSON.stringify({
+    schemaVersion: 1,
+    providers: [{
+      id: 'totvs-engpro',
+      repository: 'https://github.com/totvs/engpro-advpl-tlpp-skills',
+      license: 'MIT',
+      revision: '93e2f81ba71e3e132fa112a99e35162c2176f62b',
+      mode: 'reference',
+      allowedSkills: ['advpl-tlpp-sdd', 'code-review'],
+    }],
+  }), 'utf8');
+
+  const snapshot = await snapshotAgentResources({ workspace });
+
+  assert.deepEqual(snapshot.providers, [{
+    id: 'totvs-engpro',
+    repository: 'https://github.com/totvs/engpro-advpl-tlpp-skills',
+    license: 'MIT',
+    revision: '93e2f81ba71e3e132fa112a99e35162c2176f62b',
+    mode: 'reference',
+    allowedSkills: ['advpl-tlpp-sdd', 'code-review'],
+    trust: 'untrusted-project-data',
+  }]);
+});
+
+test('agent resources reject an unpinned external skill provider', async (t) => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-unpinned-provider-'));
+  t.after(() => rm(workspace, { recursive: true, force: true }));
+  await mkdir(join(workspace, 'config'), { recursive: true });
+  await writeFile(join(workspace, 'config', 'skill-providers.json'), JSON.stringify({
+    schemaVersion: 1,
+    providers: [{
+      id: 'totvs-engpro',
+      repository: 'https://github.com/totvs/engpro-advpl-tlpp-skills',
+      license: 'MIT',
+      revision: 'main',
+      mode: 'reference',
+      allowedSkills: [],
+    }],
+  }), 'utf8');
+
+  await assert.rejects(
+    snapshotAgentResources({ workspace }),
+    /skill provider revision must be pinned/,
+  );
+});
+
+test('repository ships narrow product skills and pinned official EngPro provenance', async () => {
+  const workspace = fileURLToPath(new URL('..', import.meta.url));
+
+  const snapshot = await snapshotAgentResources({ workspace });
+
+  assert.deepEqual(snapshot.skills.map(({ name, source }) => ({ name, source })), [
+    { name: 'planning-protheus-engineering', source: 'agents-standard' },
+    { name: 'protheus-evidence-review', source: 'agents-standard' },
+  ]);
+  assert.deepEqual(snapshot.providers.map(({ id, license, mode, revision }) => ({
+    id, license, mode, revision,
+  })), [{
+    id: 'totvs-engpro',
+    license: 'MIT',
+    mode: 'reference',
+    revision: '93e2f81ba71e3e132fa112a99e35162c2176f62b',
+  }]);
 });
 
 test('oversized project resources are excluded from the agent snapshot', async (t) => {
@@ -107,5 +226,20 @@ test('agent resources reject a .pea junction that escapes the workspace', async 
   await assert.rejects(
     snapshotAgentResources({ workspace }),
     /state path must not be a symlink/,
+  );
+});
+
+test('agent resources reject a rules junction that escapes the workspace', async (t) => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-rules-junction-workspace-'));
+  const externalRules = await mkdtemp(join(tmpdir(), 'pea-rules-junction-target-'));
+  t.after(() => rm(workspace, { recursive: true, force: true }));
+  t.after(() => rm(externalRules, { recursive: true, force: true }));
+  await mkdir(join(workspace, '.pea'), { recursive: true });
+  await writeFile(join(externalRules, 'private.md'), '# External private rule\n', 'utf8');
+  await symlink(externalRules, join(workspace, '.pea', 'rules'), 'junction');
+
+  await assert.rejects(
+    snapshotAgentResources({ workspace }),
+    /resource root must not be a symlink/,
   );
 });

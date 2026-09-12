@@ -12,10 +12,49 @@ All notable changes are recorded here. The project follows Semantic Versioning a
 - Engineering context exposed through runtime, CLI, MCP, and VS Code.
 - Canonical public product identity, repository metadata, and market positioning.
 - Dependency-free release smoke for the critical CLI/MCP path.
+- Self-contained VSIX build with bundled runtime and MCP entry points.
+- Automated fresh installation of the packaged VSIX and real Extension Host smoke for all four commands on minimum/current VS Code.
+- OSV dependency gate, npm/GitHub Actions Dependabot coverage, pinned public CodeQL `security-extended`, and OWASP/agent threat mapping.
+- Clean-commit source/VSIX/CycloneDX release builder with deterministic VSIX normalization, SHA-256 manifest verification, and an external final-evidence template.
+- VS Code-first product specification, effectiveness review, governance, support, issue forms, pull-request template, and CODEOWNERS.
+- Native VS Code Problems diagnostics and progress for active-file review.
+- Standard `.agents/skills` and `.github/skills` discovery with deterministic precedence and provider provenance.
+- Product-owned planning and evidence-review skills plus a pinned official EngPro reference catalog.
+- High-confidence deterministic EngPro review rules for restricted calls/assignments, transactions, loops, ISAM, console output, and procedure creation.
+- Marketplace walkthrough, independent product icon, citation metadata, and numeric preview version `0.3.0`.
+- Explainable CodeGraph impact evidence and traceable bug-review schema v2.
+- Versioned read-only TDN/Dictionary snapshot adapters with provenance and cache evidence.
+- Allowlisted Oracle named-query adapter with exact binds, row limits and field redaction.
+- Environment-scoped approval broker for local, development, test, homologation and production.
+- Bounded MCP subagent contract with checkpoint, diff review, cancellation and rollback evidence.
+- Provider-neutral governed AI gateway with structured untrusted context, redaction and no telemetry.
+- Reproducible synthetic effectiveness benchmark with an explicit human-pilot claim gate.
+- Durable idempotent build checkpoints, safe pause/resume and unknown-outcome reconciliation.
+- Installed official TDS 2.0.16 coexistence UAT with multi-root and CP1252/LF preservation.
+- Native Engineering Center with workspace, change review, Memory/Journal, integrations and environment sections.
+- SCM-aware review, stable JSON/SARIF, reusable GitHub Action and official MCP SDK transport.
+- Structured attributed Memory/Journal promotion and expiry, licensed snapshot onboarding and generic read-only database port.
+- ADVPL/TLPP conformance corpus, tolerant incremental parser and 10,000-symbol performance gate.
+- Installed-VSIX smoke now exercises six first-value operations on VS Code 1.95.3 and 1.133.0; TDS 2.1.2 coexistence preserves CP1252/LF in multi-root mode.
 
 ### Security
 
 - Release gate for personal paths, secret filenames, license consistency, and repository metadata.
+- VSIX content allow-list, root/nested Git metadata regression checks, and untrusted-workspace disablement.
+- Exact MCP tool arguments, 1 MiB stdio request cap, extension process timeout, and writable archive permission checks.
+- Colon-bearing changed-file rejection to block Windows alternate-stream/path ambiguity in bug evidence.
+
+### Changed
+
+- CodeGraph line lookup now uses an indexed binary search, preserves exact declaration lines, and meets the 5,000-symbol sub-second budget.
+- The VSIX is now explicitly standalone; Hermes is optional compatibility and no longer a core release gate.
+- CodeGraph now prefers same-file static functions, rejects inaccessible cross-file statics, and leaves duplicate global targets ambiguous.
+- CI now follows GitHub Flow without duplicating full runs for feature-branch pushes that already have a pull request.
+- Marketplace preview status is expressed by the publication flag instead of a SemVer suffix.
+- Project Memory and Journal writes now use a workspace-local cross-instance lock.
+- The focused mutation release gate now breaks below 95%; the candidate reached 95.17% across 870 mutants.
+- The VS Code runtime bridge runs in-process from a bundled CommonJS entry point, avoiding a system Node or Electron-as-Node dependency.
+- ZIP verification/normalization moved from vulnerable `adm-zip` versions to bounded `yauzl`/`yazl`; the online npm audit reports zero known vulnerabilities for the current lockfile.
 
 ## 0.1.0 - 2026-09-07
 

@@ -28,7 +28,24 @@ async function assertStateDirectorySafe(workspace) {
   if (!state.isDirectory()) throw new Error('state path is not a directory');
 }
 
-async function readResource(workspace, path, name) {
+async function assertResourceRootSafe(workspace, relativeRoot) {
+  const segments = relativeRoot.split('/');
+  for (let index = 1; index <= segments.length; index += 1) {
+    const candidate = join(workspace, ...segments.slice(0, index));
+    let state;
+    try {
+      state = await lstat(candidate);
+    } catch (error) {
+      if (error?.code === 'ENOENT') return false;
+      throw error;
+    }
+    if (state.isSymbolicLink()) throw new Error('resource root must not be a symlink');
+    if (!state.isDirectory()) throw new Error('resource root is not a directory');
+  }
+  return true;
+}
+
+async function readResource(workspace, path, name, source) {
   let before;
   try {
     before = await lstat(path);
@@ -52,6 +69,7 @@ async function readResource(workspace, path, name) {
       path: relative(workspace, path).replaceAll('\\', '/'),
       sha256: createHash('sha256').update(content, 'utf8').digest('hex'),
       content,
+      ...(source ? { source } : {}),
       trust: 'untrusted-project-data',
     };
   } catch (error) {
@@ -63,16 +81,35 @@ async function readResource(workspace, path, name) {
 }
 
 async function discoverSkillCandidates(workspace) {
-  const root = join(workspace, '.pea', 'skills');
   const candidates = [];
-  for (const entry of await listDirectory(root)) {
-    if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
-    candidates.push({ kind: 'skills', path: join(root, entry.name, 'SKILL.md'), name: entry.name });
+  const roots = [
+    { relative: '.agents/skills', source: 'agents-standard' },
+    { relative: '.github/skills', source: 'github-standard' },
+    { relative: '.pea/skills', source: 'pea-local' },
+  ];
+  const claimedNames = new Set();
+  for (const rootDefinition of roots) {
+    if (!await assertResourceRootSafe(workspace, rootDefinition.relative)) continue;
+    const root = join(workspace, ...rootDefinition.relative.split('/'));
+    const entries = (await listDirectory(root)).sort((left, right) => left.name.localeCompare(right.name));
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
+      const canonicalName = entry.name.toLowerCase();
+      if (claimedNames.has(canonicalName)) continue;
+      claimedNames.add(canonicalName);
+      candidates.push({
+        kind: 'skills',
+        path: join(root, entry.name, 'SKILL.md'),
+        name: entry.name,
+        source: rootDefinition.source,
+      });
+    }
   }
   return candidates;
 }
 
 async function discoverRuleCandidates(workspace) {
+  if (!await assertResourceRootSafe(workspace, '.pea/rules')) return [];
   const root = join(workspace, '.pea', 'rules');
   const candidates = [];
   for (const entry of await listDirectory(root)) {
@@ -86,12 +123,89 @@ async function discoverRuleCandidates(workspace) {
   return candidates;
 }
 
+async function readSkillProviders(workspace) {
+  const configDirectory = join(workspace, 'config');
+  const catalogPath = join(configDirectory, 'skill-providers.json');
+  let directoryState;
+  try {
+    directoryState = await lstat(configDirectory);
+  } catch (error) {
+    if (error?.code === 'ENOENT') return [];
+    throw error;
+  }
+  if (directoryState.isSymbolicLink() || !directoryState.isDirectory()) {
+    throw new Error('skill provider config path must be a real directory');
+  }
+  let resource;
+  try {
+    resource = await readResource(workspace, catalogPath, 'skill-providers', 'provider-catalog');
+  } catch (error) {
+    if (error?.code === 'ENOENT') return [];
+    throw error;
+  }
+  if (!resource) {
+    try {
+      await lstat(catalogPath);
+    } catch (error) {
+      if (error?.code === 'ENOENT') return [];
+      throw error;
+    }
+    throw new Error('skill provider catalog must be a bounded regular file');
+  }
+  let catalog;
+  try {
+    catalog = JSON.parse(resource.content);
+  } catch {
+    throw new Error('skill provider catalog must be valid JSON');
+  }
+  if (catalog?.schemaVersion !== 1 || !Array.isArray(catalog.providers)) {
+    throw new Error('skill provider catalog schema is invalid');
+  }
+  if (catalog.providers.length > 16) throw new Error('skill provider catalog exceeds provider limit');
+  const identities = new Set();
+  const providers = catalog.providers.map((provider) => {
+    if (!/^[a-z0-9][a-z0-9-]{1,62}$/.test(provider?.id ?? '')) {
+      throw new Error('skill provider id is invalid');
+    }
+    if (identities.has(provider.id)) throw new Error('skill provider id must be unique');
+    identities.add(provider.id);
+    if (!/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\.git)?$/.test(provider.repository ?? '')) {
+      throw new Error('skill provider repository must be a GitHub URL');
+    }
+    if (typeof provider.license !== 'string' || provider.license.length === 0 || provider.license.length > 64) {
+      throw new Error('skill provider license is invalid');
+    }
+    if (!/^[0-9a-f]{40}$/i.test(provider.revision ?? '')) {
+      throw new Error('skill provider revision must be pinned');
+    }
+    if (!['reference', 'import'].includes(provider.mode)) {
+      throw new Error('skill provider mode is invalid');
+    }
+    if (!Array.isArray(provider.allowedSkills)
+      || provider.allowedSkills.length > 64
+      || provider.allowedSkills.some((name) => !/^[a-z0-9][a-z0-9-]{0,63}$/.test(name))) {
+      throw new Error('skill provider allowedSkills is invalid');
+    }
+    return {
+      id: provider.id,
+      repository: provider.repository,
+      license: provider.license,
+      revision: provider.revision.toLowerCase(),
+      mode: provider.mode,
+      allowedSkills: [...new Set(provider.allowedSkills)],
+      trust: 'untrusted-project-data',
+    };
+  });
+  return providers.sort((left, right) => left.id.localeCompare(right.id));
+}
+
 export async function snapshotAgentResources({ workspace }) {
   await assertStateDirectorySafe(workspace);
+  const providers = await readSkillProviders(workspace);
   const discovered = (await Promise.all([
     discoverSkillCandidates(workspace),
     discoverRuleCandidates(workspace),
-  ])).flat().sort((left, right) => left.path.localeCompare(right.path));
+  ])).flat();
   const candidates = discovered.slice(0, MAX_RESOURCE_COUNT);
   const accepted = { skills: [], rules: [] };
   const omitted = {
@@ -101,7 +215,7 @@ export async function snapshotAgentResources({ workspace }) {
   };
   let totalBytes = 0;
   for (const candidate of candidates) {
-    const resource = await readResource(workspace, candidate.path, candidate.name);
+    const resource = await readResource(workspace, candidate.path, candidate.name, candidate.source);
     if (!resource) {
       omitted.invalidOrOversized += 1;
       continue;
@@ -118,6 +232,7 @@ export async function snapshotAgentResources({ workspace }) {
     schemaVersion: 1,
     skills: accepted.skills,
     rules: accepted.rules,
+    providers,
     omitted,
     limits: {
       maxResourceBytes: MAX_RESOURCE_BYTES,

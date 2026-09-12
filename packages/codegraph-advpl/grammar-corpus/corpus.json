@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "license": "Apache-2.0",
+  "origin": "project-authored-synthetic-fixtures",
+  "cases": [
+    { "file": "functions.prw", "symbols": ["CorpusEntry", "CorpusHelper"], "calls": ["CorpusHelper"], "diagnostics": [] },
+    { "file": "class.tlpp", "symbols": ["Calculate"], "calls": [], "diagnostics": [] },
+    { "file": "preprocessor.prw", "symbols": ["PreprocessorEntry"], "calls": [], "diagnostics": ["PREPROCESSOR_SEMANTICS_UNRESOLVED", "DYNAMIC_CALL_UNRESOLVED"] },
+    { "file": "malformed.prw", "symbols": [], "calls": [], "diagnostics": ["INCOMPLETE_DECLARATION"] }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "providers": [
+    {
+      "id": "totvs-engpro",
+      "repository": "https://github.com/totvs/engpro-advpl-tlpp-skills",
+      "license": "MIT",
+      "revision": "93e2f81ba71e3e132fa112a99e35162c2176f62b",
+      "mode": "reference",
+      "allowedSkills": [
+        "advpl-tlpp-compile",
+        "advpl-tlpp-sdd",
+        "code-review",
+        "context-map",
+        "create-implementation-plan",
+        "data-dictionary-lookup",
+        "documentation-writer",
+        "query-builder",
+        "refactor",
+        "sql-code-review",
+        "sql-optimization",
+        "tir-test-generator",
+        "utf8-to-cp1252-conversion"
+      ]
+    }
+  ]
+}

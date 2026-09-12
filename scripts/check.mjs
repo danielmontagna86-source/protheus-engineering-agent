@@ -2,15 +2,19 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parse as parseYaml } from 'yaml';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const failures = [];
 let checkedSources = 0;
 let checkedManifests = 0;
+const ignoredDirectories = new Set([
+  '.git', '.pea', '.stryker-tmp', '.vscode-test', 'coverage', 'dist', 'node_modules', 'release-artifacts', 'work',
+]);
 
 async function walk(directory) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
-    if (['.git', 'node_modules', 'work'].includes(entry.name)) continue;
+    if (entry.isDirectory() && ignoredDirectories.has(entry.name)) continue;
     const path = join(directory, entry.name);
     if (entry.isDirectory()) {
       await walk(path);
@@ -22,6 +26,14 @@ async function walk(directory) {
         JSON.parse(await readFile(path, 'utf8'));
       } catch (error) {
         failures.push(`${path}: invalid JSON: ${error.message}`);
+      }
+    }
+    if (['.yml', '.yaml'].includes(extname(entry.name))) {
+      checkedManifests += 1;
+      try {
+        parseYaml(await readFile(path, 'utf8'));
+      } catch (error) {
+        failures.push(`${path}: invalid YAML: ${error.message}`);
       }
     }
     if (['.js', '.mjs', '.cjs'].includes(extname(entry.name))) {

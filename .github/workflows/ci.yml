@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
 
 permissions:
   contents: read
@@ -29,10 +31,14 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           package-manager-cache: false
+      - name: Install locked dependencies
+        run: npm ci
       - name: Test
         run: node --test
       - name: Smoke critical CLI and MCP path
         run: node scripts/smoke.mjs
+      - name: Enforce large-repository performance budget
+        run: npm run benchmark:large
       - name: Check source and manifests
         run: node scripts/check.mjs
       - name: Check public source tree
@@ -53,6 +59,36 @@ jobs:
       - name: Install locked QA dependencies
         run: npm ci
       - name: Audit dependencies
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=moderate
       - name: Mutation gate
         run: npm run test:mutation
+
+  vscode-extension-host:
+    name: VS Code Extension Host
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Install locked build and test dependencies
+        run: npm ci
+      - name: Build and verify installable VSIX
+        run: npm run package:extension
+      - name: Exercise core extension journeys in VS Code
+        run: xvfb-run -a npm run test:vscode:minimum
+      - name: Checkout latest supported preview for lifecycle validation
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 1a6836576049c213af49abfb8e7d3350890770ac
+          path: previous-preview
+      - name: Package latest supported preview VSIX
+        run: |
+          npm ci --prefix previous-preview
+          npm run --prefix previous-preview package:extension
+      - name: Exercise installed VSIX upgrade and rollback on Linux
+        run: xvfb-run -a node scripts/run-vscode-lifecycle.mjs --previous-vsix previous-preview/release-artifacts/protheus-engineering-agent-v0.2.0-alpha.1.vsix --version 1.95.3

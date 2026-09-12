@@ -22,7 +22,7 @@ Data: 2026-09-07
 | `packages/policy/src/index.mjs` | Capacidades por ambiente e decisão fail-closed |
 | `packages/hermes-adapter/src/index.mjs` | Descoberta/launch descriptor de `hermes acp`, sem alterar Hermes |
 | `packages/review/src/index.mjs` | Pipeline determinístico inicial de review |
-| `packages/mcp/src/stdio.mjs` | Servidor MCP stdio sem dependências externas |
+| `packages/mcp/src/stdio.mjs` | Servidor MCP stdio pelo SDK oficial, com transporte limitado a 1 MiB |
 | `packages/integrations/src/index.mjs` | Portas TDN, Dictionary e Oracle indisponíveis por padrão |
 | `packages/build-supervisor/src/index.mjs` | Máquina de estados de build com runner injetável |
 | `test/*.test.mjs` | Testes unitários, integração e contrato MCP |

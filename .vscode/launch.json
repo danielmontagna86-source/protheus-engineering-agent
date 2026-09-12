@@ -5,6 +5,7 @@
       "name": "Run Protheus Engineering Agent Extension",
       "type": "extensionHost",
       "request": "launch",
+      "preLaunchTask": "Build Protheus Engineering Agent Extension",
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}/apps/vscode-extension"
       ]

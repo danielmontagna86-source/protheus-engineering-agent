@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "version": "0.3.0",
+  "status": "NO-GO",
+  "commit": null,
+  "ci": {
+    "passed": false,
+    "url": null
+  },
+  "codeReview": {
+    "passed": false
+  },
+  "securityReview": {
+    "passed": false
+  },
+  "codeScanning": {
+    "passed": false,
+    "url": null
+  },
+  "vscodeSmoke": {
+    "passed": false,
+    "versions": [],
+    "commands": 4,
+    "isolated": true
+  },
+  "freshInstall": {
+    "passed": false,
+    "versions": [],
+    "commands": 4,
+    "isolated": true,
+    "vsixSha256": null
+  },
+  "optionalCompatibility": {
+    "hermes": {
+      "status": "NOT-RUN",
+      "isolated": true,
+      "releaseGate": false
+    }
+  },
+  "artifacts": [],
+  "releaseManifest": null,
+  "approvedBy": null
+}

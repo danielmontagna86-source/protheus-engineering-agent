@@ -1,4 +1,17 @@
+import { randomUUID } from 'node:crypto';
+
 const POLICIES = Object.freeze({
+  local: Object.freeze({
+    capabilities: Object.freeze([
+      'workspace:read',
+      'context:read',
+      'context:write',
+      'workspace:write',
+      'build:execute',
+      'ai:invoke',
+    ]),
+    approvalRequired: Object.freeze(['workspace:write', 'build:execute', 'ai:invoke']),
+  }),
   development: Object.freeze({
     capabilities: Object.freeze([
       'workspace:read',
@@ -6,12 +19,31 @@ const POLICIES = Object.freeze({
       'context:write',
       'workspace:write',
       'build:execute',
+      'ai:invoke',
     ]),
-    approvalRequired: Object.freeze(['workspace:write', 'build:execute']),
+    approvalRequired: Object.freeze(['workspace:write', 'build:execute', 'ai:invoke']),
   }),
   test: Object.freeze({
     capabilities: Object.freeze(['workspace:read', 'context:read', 'context:write']),
     approvalRequired: Object.freeze([]),
+  }),
+  homologation: Object.freeze({
+    capabilities: Object.freeze([
+      'workspace:read',
+      'context:read',
+      'context:write',
+      'workspace:write',
+      'build:execute',
+      'oracle:read',
+      'ai:invoke',
+    ]),
+    approvalRequired: Object.freeze([
+      'context:write',
+      'workspace:write',
+      'build:execute',
+      'oracle:read',
+      'ai:invoke',
+    ]),
   }),
   production: Object.freeze({
     capabilities: Object.freeze([
@@ -21,12 +53,14 @@ const POLICIES = Object.freeze({
       'workspace:write',
       'build:execute',
       'oracle:read',
+      'ai:invoke',
     ]),
     approvalRequired: Object.freeze([
       'context:write',
       'workspace:write',
       'build:execute',
       'oracle:read',
+      'ai:invoke',
     ]),
   }),
 });
@@ -64,4 +98,86 @@ export function decideCapability(environment, capability, options = {}) {
   }
 
   return { allowed: true, reason: 'allowed', requiresApproval };
+}
+
+function denied(reason, requiresApproval = true) {
+  return { allowed: false, reason, requiresApproval };
+}
+
+function validApproval(response, request) {
+  const approvedAt = Date.parse(response?.approvedAt);
+  const requestedAt = Date.parse(request.requestedAt);
+  return response?.approved === true
+    && response.id === request.id
+    && response.environment === request.environment
+    && response.capability === request.capability
+    && typeof response.approvedBy === 'string'
+    && response.approvedBy.length > 0
+    && typeof response.approvedAt === 'string'
+    && !Number.isNaN(approvedAt)
+    && approvedAt >= requestedAt;
+}
+
+export function createPermissionBroker(options = {}) {
+  const decide = options.decideCapability ?? decideCapability;
+  const requestApproval = options.requestApproval;
+  const timeoutMs = options.timeoutMs ?? 30_000;
+  const idFactory = options.idFactory ?? randomUUID;
+  const clock = options.clock ?? Date.now;
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 5 * 60_000) {
+    throw new TypeError('permission timeout must be between 1 and 300000 ms');
+  }
+
+  return {
+    async authorize(environment, capability, context = {}) {
+      const grants = context.grants ?? [];
+      const initial = decide(environment, capability, { grants });
+      if (initial.allowed || !initial.requiresApproval) return initial;
+      if (typeof requestApproval !== 'function') return denied('approval-handler-unavailable');
+      if (context.signal?.aborted) return denied('approval-cancelled');
+
+      const id = idFactory();
+      const requestedAt = new Date(clock()).toISOString();
+      let timer;
+      let abortListener;
+      try {
+        const races = [
+          Promise.resolve().then(() => requestApproval({
+            id,
+            environment,
+            capability,
+            requestedAt,
+            purpose: typeof context.purpose === 'string' ? context.purpose.slice(0, 500) : undefined,
+          })),
+          new Promise((resolve) => {
+            timer = setTimeout(() => resolve({ brokerFailure: 'approval-timeout' }), timeoutMs);
+          }),
+        ];
+        if (context.signal) races.push(new Promise((resolve) => {
+          abortListener = () => resolve({ brokerFailure: 'approval-cancelled' });
+          context.signal.addEventListener('abort', abortListener, { once: true });
+        }));
+        const response = await Promise.race(races);
+        if (response?.brokerFailure) return denied(response.brokerFailure);
+        if (response?.approved === false) return denied('approval-denied');
+        if (!validApproval(response, { id, environment, capability, requestedAt })) return denied('approval-response-invalid');
+        const finalDecision = decide(environment, capability, { grants: [...grants, capability] });
+        if (!finalDecision.allowed) return denied('approval-did-not-authorize');
+        return {
+          ...finalDecision,
+          approval: {
+            id,
+            approvedBy: response.approvedBy,
+            approvedAt: response.approvedAt,
+            requestedAt,
+          },
+        };
+      } catch {
+        return denied('approval-handler-failed');
+      } finally {
+        clearTimeout(timer);
+        if (context.signal && abortListener) context.signal.removeEventListener('abort', abortListener);
+      }
+    },
+  };
 }

@@ -12,9 +12,10 @@ Thank you for helping build a safer, reusable engineering agent for ADVPL/TLPP p
 
 ## Local gate
 
-Requires Node.js 22 or newer and no package installation.
+Requires Node.js 22 or newer. Install the exact development dependency graph from the lockfile before running the gate.
 
 ```sh
+npm ci
 npm run validate
 ```
 
@@ -28,6 +29,7 @@ The release check remains blocked until the final repository metadata and extern
 
 ## Pull requests
 
+- Branch from `main`, keep the branch focused, and open a pull request back into `main`. Direct feature-branch pushes do not run the full workflow unless a pull request is open.
 - Keep a pull request focused and link its spec requirement.
 - Explain risks, security boundaries, and validation evidence.
 - Add tests for success, denial, and malformed-input paths.

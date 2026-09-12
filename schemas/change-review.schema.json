@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://protheus-engineering-agent.dev/schemas/change-review.schema.json",
+  "title": "Protheus Engineering Agent change review",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "status", "repository", "scope", "changedFiles", "reviews", "excluded", "summary", "evidence", "disclaimer"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "change-review" },
+    "status": { "enum": ["clean", "changed"] },
+    "repository": { "type": "string", "minLength": 1 },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "baseRef"],
+      "properties": {
+        "kind": { "enum": ["staged", "unstaged", "working-tree", "branch"] },
+        "baseRef": { "type": ["string", "null"] }
+      }
+    },
+    "changedFiles": {
+      "type": "array", "maxItems": 2000,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["path", "status", "binary"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "previousPath": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["added", "copied", "deleted", "modified", "renamed", "type-changed", "unmerged", "unknown", "broken-pair", "untracked"] },
+          "binary": { "type": "boolean" }
+        }
+      }
+    },
+    "reviews": {
+      "type": "array", "maxItems": 2000,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["schemaVersion", "file", "encoding", "findings", "counts", "assessment"],
+        "properties": {
+          "schemaVersion": { "const": 1 },
+          "file": { "type": "string", "minLength": 1 },
+          "encoding": { "enum": ["utf-8", "utf-16le", "windows-1252"] },
+          "findings": {
+            "type": "array", "maxItems": 10000,
+            "items": {
+              "type": "object", "additionalProperties": false,
+              "required": ["ruleId", "severity", "category", "title", "guidance", "line", "evidence", "fingerprint"],
+              "properties": {
+                "ruleId": { "type": "string", "minLength": 1, "maxLength": 80 },
+                "severity": { "enum": ["CRITICAL", "MAJOR", "MINOR", "INFO"] },
+                "category": { "type": "string", "minLength": 1, "maxLength": 120 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+                "guidance": { "type": "string", "minLength": 1, "maxLength": 2000 },
+                "line": { "type": "integer", "minimum": 1 },
+                "fingerprint": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+                "evidence": {
+                  "type": "object", "additionalProperties": false,
+                  "required": ["file", "line"],
+                  "properties": {
+                    "file": { "type": "string", "minLength": 1 },
+                    "line": { "type": "integer", "minimum": 1 },
+                    "symbol": { "type": "string", "minLength": 1, "maxLength": 240 }
+                  }
+                }
+              }
+            }
+          },
+          "counts": {
+            "type": "object", "additionalProperties": false,
+            "required": ["CRITICAL", "MAJOR", "MINOR", "INFO"],
+            "properties": {
+              "CRITICAL": { "type": "integer", "minimum": 0 },
+              "MAJOR": { "type": "integer", "minimum": 0 },
+              "MINOR": { "type": "integer", "minimum": 0 },
+              "INFO": { "type": "integer", "minimum": 0 }
+            }
+          },
+          "assessment": { "type": "string", "minLength": 1, "maxLength": 80 }
+        }
+      }
+    },
+    "excluded": {
+      "type": "array", "maxItems": 2000,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["path", "reason"],
+        "properties": { "path": { "type": "string", "minLength": 1 }, "reason": { "type": "string", "minLength": 1, "maxLength": 80 } }
+      }
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["filesChanged", "filesReviewed", "findings", "assessment"],
+      "properties": {
+        "filesChanged": { "type": "integer", "minimum": 0 },
+        "filesReviewed": { "type": "integer", "minimum": 0 },
+        "findings": { "type": "integer", "minimum": 0 },
+        "assessment": { "type": "string", "minLength": 1, "maxLength": 80 }
+      }
+    },
+    "evidence": {
+      "type": "array", "maxItems": 100,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["type"],
+        "properties": {
+          "type": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "repository": { "type": "string", "minLength": 1 },
+          "scope": { "$ref": "#/properties/scope" },
+          "fileCount": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "disclaimer": { "type": "string", "minLength": 1 }
+  }
+}

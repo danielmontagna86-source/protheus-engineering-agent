@@ -1,0 +1,36 @@
+name: Feature request
+description: Propose a focused ADVPL/TLPP engineering capability.
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Engineering problem
+      description: Describe the workflow problem, not only the preferred implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What observable result would make this successful?
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Best-fit surface
+      options:
+        - VS Code command or editor tool
+        - Reusable runtime or CLI
+        - MCP capability
+        - Optional external integration
+        - Unsure
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: Data and permission impact
+      description: Note any files, builds, network services, credentials or environments involved.

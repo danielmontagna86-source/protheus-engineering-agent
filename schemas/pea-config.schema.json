@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/danielmontagna86-source/protheus-engineering-agent/blob/main/schemas/pea-config.schema.json",
+  "title": "Protheus Engineering Agent project configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "locale", "activeProfile", "profiles"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "locale": { "enum": ["pt-BR", "en"] },
+    "activeProfile": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$" },
+    "profiles": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 20,
+      "propertyNames": { "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["environment"],
+        "properties": {
+          "environment": { "enum": ["local", "development", "test", "homologation", "production"] },
+          "tdnSnapshotPath": { "type": "string", "minLength": 1, "maxLength": 1024 },
+          "dictionarySnapshotPath": { "type": "string", "minLength": 1, "maxLength": 1024 },
+          "databaseProfile": { "type": "string", "minLength": 1, "maxLength": 1024 }
+        }
+      }
+    }
+  }
+}

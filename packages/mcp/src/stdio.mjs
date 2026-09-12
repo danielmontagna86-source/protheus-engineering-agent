@@ -1,27 +1,38 @@
 #!/usr/bin/env node
-import { createInterface } from 'node:readline';
 
-import { createMcpHandler } from './server.mjs';
+import { StdioServerTransport, serveStdio } from '@modelcontextprotocol/server/stdio';
+import { fileURLToPath } from 'node:url';
 
-const handler = createMcpHandler({
+import { createOfficialMcpServer } from './server.mjs';
+
+const MAX_REQUEST_BYTES = 1024 * 1024;
+
+const options = {
   workspace: process.env.PEA_WORKSPACE || process.cwd(),
   environment: process.env.PEA_ENVIRONMENT || 'production',
   grants: (process.env.PEA_GRANTS || '').split(',').map((item) => item.trim()).filter(Boolean),
+  hermes: {
+    nodeCommand: process.execPath,
+    mcpServerPath: fileURLToPath(import.meta.url),
+    electronRunAsNode: process.env.ELECTRON_RUN_AS_NODE === '1',
+  },
+};
+
+const transport = new StdioServerTransport(process.stdin, process.stdout, {
+  maxBufferSize: MAX_REQUEST_BYTES,
 });
 
-const lines = createInterface({ input: process.stdin, crlfDelay: Infinity });
-for await (const line of lines) {
-  if (!line.trim()) continue;
-  let request;
-  try {
-    request = JSON.parse(line);
-  } catch {
-    process.stdout.write(`${JSON.stringify({
-      jsonrpc: '2.0', id: null,
-      error: { code: -32700, message: 'Parse error' },
-    })}\n`);
-    continue;
-  }
-  const response = await handler(request);
-  if (response) process.stdout.write(`${JSON.stringify(response)}\n`);
+const handle = serveStdio(() => createOfficialMcpServer(options), {
+  legacy: 'serve',
+  transport,
+  onerror(error) {
+    process.stderr.write(`[pea-mcp] ${String(error?.message ?? error)}\n`);
+  },
+});
+
+async function shutdown() {
+  await handle.close();
 }
+
+process.once('SIGINT', shutdown);
+process.once('SIGTERM', shutdown);
