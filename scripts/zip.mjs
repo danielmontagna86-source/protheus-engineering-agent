@@ -86,6 +86,7 @@ export function readZipArchive(bytes, options = {}) {
 export function createZipBuffer(entries, options = {}) {
   const zip = new yazl.ZipFile();
   const chunks = [];
+  const compress = options.compress ?? true;
   const result = new Promise((resolve, reject) => {
     zip.outputStream.on('data', (chunk) => chunks.push(chunk));
     zip.outputStream.on('error', reject);
@@ -100,7 +101,7 @@ export function createZipBuffer(entries, options = {}) {
       zip.addBuffer(Buffer.from(entry.data), name, {
         mtime,
         mode: entry.mode ?? 0o100644,
-        compress: true,
+        compress,
       });
     }
   }

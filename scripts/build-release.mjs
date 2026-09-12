@@ -11,6 +11,7 @@ import {
   createReleaseEvidenceTemplate,
   git,
   resolveLockDependencyPath,
+  normalizeZipArchive,
   sha256,
   verifySbom,
   verifySourceArchive,
@@ -62,7 +63,19 @@ function canonicalize(value) {
 export function normalizeSbomDocument(value) {
   const document = structuredClone(value);
   delete document.serialNumber;
-  if (document.metadata) delete document.metadata.timestamp;
+  const canonicalComponent = (component) => Object.fromEntries([
+    'bom-ref', 'type', 'name', 'version', 'scope', 'purl', 'licenses',
+  ].filter((key) => component?.[key] !== undefined).map((key) => [key, component[key]]));
+  if (document.metadata) {
+    document.metadata = document.metadata.component
+      ? { component: canonicalComponent(document.metadata.component) }
+      : {};
+  }
+  if (Array.isArray(document.components)) {
+    document.components = document.components
+      .map(canonicalComponent)
+      .sort((left, right) => String(left['bom-ref']).localeCompare(String(right['bom-ref'])));
+  }
   return canonicalize(document);
 }
 
@@ -263,6 +276,7 @@ export async function buildRelease() {
     commit,
   ], { cwd: root, encoding: 'utf8', windowsHide: true });
   if (archive.status !== 0) throw new Error(`git archive failed: ${String(archive.stderr).trim()}`);
+  await normalizeZipArchive(source);
   const sourceVerification = await verifySourceArchive(source, version, { root, commit });
   if (sourceVerification.status !== 'PASS') throw new Error(sourceVerification.errors.join('; '));
 

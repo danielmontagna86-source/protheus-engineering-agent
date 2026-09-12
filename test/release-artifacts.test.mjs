@@ -435,7 +435,7 @@ test('source archive rejects duplicate, case-colliding and Unix symlink entries'
   assert.equal((await verifySourceArchive(symlinkMode, version)).status, 'FAIL');
 });
 
-test('source archive provenance byte-matches the exact declared Git commit', async (t) => {
+test('source archive provenance byte-matches a normalized archive of the exact declared Git commit', async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'pea-release-source-origin-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   await Promise.all([
@@ -457,6 +457,7 @@ test('source archive provenance byte-matches the exact declared Git commit', asy
     'archive', '--format=zip', `--prefix=${prefix}`, `--output=${archive}`, commit,
   ], { cwd: root, encoding: 'utf8', windowsHide: true });
   assert.equal(created.status, 0, created.stderr);
+  await normalizeZipArchive(archive);
   assert.equal((await verifySourceArchive(archive, version, { root, commit })).status, 'PASS');
   const tampered = await readFile(archive);
   tampered[tampered.length - 1] ^= 1;
@@ -467,11 +468,31 @@ test('source archive provenance byte-matches the exact declared Git commit', asy
 test('SBOM normalization removes volatile identity while preserving deterministic content', () => {
   const first = normalizeSbomDocument({
     bomFormat: 'CycloneDX', serialNumber: 'urn:uuid:first',
-    metadata: { timestamp: '2026-09-09T01:00:00Z', component: { name: 'product' } },
+    metadata: {
+      timestamp: '2026-09-09T01:00:00Z',
+      tools: [{ vendor: 'npm', name: 'cli', version: '12.0.1' }],
+      component: { type: 'application', name: 'product', version: '1.0.0', properties: [{ name: 'cdx:path', value: '' }] },
+    },
+    components: [{
+      type: 'library', name: 'dependency', version: '2.0.0', 'bom-ref': 'dependency@2.0.0',
+      author: 'Different CLI author rendering',
+      externalReferences: [{ type: 'website', url: 'https://example.invalid' }],
+      properties: [{ name: 'cdx:path', value: 'node_modules/dependency' }],
+    }],
   });
   const second = normalizeSbomDocument({
     bomFormat: 'CycloneDX', serialNumber: 'urn:uuid:second',
-    metadata: { timestamp: '2026-09-09T02:00:00Z', component: { name: 'product' } },
+    metadata: {
+      timestamp: '2026-09-09T02:00:00Z',
+      tools: [{ vendor: 'npm', name: 'cli', version: '10.9.8' }],
+      component: { type: 'application', name: 'product', version: '1.0.0', properties: [] },
+    },
+    components: [{
+      type: 'library', name: 'dependency', version: '2.0.0', 'bom-ref': 'dependency@2.0.0',
+      author: 'Another CLI author rendering',
+      externalReferences: [{ type: 'issue-tracker', url: 'https://example.invalid/issues' }],
+      properties: [],
+    }],
   });
   assert.equal(JSON.stringify(first), JSON.stringify(second));
   assert.equal('serialNumber' in first, false);
@@ -602,6 +623,22 @@ test('ZIP normalization produces a reproducible byte stream', async (t) => {
   const normalizedEntry = (await readZipArchive(await readFile(first)))
     .find((entry) => entry.name === 'extension/package.json');
   assert.equal(normalizedEntry.mode & 0xfff, 0o644);
+});
+
+test('ZIP normalization writes stored entries to avoid platform-specific Deflate output', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'pea-release-stored-zip-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const archive = join(root, 'candidate.zip');
+  await writeFile(archive, await createZipBuffer([{
+    name: 'extension/runtime.json',
+    data: Buffer.from('{"repeat":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}\n'),
+  }]));
+
+  await normalizeZipArchive(archive);
+
+  const bytes = await readFile(archive);
+  assert.equal(bytes.readUInt32LE(0), 0x04034b50);
+  assert.equal(bytes.readUInt16LE(8), 0, 'normalized archive must use ZIP stored entries');
 });
 
 test('release build paths reject a junction before writing outside the repository', async (t) => {
