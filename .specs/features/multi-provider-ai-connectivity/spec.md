@@ -1,6 +1,6 @@
 # Conectividade multi-provider de IA — Especificação
 
-**Status:** P0 em implementação; validação de contas reais pendente  
+**Status:** P0 implementado e validado por contrato; validação de contas reais pendente
 **Escopo:** Conexões opcionais, sem tornar IA requisito do produto
 
 ## Resultado
