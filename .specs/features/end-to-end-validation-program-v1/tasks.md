@@ -20,7 +20,7 @@ environment, participant or owner action.
 | ID | Status | Work and bounded files | Depends on | Done condition / validation |
 |---|---|---|---|---|
 | EVT-101 | EXTERNAL | Remote extension-host protocol; `docs/qa/remote-extension-host-acceptance.md`. | Packaged VSIX, Remote/WSL/Dev Container host | Remote host records running extension location and critical journey for each declared mode. |
-| EVT-102 | EXTERNAL | Licensed AppServer matrix; `docs/qa/appserver-homologation-acceptance.md`. | User-owned legal artifacts | Adapter proves success/failure/include/lock/cancel/redaction with exact lab identity. |
+| EVT-102 | EXTERNAL | Licensed AppServer matrix; `docs/qa/appserver-homologation-acceptance.md`. The limited community-lab evidence is retained separately in `docs/qa/community-appserver-lab-validation-2026-09-12.md`. | User-owned legal artifacts | Adapter proves success/failure/include/lock/cancel/redaction with exact licensed lab identity. |
 | EVT-103 | EXTERNAL | Accessibility/UAT and locale evidence; `docs/qa/accessibility-review-2026-09-07.md`. | Reviewer and assistive tech | Keyboard, reader, zoom/contrast and pt-BR/en evidence has no unresolved P0/P1 issue. |
 | EVT-104 | EXTERNAL | Preregistered developer pilot; `docs/research/premium-product-leadership-review.md`. | Consenting representative participants | Publish measured task outcomes and limitations, not a pre-decided uplift claim. |
 | EVT-105 | EXTERNAL | Public security/policy evidence. | Visibility change or paid entitlement | CodeQL/dependency policy/branch controls/attestation pass on candidate commit. |
