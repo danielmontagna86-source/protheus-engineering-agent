@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 const SEVERITY_LEVEL = Object.freeze({ CRITICAL: 'error', MAJOR: 'warning', MINOR: 'note', INFO: 'note' });
+const REVIEW_GATE_THRESHOLDS = new Set(['critical', 'major', 'never']);
 const CHANGE_STATUSES = new Set(['added', 'copied', 'deleted', 'modified', 'renamed', 'type-changed', 'unmerged', 'unknown', 'broken-pair', 'untracked']);
 const REVIEW_STATUSES = new Set(['clean', 'changed']);
 const SCOPE_KINDS = new Set(['staged', 'unstaged', 'working-tree', 'branch']);
@@ -34,6 +35,27 @@ function enumValue(value, allowed, label) {
 function nonNegativeInteger(value, label) {
   if (!Number.isSafeInteger(value) || value < 0) throw new TypeError(`${label} must be a non-negative integer`);
   return value;
+}
+
+function strictKeys(value, keys, label) {
+  const actual = Object.keys(record(value, label)).sort().join(',');
+  const expected = [...keys].sort().join(',');
+  if (actual !== expected) throw new TypeError(`${label} has unsupported fields`);
+}
+
+function identifier(value, label, max) {
+  const text = boundedText(value, label, max).trim();
+  if (!text) throw new TypeError(`${label} must not be blank`);
+  return text;
+}
+
+function isoTimestamp(value, label) {
+  const text = identifier(value, label, 40);
+  const time = Date.parse(text);
+  if (!Number.isFinite(time) || new Date(time).toISOString() !== text) {
+    throw new TypeError(`${label} must be a canonical ISO-8601 timestamp`);
+  }
+  return text;
 }
 
 function exportScope(value, label = 'scope') {
@@ -81,6 +103,132 @@ export function findingFingerprint(finding) {
     title: boundedText(finding.title, 'finding title', 240),
   }, 0);
   return createHash('sha256').update(identity).digest('hex');
+}
+
+export function parseReviewPolicy(value) {
+  strictKeys(value, ['schemaVersion', 'waivers'], 'review policy');
+  if (value.schemaVersion !== 1) throw new TypeError('unsupported review policy schemaVersion');
+  if (!Array.isArray(value.waivers) || value.waivers.length > 500) {
+    throw new TypeError('review policy waivers must be a bounded array');
+  }
+  const fingerprints = new Set();
+  const waivers = value.waivers.map((waiver) => {
+    strictKeys(waiver, ['fingerprint', 'reason', 'approvedBy', 'expiresAt'], 'review policy waiver');
+    const fingerprint = identifier(waiver.fingerprint, 'review policy waiver fingerprint', 64);
+    if (!/^[a-f0-9]{64}$/.test(fingerprint)) throw new TypeError('review policy waiver fingerprint must be SHA-256 hex');
+    if (fingerprints.has(fingerprint)) throw new TypeError('review policy contains duplicate waiver fingerprint');
+    fingerprints.add(fingerprint);
+    return {
+      fingerprint,
+      reason: identifier(waiver.reason, 'review policy waiver reason', 500),
+      approvedBy: identifier(waiver.approvedBy, 'review policy waiver approvedBy', 160),
+      expiresAt: isoTimestamp(waiver.expiresAt, 'review policy waiver expiresAt'),
+    };
+  }).sort((left, right) => left.fingerprint.localeCompare(right.fingerprint));
+  return { schemaVersion: 1, waivers };
+}
+
+function gateFinding(finding, waiver) {
+  return {
+    fingerprint: finding.fingerprint,
+    severity: finding.severity,
+    ruleId: finding.ruleId,
+    category: finding.category,
+    title: finding.title,
+    evidence: finding.evidence,
+    ...(waiver ? {
+      reason: waiver.reason,
+      approvedBy: waiver.approvedBy,
+      expiresAt: waiver.expiresAt,
+    } : {}),
+  };
+}
+
+function blocksAtThreshold(severity, failOn) {
+  return (failOn === 'critical' && severity === 'CRITICAL')
+    || (failOn === 'major' && (severity === 'CRITICAL' || severity === 'MAJOR'));
+}
+
+export function evaluateReviewGate(value, policy, options = {}) {
+  const report = exportChangeReview(value);
+  const failOn = options.failOn ?? 'major';
+  if (!REVIEW_GATE_THRESHOLDS.has(failOn)) throw new TypeError(`unsupported review gate failOn: ${String(failOn)}`);
+  const now = isoTimestamp(options.now ?? new Date().toISOString(), 'review gate now');
+  const parsedPolicy = policy === undefined || policy === null ? null : parseReviewPolicy(policy);
+  const waiverByFingerprint = new Map((parsedPolicy?.waivers ?? []).map((waiver) => [waiver.fingerprint, waiver]));
+  const findings = report.reviews.flatMap((review) => review.findings);
+  const findingCounts = new Map();
+  for (const finding of findings) {
+    if (blocksAtThreshold(finding.severity, failOn)) {
+      findingCounts.set(finding.fingerprint, (findingCounts.get(finding.fingerprint) ?? 0) + 1);
+    }
+  }
+  const activeWaiverFingerprints = new Set();
+  const expiredWaiverFingerprints = new Set();
+  const ambiguousWaiverFingerprints = new Set();
+  const blocked = [];
+  const waived = [];
+
+  for (const finding of findings) {
+    if (!blocksAtThreshold(finding.severity, failOn)) continue;
+    const waiver = waiverByFingerprint.get(finding.fingerprint);
+    if (waiver && waiver.expiresAt > now && findingCounts.get(finding.fingerprint) === 1) {
+      activeWaiverFingerprints.add(waiver.fingerprint);
+      waived.push(gateFinding(finding, waiver));
+    } else {
+      if (waiver) expiredWaiverFingerprints.add(waiver.fingerprint);
+      if (waiver && waiver.expiresAt > now) ambiguousWaiverFingerprints.add(waiver.fingerprint);
+      blocked.push(gateFinding(finding));
+    }
+  }
+
+  const compareFinding = (left, right) => [left.fingerprint, left.evidence.file, left.evidence.line]
+    .join('\0').localeCompare([right.fingerprint, right.evidence.file, right.evidence.line].join('\0'));
+  blocked.sort(compareFinding);
+  waived.sort(compareFinding);
+  const expiredWaivers = (parsedPolicy?.waivers ?? [])
+    .filter((waiver) => waiver.expiresAt <= now && expiredWaiverFingerprints.has(waiver.fingerprint))
+    .map((waiver) => ({ ...waiver }));
+  const unusedWaivers = (parsedPolicy?.waivers ?? [])
+    .filter((waiver) => !activeWaiverFingerprints.has(waiver.fingerprint)
+      && !expiredWaiverFingerprints.has(waiver.fingerprint)
+      && !ambiguousWaiverFingerprints.has(waiver.fingerprint))
+    .map((waiver) => ({ ...waiver }));
+  const ambiguousWaivers = (parsedPolicy?.waivers ?? [])
+    .filter((waiver) => ambiguousWaiverFingerprints.has(waiver.fingerprint))
+    .map((waiver) => ({ ...waiver }));
+
+  return {
+    schemaVersion: 1,
+    kind: 'review-gate',
+    status: blocked.length === 0 ? 'PASS' : 'FAIL',
+    threshold: failOn,
+    review: {
+      scope: report.scope,
+      findings: report.summary.findings,
+      assessment: report.summary.assessment,
+    },
+    policy: parsedPolicy === null ? {
+      status: 'absent',
+      waiverCount: 0,
+    } : {
+      status: 'applied',
+      waiverCount: parsedPolicy.waivers.length,
+      sha256: createHash('sha256').update(stableStringify(parsedPolicy, 0)).digest('hex'),
+    },
+    summary: {
+      blocking: blocked.length,
+      waived: waived.length,
+      expiredWaivers: expiredWaivers.length,
+      ambiguousWaivers: ambiguousWaivers.length,
+      unusedWaivers: unusedWaivers.length,
+    },
+    blocked,
+    waived,
+    expiredWaivers,
+    ambiguousWaivers,
+    unusedWaivers,
+  };
 }
 
 function exportFinding(finding, reviewFile) {

@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-import { appendFile, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { constants as fsConstants } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { createRequire } from 'node:module';
 
-import { stableStringify, toSarif } from '../packages/evidence/src/index.mjs';
+import { evaluateReviewGate, parseReviewPolicy, stableStringify, toSarif } from '../packages/evidence/src/index.mjs';
 import { createRuntime } from '../packages/runtime/src/index.mjs';
 import { assertNoLinkPath } from './path-safety.mjs';
 
@@ -13,10 +14,40 @@ const { version: productVersion } = require('../package.json');
 const workspace = resolve(process.env.GITHUB_WORKSPACE ?? process.cwd());
 const outputSetting = process.env.INPUT_OUTPUT_DIRECTORY || '.pea-results';
 const outputDirectory = resolve(workspace, outputSetting);
-const relativeOutput = relative(workspace, outputDirectory);
 const separator = process.platform === 'win32' ? '\\' : '/';
-if (!relativeOutput || relativeOutput === '..' || relativeOutput.startsWith(`..${separator}`) || isAbsolute(relativeOutput)) {
-  throw new Error('output-directory must stay inside the GitHub workspace');
+function assertWorkspaceRelative(path, label) {
+  const relativePath = relative(workspace, path);
+  if (!relativePath || relativePath === '..' || relativePath.startsWith(`..${separator}`) || isAbsolute(relativePath)) {
+    throw new Error(`${label} must stay inside the GitHub workspace`);
+  }
+}
+assertWorkspaceRelative(outputDirectory, 'output-directory');
+
+async function loadOptionalPolicy(policySetting) {
+  const policyPath = resolve(workspace, policySetting);
+  assertWorkspaceRelative(policyPath, 'policy-path');
+  await assertNoLinkPath(workspace, policyPath);
+  let handle;
+  try {
+    handle = await open(policyPath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+  } catch (error) {
+    if (error?.code === 'ENOENT') return { path: policyPath, policy: undefined };
+    throw error;
+  }
+  try {
+    const state = await handle.stat();
+    if (!state.isFile()) throw new Error('policy-path must reference a regular file');
+    if (state.size > 128 * 1024) throw new Error('review policy exceeds the 128 KiB limit');
+    let parsed;
+    try {
+      parsed = JSON.parse(await handle.readFile({ encoding: 'utf8' }));
+    } catch {
+      throw new Error('review policy must contain valid JSON');
+    }
+    return { path: policyPath, policy: parseReviewPolicy(parsed) };
+  } finally {
+    await handle.close();
+  }
 }
 
 let scope = process.env.INPUT_SCOPE || 'auto';
@@ -38,6 +69,8 @@ if (scope === 'auto') {
 }
 const failOn = process.env.INPUT_FAIL_ON || 'major';
 if (!['critical', 'major', 'never'].includes(failOn)) throw new Error(`unsupported fail-on value: ${failOn}`);
+const policySetting = process.env.INPUT_POLICY_PATH || '.pea/review-policy.json';
+if (typeof policySetting !== 'string' || !policySetting.trim()) throw new Error('policy-path must be a non-empty workspace-relative path');
 
 async function writeEvidenceAtomically(path, contents) {
   await assertNoLinkPath(workspace, path);
@@ -55,12 +88,16 @@ async function writeEvidenceAtomically(path, contents) {
 await assertNoLinkPath(workspace, outputDirectory);
 await mkdir(outputDirectory, { recursive: true });
 const report = await createRuntime({ workspace }).reviewChanges({ scope, baseRef });
+const policy = await loadOptionalPolicy(policySetting);
+const gate = evaluateReviewGate(report, policy.policy, { failOn });
 const sarif = toSarif(report, { toolVersion: productVersion });
 const jsonPath = resolve(outputDirectory, 'review.json');
 const sarifPath = resolve(outputDirectory, 'review.sarif');
+const gatePath = resolve(outputDirectory, 'review-gate.json');
 await Promise.all([
   writeEvidenceAtomically(jsonPath, stableStringify(report)),
   writeEvidenceAtomically(sarifPath, stableStringify(sarif)),
+  writeEvidenceAtomically(gatePath, stableStringify(gate)),
 ]);
 
 const outputFile = process.env.GITHUB_OUTPUT;
@@ -68,22 +105,28 @@ if (outputFile) {
   await appendFile(outputFile, [
     `json=${jsonPath}`,
     `sarif=${sarifPath}`,
+    `gate=${gatePath}`,
     `assessment=${report.summary.assessment}`,
     `findings=${report.summary.findings}`,
+    `blocked=${gate.summary.blocking}`,
+    `waived=${gate.summary.waived}`,
+    `expired=${gate.summary.expiredWaivers}`,
+    `ambiguous=${gate.summary.ambiguousWaivers}`,
     '',
   ].join('\n'), 'utf8');
 }
 
 process.stdout.write(`${stableStringify({
-  status: 'PASS',
+  status: gate.status,
   assessment: report.summary.assessment,
   findings: report.summary.findings,
   json: jsonPath,
   sarif: sarifPath,
+  gate: gatePath,
+  policy: policy.policy === undefined ? 'absent' : 'applied',
+  blocked: gate.summary.blocking,
+  waived: gate.summary.waived,
+  expired: gate.summary.expiredWaivers,
+  ambiguous: gate.summary.ambiguousWaivers,
 })}`);
-
-const severities = report.reviews.flatMap((review) => review.findings.map((finding) => finding.severity));
-if ((failOn === 'critical' && severities.includes('CRITICAL'))
-  || (failOn === 'major' && severities.some((severity) => severity === 'CRITICAL' || severity === 'MAJOR'))) {
-  process.exitCode = 1;
-}
+if (gate.status === 'FAIL') process.exitCode = 1;

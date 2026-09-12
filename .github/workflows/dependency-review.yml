@@ -2,7 +2,7 @@ name: Dependency review
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, fix/reproducible-release-artifacts]
 
 permissions:
   contents: read

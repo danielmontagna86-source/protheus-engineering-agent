@@ -957,7 +957,7 @@ test('repository CI has a least-privilege cross-platform matrix', async () => {
 
   assert.match(workflow, /permissions:\s*\n\s+contents: read/);
   assert.match(workflow, /push:\s*\n\s+branches: \[main\]/);
-  assert.match(workflow, /pull_request:\s*\n\s+branches: \[main\]/);
+  assert.match(workflow, /pull_request:\s*\n\s+branches: \[main, fix\/reproducible-release-artifacts\]/);
   assert.match(workflow, /os: \[ubuntu-latest, windows-latest\]/);
   assert.match(workflow, /node: \[22, 24\]/);
   assert.match(workflow, /cancel-in-progress: true/);
