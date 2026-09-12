@@ -163,7 +163,9 @@ test('VSIX reproducibility is checked in an isolated source-archive checkout', a
   }
 });
 
-async function vsixArchive(path, extraEntries = [], manifestExtras = {}) {
+async function vsixArchive(path, extraEntries = [], manifestExtras = {}, {
+  readme = '# Extension\n\n## Conexões de IA e rotas\n\nSecretStorage\n\nMarketplace\n',
+} = {}) {
   const entries = [
     ['[Content_Types].xml', '<Types/>'],
     ['extension.vsixmanifest', '<PackageManifest/>'],
@@ -178,7 +180,7 @@ async function vsixArchive(path, extraEntries = [], manifestExtras = {}) {
     ['extension/dist/ai-providers.cjs', 'module.exports = {};'],
     ['extension/dist/ai-gateway.cjs', 'module.exports = {};'],
     ['extension/dist/policy.cjs', 'module.exports = {};'],
-    ['extension/readme.md', '# Extension'],
+    ['extension/readme.md', readme],
     ['extension/license.md', 'Apache-2.0'],
     ['extension/notice', 'Protheus Engineering Agent\nCopyright 2026 Montagna\n'],
     ['extension/changelog.md', '# Changelog'],
@@ -555,6 +557,18 @@ test('VSIX verifier enforces an exact content allow-list', async (t) => {
   const report = await verifyVsix(unexpected, version);
   assert.equal(report.status, 'FAIL');
   assert.ok(report.errors.includes('unexpected VSIX entry: extension/extra.txt'));
+});
+
+test('VSIX verifier requires installed README guidance for governed AI connections', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'pea-release-vsix-readme-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const path = join(root, 'missing-ai-guidance.vsix');
+  await vsixArchive(path, [], {}, { readme: '# Extension\n' });
+
+  const report = await verifyVsix(path, version);
+
+  assert.equal(report.status, 'FAIL');
+  assert.ok(report.errors.includes('installed VSIX README is missing governed AI connection guidance'));
 });
 
 test('VSIX verifier binds the packaged manifest to the exact source commit', async (t) => {

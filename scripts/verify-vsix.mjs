@@ -125,6 +125,15 @@ export async function verifyVsix(path, expectedVersion, { commit } = {}) {
     }
   }
 
+  const installedReadme = files.find((item) => item.name.toLowerCase() === 'extension/readme.md');
+  if (installedReadme) {
+    const content = installedReadme.data.toString('utf8');
+    const governedAiGuidance = ['Conexões de IA e rotas', 'SecretStorage', 'Marketplace'];
+    if (!governedAiGuidance.every((marker) => content.includes(marker))) {
+      errors.push('installed VSIX README is missing governed AI connection guidance');
+    }
+  }
+
   return {
     status: errors.length === 0 ? 'PASS' : 'FAIL',
     path: resolve(path),

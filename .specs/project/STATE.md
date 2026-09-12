@@ -1,7 +1,7 @@
 # State
 
 **Last Updated:** 2026-09-12
-**Current Work:** Commit `2e0f9e6` passed CI, installed VS Code/TDS/lifecycle, GitHub-hosted Linux preview-to-current rollback and workflow lint. The end-to-end validation program now maps deterministic, environment, human, public supply-chain and publisher gates; complete production acceptance remains NO-GO until the external gates have exact evidence.
+**Current Work:** O candidato técnico `f9a7450` passou CI remoto, instalação do VSIX em VS Code atual/1.95.3/TDS, checks de segredo/dependência e mutação de 95,05%. Esta atualização de documentação deve receber a bateria do commit exato antes de promoção. O programa end-to-end separa gates determinísticos de ambiente, uso humano, supply-chain pública e publisher; aceitação Stable/Marketplace permanece NO-GO até existir evidência externa exata.
 
 ---
 

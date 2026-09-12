@@ -153,7 +153,7 @@ async function fixture({ license = 'Apache-2.0', repository = true } = {}) {
     ['extension/dist/ai-connection-store.cjs', 'module.exports = {};'],
     ['extension/dist/ai-providers.cjs', 'module.exports = {};'],
     ['extension/dist/ai-gateway.cjs', 'module.exports = {};'], ['extension/dist/policy.cjs', 'module.exports = {};'],
-    ['extension/readme.md', '# Extension'], ['extension/license.md', 'Apache-2.0'],
+    ['extension/readme.md', '# Extension\n\n## Conexões de IA e rotas\n\nSecretStorage\n\nMarketplace\n'], ['extension/license.md', 'Apache-2.0'],
     ['extension/notice', 'Protheus Engineering Agent\nCopyright 2026 Montagna\n'],
     ['extension/changelog.md', '# Changelog'],
     ['extension/third_party_notices.md', '@modelcontextprotocol/server\nZod\n'],

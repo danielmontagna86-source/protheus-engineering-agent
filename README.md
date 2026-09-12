@@ -4,7 +4,7 @@ Extensão VS Code autônoma para engenharia ADVPL/TLPP, com runtime aberto e reu
 
 > Projeto comunitário independente, em estágio alpha. Não é afiliado, patrocinado ou mantido pela TOTVS, pela marca Protheus ou pelo projeto Hermes Agent. As marcas pertencem aos seus respectivos titulares.
 
-[English](README.en.md) · [Começar](docs/getting-started.md) · [Contrato público](docs/public-contract.md) · [Compatibilidade](docs/compatibility.md) · [Limites](docs/limitations.md) · [Roadmap](docs/roadmap.md) · [Segurança](SECURITY.md) · [Como contribuir](CONTRIBUTING.md)
+[English](README.en.md) · [Começar](docs/getting-started.md) · [IA e Hermes](docs/ai-and-hermes.md) · [Homologação de providers](docs/provider-uat.md) · [Contrato público](docs/public-contract.md) · [Compatibilidade](docs/compatibility.md) · [Limites](docs/limitations.md) · [Roadmap](docs/roadmap.md) · [Segurança](SECURITY.md) · [Como contribuir](CONTRIBUTING.md)
 
 O caminho principal exige somente o VSIX: não exige Hermes, conta de IA, modelo, Python, Oracle, TDN ou AppServer. O runtime determinístico é empacotado junto da extensão.
 
@@ -18,6 +18,8 @@ O caminho principal exige somente o VSIX: não exige Hermes, conta de IA, modelo
 - onboarding de snapshots TDN/Dictionary com licença/proveniência, freshness, SHA-256 e atualização atômica; adapters Oracle/PostgreSQL read-only por consulta nomeada;
 - subagentes MCP limitados por tool, profundidade, concorrência, timeout, checkpoint e diff;
 - gateway de IA neutro, opt-in, estruturado, com redaction e sem telemetria;
+- conexões governadas para OpenRouter, Anthropic API e Gemini API: chave no SecretStorage do VS Code, modelo explícito e rota de análise limitada;
+- integração com ChatGPT/Codex por login gerido do App Server; Cline e OpenCode por prévia MCP manual, sem ler autenticação de terceiros;
 - servidor MCP stdio para as capacidades portáveis do runtime;
 - Skills em caminhos padrão do ecossistema, Rules locais e provedores fixados por commit, todos limitados e tratados como dados não confiáveis;
 - adaptador experimental e opcional para Hermes, fora do caminho crítico e do gate de release;
@@ -103,6 +105,27 @@ No workspace ADVPL/TLPP, use a Central de Engenharia ou a paleta para:
 
 A extensão apenas chama o runtime empacotado, preserva o JSON auditável no Output Channel e publica os findings no painel nativo Problems. Ela complementa o TDS-VSCode e não substitui editor, linguagem, compilador, debugger, terminal, explorer, Git, diff ou chat do VS Code.
 
+### IA opcional e multi-provider
+
+Use **Protheus Agent: Configurar conexões de IA** para criar uma conexão de API.
+A chave é solicitada uma única vez e guardada no `SecretStorage` do VS Code; o
+workspace recebe apenas `.pea/ai-connections.json` com provider, modelo,
+referência de segredo e rota. A conexão cria uma rota de análise somente leitura,
+com limites de entrada e saída. Use **Protheus Agent: Perguntar a provedor de
+IA** para escolher essa rota e confirmar o envio do contexto limitado e redigido.
+
+| Integração | Caminho suportado | O que o PEA não faz |
+| --- | --- | --- |
+| ChatGPT/Codex | Login oficial via App Server local | Ler token, cookie, conta ou chave |
+| OpenRouter, Anthropic API, Gemini API | Chave API no SecretStorage | Salvar chave no projeto, settings, log ou VSIX |
+| Cline e OpenCode | Prévia MCP copiada pelo usuário | Ler `auth.json`, automatizar OAuth ou invocar host externo |
+| Claude Code e Gemini CLI | Login no cliente oficial | Reutilizar sessão/assinatura como API ou executar runner não homologado |
+
+Todos os caminhos de IA são opcionais. Falhas de credencial, policy, schema ou
+cancelamento não acionam fallback e os fluxos determinísticos/offline continuam
+disponíveis. Veja o [guia de IA](docs/ai-and-hermes.md) e a
+[matriz de homologação](docs/provider-uat.md) antes de usar uma conta real.
+
 ## Estrutura
 
 ```text
@@ -149,7 +172,9 @@ npm run publication:release-check
 - A extensão não implementa chat próprio; usa comandos, superfícies nativas, Language Model Tools, skill portável e MCP governado.
 - TDN/Dictionary foram exercitados com snapshots; Oracle/build/IA foram exercitados com adapters sintéticos e processos locais, não com infraestrutura de cliente.
 - Integrações externas permanecem fail-closed, não recebem credenciais implicitamente e exigem validação no ambiente homologado do adotante.
+- A cobertura automatizada confirma contratos, VSIX e rotas de API, mas não substitui UAT de conta/fornecedor; Claude Code, Gemini CLI, Cline e OpenCode não são runners diretos do PEA.
 - Ganho de produtividade e liderança de mercado não são alegações aprovadas; exigem o piloto humano publicado em `docs/effectiveness-methodology.md`.
+- O candidato técnico pode estar aprovado enquanto Marketplace/Stable permanece `NO-GO`: publisher, evidência pública de supply-chain, homologação AppServer, acessibilidade e piloto humano são gates externos separados.
 - O produto é distribuído sob a licença [Apache-2.0](LICENSE.md); avisos e licenças de referências permanecem separados.
 
 Os resultados reproduzíveis e os limites do gate estão no [relatório de validação](docs/validation-report.md). Veja também o [plano de publicação](docs/publication-plan.md).
