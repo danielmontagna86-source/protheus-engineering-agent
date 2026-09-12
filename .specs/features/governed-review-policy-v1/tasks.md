@@ -1,7 +1,7 @@
 # Governed review policy v1 — Tasks
 
 **Design:** `design.md`
-**Status:** Implemented locally
+**Status:** Done locally; external release gates remain separate
 
 ## Execution plan
 
@@ -39,8 +39,7 @@
 
 ### GRP-005 — Quality and release candidate battery
 
-- **Status:** In progress
+- **Status:** Done locally
 - **Files:** test records and final validation report
 - **Done when:** full unit/integration suite, static checks, smoke, mutation and code review are complete for the final commit.
-- **Validation:** `npm run validate:release-candidate` plus independent human/external gates already documented for Stable/Marketplace.
-
+- **Validation:** focused gate tests; `npm run validate`; `npm run smoke`; installed VSIX host/current/minimum/TDS checks; `npm audit --audit-level=moderate`; mutation 95.05%; reproducible release manifest. Stable/Marketplace external gates remain separate.

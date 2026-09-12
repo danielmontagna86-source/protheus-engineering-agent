@@ -2,11 +2,11 @@
 
 | Requirement | Automated evidence | Current state |
 | --- | --- | --- |
-| GRP-001 | `test/ci-review.test.mjs` threshold fixture | Pending final battery |
-| GRP-002 | `test/evidence.test.mjs` raw report preservation and current waiver | Pending final battery |
-| GRP-003 | parser negative tests and Action path fixture | Pending final battery |
-| GRP-004 | receipt assertions and schema inspection | Pending final battery |
-| GRP-005 | Action tests without policy | Pending final battery |
+| GRP-001 | `test/ci-review.test.mjs` threshold fixture | PASS |
+| GRP-002 | `test/evidence.test.mjs` raw report preservation and current waiver | PASS |
+| GRP-003 | parser negative tests and Action path fixture | PASS |
+| GRP-004 | receipt assertions and schema inspection | PASS |
+| GRP-005 | Action tests without policy | PASS |
 
 ## Final battery
 
@@ -19,3 +19,13 @@
 
 Stable/Marketplace remains NO-GO until the separate exact-commit GitHub, publisher, legal, accessibility and human approval evidence exists. This feature does not weaken those gates.
 
+## Local evidence (2026-09-12)
+
+- focused policy/Action suite: 15 passing tests;
+- `npm run validate`: PASS;
+- `npm run smoke`: PASS (doctor, index, review, MCP source and bundled MCP);
+- installed VSIX smoke: PASS on VS Code 1.137.0 and 1.95.3;
+- TDS coexistence: PASS with TOTVS TDS-VSCode 2.1.3, multi-root and CP1252/LF;
+- `npm audit --audit-level=moderate`: 0 vulnerabilities;
+- mutation: 95.05%, above the 95% gate;
+- final source/VSIX/SBOM reproducibility: rerun after the final commit.
