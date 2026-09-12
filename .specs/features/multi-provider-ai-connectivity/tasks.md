@@ -2,13 +2,13 @@
 
 | ID | Entrega | Dependência | Evidência |
 | --- | --- | --- | --- |
-| MPAI-01 | Registro, validação e testes de contrato dos seis providers | — | Testes inicialmente vermelhos, depois verdes |
-| MPAI-02 | Transport OpenRouter seguro e testes de API | MPAI-01 | Nenhuma chave em saída/erro; schema e timeout cobertos |
-| MPAI-03 | Comando VS Code de conexões e SecretStorage | MPAI-01 | Manifesto/l10n/teste de UI falsificada |
-| MPAI-04 | Prévia MCP para Cline/OpenCode e documentação de login oficial | MPAI-03 | Não toca auth externa; snapshot da configuração |
-| MPAI-05 | Atualizar documentação, roadmap, limitações e UAT matrix | MPAI-01 | Português e fonte oficial citada |
-| MPAI-06 | Regressão completa, check, pacote e smoke VSIX | MPAI-02..05 | Logs/artefatos da candidata exata |
-| MPAI-07 | UAT oficial Codex/Claude/Gemini/Cline/OpenCode/OpenRouter | MPAI-06 | Evidência externa sem segredos; pendente de contas/hosts |
+| MPAI-01 | Registro, validação e testes de contrato dos seis providers | — | Testes inicialmente vermelhos, depois verdes | COMPLETE |
+| MPAI-02 | Transport OpenRouter seguro e testes de API | MPAI-01 | Nenhuma chave em saída/erro; schema e timeout cobertos | COMPLETE |
+| MPAI-03 | Comando VS Code de conexões e SecretStorage | MPAI-01 | Manifesto/l10n/teste de UI falsificada | COMPLETE |
+| MPAI-04 | Prévia MCP para Cline/OpenCode e documentação de login oficial | MPAI-03 | Não toca auth externa; snapshot da configuração | COMPLETE |
+| MPAI-05 | Atualizar documentação, roadmap, limitações e UAT matrix | MPAI-01 | Português e fonte oficial citada | COMPLETE |
+| MPAI-06 | Regressão completa, check, pacote e smoke VSIX | MPAI-02..05 | Logs/artefatos da candidata exata | COMPLETE |
+| MPAI-07 | UAT oficial Codex/Claude/Gemini/Cline/OpenCode/OpenRouter | MPAI-06 | Evidência externa sem segredos; pendente de contas/hosts | EXTERNAL |
 
 ## Fases posteriores
 
