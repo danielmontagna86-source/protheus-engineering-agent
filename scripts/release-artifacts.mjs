@@ -17,7 +17,9 @@ const forbiddenArchivePatterns = [
   /(?:^|\/)work(?:\/|$)/i,
 ];
 
-const NORMALIZED_ZIP_TIME = new Date('2000-01-01T00:00:00.000Z');
+// ZIP stores legacy DOS local date/time fields. Construct this in local time so
+// every host emits the same 2000-01-01 00:00:00 header bytes.
+const NORMALIZED_ZIP_TIME = new Date(2000, 0, 1, 0, 0, 0);
 const PUBLIC_COMMAND_IDS = Object.freeze([
   'pea.doctor', 'pea.indexWorkspace', 'pea.openContext', 'pea.addMemoryEntry',
   'pea.addJournalEntry', 'pea.promoteJournalEntry', 'pea.expireMemory', 'pea.importSnapshot',

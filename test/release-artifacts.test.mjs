@@ -639,6 +639,8 @@ test('ZIP normalization writes stored entries to avoid platform-specific Deflate
   const bytes = await readFile(archive);
   assert.equal(bytes.readUInt32LE(0), 0x04034b50);
   assert.equal(bytes.readUInt16LE(8), 0, 'normalized archive must use ZIP stored entries');
+  assert.equal(bytes.readUInt16LE(10), 0, 'normalized archive must use midnight in the DOS timestamp');
+  assert.equal(bytes.readUInt16LE(12), 0x2821, 'normalized archive must use 2000-01-01 in the DOS timestamp');
 });
 
 test('release build paths reject a junction before writing outside the repository', async (t) => {
