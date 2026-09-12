@@ -12,6 +12,7 @@ const requiredEntries = new Set([
   'extension/dist/mcp-stdio.mjs',
   'extension/readme.md',
   'extension/license.md',
+  'extension/notice',
   'extension/changelog.md',
   'extension/third_party_notices.md',
   'extension/third-party-licenses/model-context-protocol.txt',

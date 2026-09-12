@@ -174,6 +174,7 @@ async function vsixArchive(path, extraEntries = [], manifestExtras = {}) {
     ['extension/dist/mcp-stdio.mjs', 'export {};'],
     ['extension/readme.md', '# Extension'],
     ['extension/license.md', 'Apache-2.0'],
+    ['extension/notice', 'Protheus Engineering Agent\nCopyright 2026 Montagna\n'],
     ['extension/changelog.md', '# Changelog'],
     ['extension/third_party_notices.md', '@modelcontextprotocol/server\nZod\n'],
     ['extension/third-party-licenses/model-context-protocol.txt', 'Apache License\nMIT License\nModel Context Protocol\n'],

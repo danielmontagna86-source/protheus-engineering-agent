@@ -148,6 +148,7 @@ async function fixture({ license = 'Apache-2.0', repository = true } = {}) {
     ['extension/extension.cjs', 'module.exports = {};'], ['extension/dist/runtime-cli.cjs', 'module.exports = {};'],
     ['extension/dist/runtime-cli.mjs', 'export {};'], ['extension/dist/mcp-stdio.mjs', 'export {};'],
     ['extension/readme.md', '# Extension'], ['extension/license.md', 'Apache-2.0'],
+    ['extension/notice', 'Protheus Engineering Agent\nCopyright 2026 Montagna\n'],
     ['extension/changelog.md', '# Changelog'],
     ['extension/third_party_notices.md', '@modelcontextprotocol/server\nZod\n'],
     ['extension/third-party-licenses/model-context-protocol.txt', 'Apache License\nMIT License\nModel Context Protocol\n'],
@@ -712,6 +713,19 @@ test('audit rejects an incomplete public license text', async () => {
   assert.ok(report.errors.some((finding) => finding.code === 'LICENSE_TEXT_INCOMPLETE'));
 });
 
+test('audit accepts canonical Apache license text without an SPDX marker in the license file', async () => {
+  const root = await fixture();
+  await writeFile(
+    join(root, 'LICENSE.md'),
+    'Apache License\nVersion 2.0, January 2004\nhttp://www.apache.org/licenses/\n',
+    'utf8',
+  );
+
+  const report = await assessPublication({ root, release: false });
+
+  assert.equal(report.status, 'PASS');
+});
+
 test('release audit recalculates the declared artifact checksum', async () => {
   const root = await fixture();
   const evidencePath = join(root, 'release-evidence', 'v0.3.0.json');
@@ -1078,11 +1092,14 @@ test('GitHub social preview is a compact 1280 by 640 PNG without a fabricated pr
   assert.ok(bytes.length < 1_000_000);
 });
 
-test('Apache license file starts with the canonical license text for GitHub detection', async () => {
+test('Apache license file remains canonical for GitHub detection and keeps attribution outside it', async () => {
   const license = await readFile(new URL('../LICENSE.md', import.meta.url), 'utf8');
+  const notice = await readFile(new URL('../NOTICE', import.meta.url), 'utf8');
 
   assert.match(license, /^\s*Apache License\s+Version 2\.0, January 2004/);
-  assert.match(license, /SPDX-License-Identifier: Apache-2\.0/);
+  assert.match(license, /Copyright \[yyyy\] \[name of copyright owner\]/);
+  assert.doesNotMatch(license, /SPDX-License-Identifier/);
+  assert.match(notice, /Copyright 2026 Montagna/);
 });
 
 test('extension staging copies Marketplace media into the VSIX root', async () => {

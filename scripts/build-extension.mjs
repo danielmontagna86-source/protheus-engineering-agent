@@ -69,6 +69,7 @@ export async function buildExtension({ releaseCommit, productRoot = root } = {})
     join(stageRoot, 'skills', 'protheus-evidence-review', 'SKILL.md'),
   );
   await cp(join(buildRoot, 'LICENSE.md'), join(stageRoot, 'LICENSE.md'));
+  await cp(join(buildRoot, 'NOTICE'), join(stageRoot, 'NOTICE'));
   await cp(join(buildRoot, 'CHANGELOG.md'), join(stageRoot, 'CHANGELOG.md'));
   await cp(join(buildRoot, 'THIRD_PARTY_NOTICES.md'), join(stageRoot, 'THIRD_PARTY_NOTICES.md'));
   await mkdir(join(stageRoot, 'third-party-licenses'), { recursive: true });

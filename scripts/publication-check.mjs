@@ -617,10 +617,11 @@ export async function assessPublication({ root, release = false, evidencePath: r
     }
     try {
       const licenseText = await readFile(join(productRoot, 'LICENSE.md'), 'utf8');
+      const requiresSpdxMarker = !['UNLICENSED', 'Apache-2.0'].includes(manifest.license);
       const expected = manifest.license === 'UNLICENSED'
         ? 'UNLICENSED'
         : `SPDX-License-Identifier: ${manifest.license}`;
-      if (!licenseText.includes(expected)) {
+      if (requiresSpdxMarker && !licenseText.includes(expected)) {
         errors.push(finding('LICENSE_MISMATCH', 'LICENSE.md', 'License file does not match package metadata.'));
       } else if (!hasCompleteLicenseText(manifest.license, licenseText)) {
         errors.push(finding('LICENSE_TEXT_INCOMPLETE', 'LICENSE.md', 'License identifier exists but the applicable license text is incomplete.'));

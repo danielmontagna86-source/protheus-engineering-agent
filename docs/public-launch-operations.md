@@ -6,9 +6,10 @@ This is the operating checklist for turning the repository and VS Code listing i
 
 ## Current observed state
 
-- The canonical GitHub repository is private, has a clear description, nine focused GitHub topics, a 100% Community Profile and Dependabot alerts enabled. A reviewed 1280 × 640 source social-preview asset is versioned at [`media/social-preview.png`](../media/social-preview.png), but it has not yet been assigned in GitHub's repository settings. It has no branch protection/ruleset or public CodeQL result.
+- The canonical GitHub repository is private. Its About description is `Evidence-first VS Code engineering for Protheus ADVPL/TLPP: CodeGraph, review, project memory, and governed integrations.` It has 15 capability-specific topics, a 100% Community Profile and Dependabot alerts enabled. The homepage remains blank until there is a verified product site, rather than linking the repository to itself. A reviewed 1280 × 640 source social-preview asset is versioned at [`media/social-preview.png`](../media/social-preview.png), but it has not yet been assigned in GitHub's repository settings. It has no branch protection/ruleset or public CodeQL result.
 - Private vulnerability reporting is unavailable for this private repository under the current GitHub plan: its API endpoint returned `404` on 2026-09-10. The versioned `SECURITY.md` private-report route remains the disclosure path until a supported GitHub reporting URL can be verified.
-- CI, OSV scanning, verified-secret scanning, local release-artifact verification and isolated VSIX smoke evidence exist for the candidate branch. The public-only CodeQL and dependency-review workflows correctly skip while the repository is private.
+- CI, OSV scanning, workflow-based secret scanning, local release-artifact verification and isolated VSIX smoke evidence exist for the candidate branch. GitHub-native secret scanning and code scanning are unavailable on the current private plan; the public-only CodeQL and dependency-review workflows correctly skip while the repository is private.
+- Every external GitHub Action is pinned to a full commit SHA and the repository now requires SHA-pinned Actions. This is verified against the active workflow set; local actions remain allowed.
 - The Marketplace extension identifier and publisher identity have not been verified as a live Marketplace listing. No Marketplace version is claimed as published.
 
 These observations must be refreshed immediately before every visibility or release decision. GitHub visibility exposes source and Actions history, disables push rulesets, and permits public forks; it is a disclosure event, not a cosmetic setting.
@@ -17,12 +18,12 @@ These observations must be refreshed immediately before every visibility or rele
 
 Before changing visibility, the release owner must verify these exact GitHub settings and record the API/UI evidence in the release receipt:
 
-1. Keep the repository description focused on the verified scope and add these GitHub topics: `advpl`, `tlpp`, `protheus`, `totvs`, `vscode-extension`, `mcp`, `code-review`, `static-analysis`, and `developer-tools`.
+1. Keep the repository description focused on the verified scope: `Evidence-first VS Code engineering for Protheus ADVPL/TLPP: CodeGraph, review, project memory, and governed integrations.` Keep only capability-specific GitHub topics: `advpl`, `tlpp`, `protheus`, `totvs`, `vscode-extension`, `visual-studio-code`, `developer-tools`, `code-review`, `static-analysis`, `codegraph`, `model-context-protocol`, `mcp`, `developer-productivity`, `software-quality`, and `local-first`.
 2. Upload the reviewed [`media/social-preview.png`](../media/social-preview.png) source (1280 × 640 PNG, under 1 MB) as the repository social preview. Its abstract engineering graphic deliberately has no fabricated UI, vendor logo, “official” statement or implied TOTVS endorsement. Verify the rendered public card after visibility changes.
 3. Confirm README, `README.en.md`, `LICENSE.md`, `NOTICE`, third-party notices, `SECURITY.md`, `SUPPORT.md`, contribution guide, governance, issue forms, pull-request template, changelog, citation and Code Owners are present and link correctly from the default branch.
 4. Keep Dependabot alerts enabled. Enable private vulnerability reporting where GitHub supports it, then verify the Security reporting URL works before inviting public reports. If the endpoint remains unavailable, retain the versioned private-report route in `SECURITY.md`; do not claim a GitHub security-reporting form exists.
 5. After visibility changes, restore a `main` ruleset or branch protection requiring an up-to-date pull request, one approval, resolution of review conversations, the CI matrix, mutation/dependency audit, VS Code host, OSV, secret scan, CodeQL and dependency review. Block force-push and branch deletion.
-6. Keep Actions default permissions read-only and do not expose secrets to fork-origin pull requests. The release workflow remains manually dispatched and uses GitHub artifact attestations.
+6. Keep Actions default permissions read-only, require SHA-pinned Actions and do not expose secrets to fork-origin pull requests. The release workflow remains manually dispatched and uses GitHub artifact attestations.
 
 ## Marketplace listing contract
 
