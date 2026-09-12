@@ -54,6 +54,16 @@ export async function buildExtension({ releaseCommit, productRoot = root } = {})
     entryPoints: [join(buildRoot, 'packages', 'mcp', 'src', 'stdio.mjs')],
     outfile: join(extensionDist, 'mcp-stdio.mjs'),
   });
+  for (const [name, entryPoint] of [
+    ['codex-app-server.cjs', join(buildRoot, 'packages', 'codex-app-server', 'src', 'index.mjs')],
+    ['ai-connections.cjs', join(buildRoot, 'packages', 'ai-connections', 'src', 'index.mjs')],
+    ['ai-connection-store.cjs', join(buildRoot, 'packages', 'ai-connections', 'src', 'store.mjs')],
+    ['ai-providers.cjs', join(buildRoot, 'packages', 'ai-providers', 'src', 'index.mjs')],
+    ['ai-gateway.cjs', join(buildRoot, 'packages', 'ai-gateway', 'src', 'index.mjs')],
+    ['policy.cjs', join(buildRoot, 'packages', 'policy', 'src', 'index.mjs')],
+  ]) {
+    await build({ ...common, entryPoints: [entryPoint], outfile: join(extensionDist, name), format: 'cjs' });
+  }
 
   await mkdir(join(stageRoot, 'dist'), { recursive: true });
   for (const file of ['extension.cjs', 'README.md', '.vscodeignore', 'package.nls.json', 'package.nls.pt-br.json']) {

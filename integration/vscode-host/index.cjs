@@ -101,7 +101,7 @@ async function run() {
 
   const declaredCommandIds = (product.packageJSON.contributes?.commands ?? []).map((item) => item.command).sort();
   const registeredCommands = new Set(await vscode.commands.getCommands(true));
-  assert.equal(declaredCommandIds.length, 19, 'packaged extension must declare all 19 public commands');
+  assert.equal(declaredCommandIds.length, 21, 'packaged extension must declare all 21 public commands');
   assert.deepEqual(
     declaredCommandIds.filter((command) => !registeredCommands.has(command)),
     [],

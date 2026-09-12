@@ -178,8 +178,8 @@ export async function runVsCodeSmoke() {
     const hostReceipt = JSON.parse(await readFile(hostReceiptPath, 'utf8'));
     if (hostReceipt.schemaVersion !== 1
       || !Array.isArray(hostReceipt.commandIds)
-      || hostReceipt.commandIds.length !== 19
-      || new Set(hostReceipt.commandIds).size !== 19
+      || hostReceipt.commandIds.length !== 21
+      || new Set(hostReceipt.commandIds).size !== 21
       || !Array.isArray(hostReceipt.executedCommandIds)
       || hostReceipt.executedCommandIds.length < 5
       || hostReceipt.invocations !== 7) {

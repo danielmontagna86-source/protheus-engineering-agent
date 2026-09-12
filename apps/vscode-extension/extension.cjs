@@ -227,6 +227,7 @@ function createExtension(vscode, options = {}) {
   const cliPath = options.cliPath ?? path.resolve(__dirname, 'dist', 'runtime-cli.cjs');
   const mcpServerPath = options.mcpServerPath ?? path.resolve(__dirname, 'dist', 'mcp-stdio.mjs');
   const execFile = options.execFile;
+  const codexCommand = options.codexCommand ?? process.env.PEA_CODEX_APP_SERVER_COMMAND ?? 'codex';
   const inProcessRunner = options.runtimeRunner ?? createInProcessCliRunner(cliPath, {
     runtimeOptions: {
       hermes: {
@@ -239,6 +240,8 @@ function createExtension(vscode, options = {}) {
   let channel;
   let diagnostics;
   let lastBuildRequestId;
+  let codexProvider;
+  let codexWorkspace;
   const t = (message, ...args) => {
     if (vscode.l10n?.t) return vscode.l10n.t(message, ...args);
     return args.reduce((value, argument, index) => value.replaceAll(`{${index}}`, String(argument)), message);
@@ -459,6 +462,110 @@ function createExtension(vscode, options = {}) {
     return present([command, workspace, query.trim(), '10'], workspace);
   }
 
+  function providerForCodex(workspace, context) {
+    if (codexProvider && codexWorkspace === workspace) return codexProvider;
+    void codexProvider?.dispose?.();
+    const factory = options.codexProviderFactory ?? ((providerOptions) => {
+      const { createCodexAppServerProvider } = require('./dist/codex-app-server.cjs');
+      return createCodexAppServerProvider({ ...providerOptions, command: codexCommand });
+    });
+    codexProvider = factory({
+      workspace,
+      threadId: context.globalState?.get('pea.codexAppServer.threadId'),
+    });
+    codexWorkspace = workspace;
+    return codexProvider;
+  }
+
+  async function approveAiContext(providerLabel = 'ChatGPT') {
+    const action = t('Send context');
+    const choice = await vscode.window.showInformationMessage(
+      t('Send bounded, redacted engineering context to {0}? This is read-only and advisory.', providerLabel),
+      { modal: true },
+      action,
+    );
+    return choice === action;
+  }
+
+  function codexGateway(workspace, provider, approve) {
+    if (typeof options.aiGatewayFactory === 'function') {
+      return options.aiGatewayFactory({ workspace, provider, approve });
+    }
+    if (typeof options.codexGatewayFactory === 'function') {
+      return options.codexGatewayFactory({ workspace, provider, approve });
+    }
+    const { createAiGateway } = require('./dist/ai-gateway.cjs');
+    const { createPermissionBroker } = require('./dist/policy.cjs');
+    const broker = createPermissionBroker({
+      async requestApproval(request) {
+        const approved = await approve();
+        return {
+          id: request.id,
+          environment: request.environment,
+          capability: request.capability,
+          approved,
+          approvedBy: approved ? 'VS Code user' : '',
+          approvedAt: new Date().toISOString(),
+        };
+      },
+    });
+    return createAiGateway({ provider, authorize: broker });
+  }
+
+  function providerForAi(descriptor, workspace, context) {
+    if (descriptor.id === 'openai-codex-app-server') return providerForCodex(workspace, context);
+    if (typeof options.aiProviderFactory === 'function') return options.aiProviderFactory({ ...descriptor, workspace, context });
+    if (descriptor.id !== 'openrouter') throw new Error(t('{0} must be used through its own official client or MCP host.', descriptor.label));
+    const { createOpenRouterProvider } = require('./dist/ai-providers.cjs');
+    const store = createCredentialStore(context.secrets);
+    return createOpenRouterProvider({ getApiKey: () => store.get('openrouter.api-key') });
+  }
+
+  function providerRegistry() {
+    if (typeof options.providerRegistryFactory === 'function') return options.providerRegistryFactory();
+    const { createProviderRegistry } = require('./dist/ai-providers.cjs');
+    return createProviderRegistry();
+  }
+
+  function mcpConnectionPreview() {
+    if (typeof options.mcpPreviewFactory === 'function') return options.mcpPreviewFactory();
+    const { createMcpConnectionPreview } = require('./dist/ai-providers.cjs');
+    return createMcpConnectionPreview({ command: process.execPath, serverPath: mcpServerPath });
+  }
+
+  async function manageAiConnection(context) {
+    const registry = providerRegistry();
+    const candidates = registry.list().map((provider) => ({
+      label: provider.label,
+      description: provider.connection === 'managed-login'
+        ? t('Official login')
+        : provider.connection === 'api-key' ? t('API key in VS Code') : t('External host / MCP'),
+      detail: provider.limitations,
+      provider,
+    }));
+    const selected = await vscode.window.showQuickPick(candidates, { placeHolder: t('Select an AI connection') });
+    if (!selected?.provider) return undefined;
+    const provider = selected.provider;
+    if (provider.id === 'openrouter') {
+      const apiKey = await vscode.window.showInputBox({
+        prompt: t('OpenRouter API key (stored only in VS Code SecretStorage)'), password: true,
+        ignoreFocusOut: true,
+        validateInput: (value) => value?.trim() ? null : t('An API key is required.'),
+      });
+      if (!apiKey) return undefined;
+      await createCredentialStore(context.secrets).set('openrouter.api-key', apiKey.trim());
+      return vscode.window.showInformationMessage(t('{0} was configured. The key is not saved in workspace settings or logs.', provider.label));
+    }
+    if (provider.connection === 'external-host') {
+      const preview = mcpConnectionPreview();
+      channel.clear();
+      channel.appendLine(JSON.stringify(preview[provider.id], null, 2));
+      channel.show(true);
+      return vscode.window.showInformationMessage(t('Copy the displayed MCP configuration into {0}; authenticate in that host itself.', provider.label));
+    }
+    return vscode.window.showInformationMessage(t('{0} uses its official login. Complete authentication in its client; PEA never reads account credentials.', provider.label));
+  }
+
   function activate(context) {
     channel = vscode.window.createOutputChannel('Protheus Engineering Agent');
     diagnostics = vscode.languages.createDiagnosticCollection('protheus-engineering-agent');
@@ -502,6 +609,101 @@ function createExtension(vscode, options = {}) {
         const workspace = await workspacePath(uri);
         if (!workspace) return vscode.window.showWarningMessage(t('Open a workspace first.'));
         return present(['session', workspace], workspace);
+      }),
+      vscode.commands.registerCommand('pea.manageAiConnections', async () => manageAiConnection(context)),
+      vscode.commands.registerCommand('pea.askAi', async () => {
+        const workspace = await workspacePath();
+        if (!workspace) return vscode.window.showWarningMessage(t('Open a workspace first.'));
+        const registry = providerRegistry();
+        const selected = await vscode.window.showQuickPick(registry.list().map((provider) => ({
+          label: provider.label, description: provider.connection, provider,
+        })), { placeHolder: t('Select an AI provider for bounded engineering context') });
+        if (!selected?.provider) return undefined;
+        if (!['openrouter', 'openai-codex-app-server'].includes(selected.provider.id)) {
+          return vscode.window.showInformationMessage(t('{0} must be used through its own official client or MCP host.', selected.provider.label));
+        }
+        const instruction = await vscode.window.showInputBox({
+          prompt: t('Question for {0} using bounded Protheus engineering context', selected.provider.label),
+          validateInput: (value) => value?.trim() ? null : t('A question is required.'),
+        });
+        if (!instruction) return undefined;
+        try {
+          const [sessionOutput, doctorOutput] = await Promise.all([
+            runCli(['session', workspace], workspace), runCli(['doctor', workspace], workspace),
+          ]);
+          const provider = providerForAi(selected.provider, workspace, context);
+          const result = await codexGateway(workspace, provider, () => approveAiContext(selected.provider.label)).run({
+            instruction: instruction.trim(), context: parseRuntimeJson(sessionOutput, t('session')),
+            outputSchema: { type: 'object', properties: { summary: { type: 'string' } }, required: ['summary'], additionalProperties: false },
+          }, { environment: parseRuntimeJson(doctorOutput, t('doctor')).configuration?.environment ?? 'development' });
+          if (result.status !== 'completed') throw new Error(result.error?.message ?? t('The AI provider did not complete the request.'));
+          channel.clear(); channel.appendLine(JSON.stringify(result.output, null, 2)); channel.show(true);
+          return result;
+        } catch (error) {
+          return vscode.window.showWarningMessage(t('AI context request is unavailable: {0}', error.message));
+        }
+      }),
+      vscode.commands.registerCommand('pea.connectChatGpt', async () => {
+        const workspace = await workspacePath();
+        if (!workspace) return vscode.window.showWarningMessage(t('Open a workspace first.'));
+        try {
+          const provider = providerForCodex(workspace, context);
+          await provider.connect?.();
+          const status = provider.status?.();
+          if (status?.authentication?.authenticated && status.authentication.mode === 'chatgpt') {
+            return vscode.window.showInformationMessage(t('ChatGPT is already connected through the local Codex App Server.'));
+          }
+          const login = await provider.startChatGptLogin();
+          if (login?.type === 'browser' && typeof login.url === 'string') {
+            await vscode.env.openExternal(vscode.Uri.parse(login.url));
+            return vscode.window.showInformationMessage(t('Finish ChatGPT login in the browser, then run this command again to confirm status.'));
+          }
+          if (login?.type === 'device-code' && typeof login.url === 'string' && typeof login.code === 'string') {
+            await vscode.env.openExternal(vscode.Uri.parse(login.url));
+            return vscode.window.showInformationMessage(t('Finish ChatGPT device-code login in the browser with code {0}.', login.code));
+          }
+          throw new Error(t('The local Codex App Server did not provide a supported login flow.'));
+        } catch (error) {
+          return vscode.window.showWarningMessage(t('ChatGPT connection is unavailable: {0}', error.message));
+        }
+      }),
+      vscode.commands.registerCommand('pea.askCodex', async () => {
+        const workspace = await workspacePath();
+        if (!workspace) return vscode.window.showWarningMessage(t('Open a workspace first.'));
+        const instruction = await vscode.window.showInputBox({
+          prompt: t('Question for Codex using bounded Protheus engineering context'),
+          validateInput: (value) => value?.trim() ? null : t('A question is required.'),
+        });
+        if (!instruction) return undefined;
+        try {
+          const [sessionOutput, doctorOutput] = await Promise.all([
+            runCli(['session', workspace], workspace),
+            runCli(['doctor', workspace], workspace),
+          ]);
+          const session = parseRuntimeJson(sessionOutput, t('session'));
+          const doctor = parseRuntimeJson(doctorOutput, t('doctor'));
+          const provider = providerForCodex(workspace, context);
+          const gateway = codexGateway(workspace, provider, approveAiContext);
+          const result = await gateway.run({
+            instruction: instruction.trim(),
+            context: session,
+            outputSchema: {
+              type: 'object',
+              properties: { summary: { type: 'string' } },
+              required: ['summary'],
+              additionalProperties: false,
+            },
+          }, { environment: doctor.configuration?.environment ?? 'development' });
+          if (result.status !== 'completed') throw new Error(result.error?.message ?? t('Codex did not complete the request.'));
+          const threadId = provider.getThreadId?.();
+          if (typeof threadId === 'string') await context.globalState?.update('pea.codexAppServer.threadId', threadId);
+          channel.clear();
+          channel.appendLine(JSON.stringify(result.output, null, 2));
+          channel.show(true);
+          return result;
+        } catch (error) {
+          return vscode.window.showWarningMessage(t('Codex context request is unavailable: {0}', error.message));
+        }
       }),
       vscode.commands.registerCommand('pea.reviewActiveFile', async () => {
         const document = vscode.window.activeTextEditor?.document;
@@ -735,6 +937,7 @@ function createExtension(vscode, options = {}) {
     }
     context.subscriptions.push(
       channel, diagnostics, engineeringCenter, treeRegistration,
+      { dispose() { return codexProvider?.dispose?.(); } },
       ...commands, ...languageModelTools, ...diagnosticInvalidators,
     );
   }

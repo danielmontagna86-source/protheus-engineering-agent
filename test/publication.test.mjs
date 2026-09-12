@@ -17,6 +17,7 @@ const publicCommandIds = [
   'pea.searchTdn', 'pea.searchDictionary', 'pea.prepareBuild', 'pea.runBuild',
   'pea.buildStatus', 'pea.cancelBuild', 'pea.buildEvidence', 'pea.reviewActiveFile',
   'pea.reviewChanges', 'pea.refreshEngineeringCenter', 'pea.openSampleWorkspace',
+  'pea.connectChatGpt', 'pea.askCodex',
 ];
 
 const requiredFiles = [
@@ -147,6 +148,8 @@ async function fixture({ license = 'Apache-2.0', repository = true } = {}) {
     ['extension/package.json', JSON.stringify({ version: '0.3.0', peaRelease: { commit: exactReleaseCommit } })],
     ['extension/extension.cjs', 'module.exports = {};'], ['extension/dist/runtime-cli.cjs', 'module.exports = {};'],
     ['extension/dist/runtime-cli.mjs', 'export {};'], ['extension/dist/mcp-stdio.mjs', 'export {};'],
+    ['extension/dist/codex-app-server.cjs', 'module.exports = {};'],
+    ['extension/dist/ai-gateway.cjs', 'module.exports = {};'], ['extension/dist/policy.cjs', 'module.exports = {};'],
     ['extension/readme.md', '# Extension'], ['extension/license.md', 'Apache-2.0'],
     ['extension/notice', 'Protheus Engineering Agent\nCopyright 2026 Montagna\n'],
     ['extension/changelog.md', '# Changelog'],
@@ -333,7 +336,7 @@ async function stableControlEvidence(root, evidence, gateId) {
   const path = `release-artifacts/receipt-${gateId}.json`;
   const results = {
     g0BaselineIntegrity: { testsPassed: 293, testsFailed: 0, testsSkipped: 0, mutationScore: 95.4, diffCheck: true },
-    g1PremiumP0: { publicCommandsRegistered: 19, coreJourneysPassed: true, offline: true },
+    g1PremiumP0: { publicCommandsRegistered: 21, coreJourneysPassed: true, offline: true },
     g2SemanticP1: { corpusPassed: true, performancePassed: true, compilerEquivalentClaim: false },
     g3Tier0Virtualization: { networkRequired: false, successFailureMatrix: true },
     g4OfficialAnalyzer: {

@@ -120,6 +120,15 @@
 
 **AI and grounding evals** - PROVIDER-NEUTRAL CONTRACT AND REGRESSION SUITE COMPLETE; HUMAN EFFECTIVENESS PILOT EXTERNAL
 
+**Codex/ChatGPT bounded-context bridge** - IMPLEMENTED AND PACKAGED; OFFICIAL-CLI LIVE LOGIN/UAT EXTERNAL
+
+**Multi-provider AI connectivity** - P0 IMPLEMENTED; OPENROUTER API + CLINE/OPENCODE MCP PREVIEW; OFFICIAL PROVIDER UAT EXTERNAL
+
+- Registro explícito para Codex, Claude Code, Gemini CLI, Cline, OpenCode e OpenRouter.
+- Login oficial, API SecretStorage e host MCP são modos distintos; credenciais e arquivos de autenticação externos não são lidos.
+- Runners diretos Claude/Gemini e servidor OpenCode aguardam perfis versionados de somente leitura e UAT.
+- Especificação: `.specs/features/multi-provider-ai-connectivity/`.
+
 ---
 
 ## Future Considerations

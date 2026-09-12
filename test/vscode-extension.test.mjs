@@ -28,6 +28,7 @@ function fakeVscode() {
   const inputBoxResponses = [];
   const informationMessages = [];
   const openDialogResponses = [];
+  const openedExternal = [];
   const languageModelTools = new Map();
   const progressCalls = [];
   const changeDocumentListeners = [];
@@ -45,6 +46,7 @@ function fakeVscode() {
     inputBoxResponses,
     informationMessages,
     openDialogResponses,
+    openedExternal,
     languageModelTools,
     progressCalls,
     fireDidChangeTextDocument(document) {
@@ -130,7 +132,13 @@ function fakeVscode() {
         constructor(label, collapsibleState) { Object.assign(this, { label, collapsibleState }); }
       },
       TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
-      Uri: { file(fsPath) { return { fsPath }; } },
+      Uri: {
+        file(fsPath) { return { fsPath }; },
+        parse(value) { return { fsPath: value }; },
+      },
+      env: {
+        async openExternal(uri) { openedExternal.push(uri); return true; },
+      },
       languages: {
         createDiagnosticCollection() {
           return {
@@ -185,9 +193,9 @@ test('extension registers only thin orchestration commands and delegates doctor 
   await fake.handlers.get('pea.openContext')();
 
   assert.deepEqual([...fake.handlers.keys()].sort(), [
-    'pea.addJournalEntry', 'pea.addMemoryEntry', 'pea.buildEvidence', 'pea.buildStatus',
-    'pea.cancelBuild', 'pea.doctor', 'pea.expireMemory', 'pea.importSnapshot',
-    'pea.indexWorkspace', 'pea.openContext', 'pea.openSampleWorkspace', 'pea.prepareBuild',
+    'pea.addJournalEntry', 'pea.addMemoryEntry', 'pea.askAi', 'pea.askCodex', 'pea.buildEvidence', 'pea.buildStatus',
+    'pea.cancelBuild', 'pea.connectChatGpt', 'pea.doctor', 'pea.expireMemory', 'pea.importSnapshot',
+    'pea.indexWorkspace', 'pea.manageAiConnections', 'pea.openContext', 'pea.openSampleWorkspace', 'pea.prepareBuild',
     'pea.promoteJournalEntry', 'pea.refreshEngineeringCenter', 'pea.reviewActiveFile',
     'pea.reviewChanges', 'pea.runBuild', 'pea.searchDictionary', 'pea.searchTdn',
   ]);
@@ -199,6 +207,119 @@ test('extension registers only thin orchestration commands and delegates doctor 
   assert.equal(calls[0].options.timeout, 120_000);
   assert.equal(doctorResult.trim(), '{"ok":true}');
   assert.equal(fake.output.join('\n').includes('"ok":true'), true);
+});
+
+test('extension manages AI connections by mode and keeps an OpenRouter key only in VS Code SecretStorage', async () => {
+  const fake = fakeVscode();
+  const secrets = new Map();
+  const registry = {
+    list() { return [{ id: 'openrouter', label: 'OpenRouter', connection: 'api-key', limitations: 'API key only.' }]; },
+    get() { return this.list()[0]; },
+  };
+  fake.inputBoxResponses.push('key-entered-once');
+  extension.createExtension(fake.api, {
+    providerRegistryFactory: () => registry,
+    mcpPreviewFactory: () => ({ cline: { mcpServers: {} }, opencode: { mcp: {} } }),
+  }).activate({
+    subscriptions: [],
+    secrets: {
+      async store(key, value) { secrets.set(key, value); },
+      async get(key) { return secrets.get(key); },
+      async delete(key) { secrets.delete(key); },
+    },
+  });
+
+  await fake.handlers.get('pea.manageAiConnections')();
+
+  assert.equal(secrets.get('pea.credential.openrouter.api-key'), 'key-entered-once');
+  assert.match(fake.informationMessages.at(-1).message, /OpenRouter/i);
+  assert.equal(fake.inputBoxes[0].password, true);
+  assert.doesNotMatch(JSON.stringify(fake.output), /key-entered-once/);
+});
+
+test('extension sends governed bounded context through configured OpenRouter without exposing its key', async () => {
+  const fake = fakeVscode();
+  const calls = [];
+  fake.inputBoxResponses.push('Revise o risco desta alteração.');
+  extension.createExtension(fake.api, {
+    providerRegistryFactory: () => ({ list: () => [{ id: 'openrouter', label: 'OpenRouter', connection: 'api-key' }] }),
+    aiProviderFactory({ id }) {
+      assert.equal(id, 'openrouter');
+      return { id, async complete() { return { model: 'safe-model', output: { summary: 'Resposta segura.' } }; } };
+    },
+    aiGatewayFactory({ provider, approve }) {
+      return { async run(request) { calls.push({ provider, request }); assert.equal(await approve(), true); return { status: 'completed', output: { summary: 'Resposta segura.' } }; } };
+    },
+    execFile(_command, args, _options, callback) {
+      if (args[1] === 'session') callback(null, JSON.stringify({ context: { source: 'evidence' } }), '');
+      else callback(null, JSON.stringify({ configuration: { environment: 'development' } }), '');
+      return { kill() {} };
+    },
+  }).activate({ subscriptions: [], secrets: { async get() { return 'not-exposed'; }, async store() {}, async delete() {} } });
+
+  await fake.handlers.get('pea.askAi')();
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].provider.id, 'openrouter');
+  assert.equal(calls[0].request.context.context.source, 'evidence');
+  assert.doesNotMatch(JSON.stringify(fake.output), /not-exposed/);
+});
+
+test('extension uses managed ChatGPT login without an API-key input surface', async () => {
+  const fake = fakeVscode();
+  const provider = {
+    async connect() {},
+    async startChatGptLogin() { return { type: 'browser', url: 'https://auth.openai.com/codex/login' }; },
+    status() { return { available: true, authentication: { authenticated: false, mode: null, plan: null } }; },
+    async dispose() {},
+  };
+  extension.createExtension(fake.api, {
+    codexProviderFactory: () => provider,
+  }).activate({ subscriptions: [], globalState: { get() {}, async update() {} } });
+
+  await fake.handlers.get('pea.connectChatGpt')();
+
+  assert.equal(fake.inputBoxes.length, 0);
+  assert.deepEqual(fake.openedExternal, [{ fsPath: 'https://auth.openai.com/codex/login' }]);
+  assert.match(fake.informationMessages[0].message, /ChatGPT/i);
+});
+
+test('extension sends only runtime session context through the governed AI gateway after explicit approval', async () => {
+  const fake = fakeVscode();
+  const calls = [];
+  fake.inputBoxResponses.push('Resuma os riscos.');
+  extension.createExtension(fake.api, {
+    codexProviderFactory: () => ({ getThreadId() { return 'opaque-thread-id'; }, async dispose() {} }),
+    codexGatewayFactory({ workspace, approve }) {
+      return {
+        async run(request) {
+          calls.push({ workspace, request });
+          assert.equal(await approve(), true);
+          return { status: 'completed', output: { summary: 'Resposta limitada.' }, privacy: { redactedFields: 0 } };
+        },
+      };
+    },
+    execFile(_command, args, _options, callback) {
+      if (args[1] === 'session') callback(null, JSON.stringify({ schemaVersion: 1, trust: 'untrusted-project-data', context: { memory: 'Known evidence' } }), '');
+      else if (args[1] === 'doctor') callback(null, JSON.stringify({ configuration: { environment: 'development' } }), '');
+      else callback(null, '{}', '');
+      return { kill() {} };
+    },
+  }).activate({ subscriptions: [], globalState: { get() {}, async update() {} } });
+
+  await fake.handlers.get('pea.askCodex')();
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].workspace, 'C:\\workspace');
+  assert.equal(calls[0].request.context.context.memory, 'Known evidence');
+  assert.match(calls[0].request.instruction, /Resuma os riscos/);
+  assert.deepEqual(calls[0].request.outputSchema, {
+    type: 'object',
+    properties: { summary: { type: 'string' } },
+    required: ['summary'],
+    additionalProperties: false,
+  });
+  assert.match(fake.output.join('\n'), /Resposta limitada/);
 });
 
 test('extension exposes attributed Memory and Journal workflows with promotion preview', async () => {
@@ -891,7 +1012,7 @@ test('real host smoke installs the packaged VSIX before exercising commands', as
   assert.match(runner, /windows1252/i);
   assert.match(host, /vscode\.extensions\.getExtension\('danielmontagna86-source\.protheus-engineering-agent'\)/);
   assert.match(host, /execute\('pea\.doctor', workspace\.uri\)/);
-  assert.match(host, /declaredCommandIds\.length, 19/);
+  assert.match(host, /declaredCommandIds\.length, 21/);
 });
 
 test('package lifecycle harness proves install, upgrade, uninstall, reinstall and rollback', async () => {

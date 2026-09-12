@@ -1,6 +1,6 @@
 # State
 
-**Last Updated:** 2026-09-11
+**Last Updated:** 2026-09-12
 **Current Work:** Commit `2e0f9e6` passed CI, installed VS Code/TDS/lifecycle, GitHub-hosted Linux preview-to-current rollback and workflow lint. The end-to-end validation program now maps deterministic, environment, human, public supply-chain and publisher gates; complete production acceptance remains NO-GO until the external gates have exact evidence.
 
 ---
@@ -147,6 +147,25 @@
 **Decision:** Execute the owner-authorized `feliperaposo` AppServer stack only in a disposable internal Docker network and retain its exact negative result.
 **Reason:** The staged topology started PostgreSQL, License Server and DBAccess, then AppServer failed `FAILURE TO START REST SERVER` / `Invalid REST Port`.
 **Impact:** The product does not depend on this stack and it cannot close the licensed AppServer, TDS or stable-release gate.
+
+### AD-023: Codex App Server is the optional managed-login bridge (2026-09-12)
+
+**Decision:** Add an opt-in bridge to the official local Codex App Server for a user-owned ChatGPT login, while preserving provider-neutral API-key adapters and all offline workflows.
+**Reason:** A managed account session can be a practical choice for eligible users without asking the extension to collect API keys or account credentials.
+**Trade-off:** Account entitlement, context capacity, models, rate limits and cost remain provider/account dependent; a live test must use the official CLI, not a similarly named local command.
+**Impact:** The bridge protocol-probes the executable, keeps only an opaque thread ID in VS Code global state, redacts bounded context, requires `ai:invoke` plus explicit confirmation, and gives a model only restricted read-only/on-request access. It remains experimental until an official-CLI live UAT records secret-free evidence.
+
+### AD-024: Multi-provider means connection-neutral, not credential-neutral (2026-09-12)
+
+**Decision:** Support Codex, Claude Code, Gemini CLI, Cline, OpenCode and OpenRouter through a registry that distinguishes managed official login, PEA-held API key and external MCP host. Only OpenRouter has an in-product HTTP adapter in P0; its key lives in VS Code SecretStorage.
+**Reason:** Each supplier exposes a different official authentication and agent-control model. Treating a browser/session/cache as a portable API would create security, terms and support risk.
+**Impact:** PEA does not read/write third-party auth stores, does not automate OAuth or installations, does not invoke Cline (whose documented default is auto-approval), and does not promote prohibited Claude Pro/Max OpenCode plugins. Claude/Gemini runners, OpenCode server control and live UAT are explicit P1/external gates.
+
+### AD-025: Native PEA orchestration replaces Hermes as the model-control path (2026-09-12)
+
+**Decision:** Implement provider selection, explicit fallback, connection status, SecretStorage references and per-turn audit in PEA; Hermes stays only a legacy optional ACP compatibility adapter.
+**Reason:** The product must be useful to teams that do not use Hermes and must own its support/security contract rather than borrowing a profile with different approval semantics.
+**Impact:** PEA never reads Hermes configuration/auth files and does not call Hermes as a provider. Its new connection controller is provider-neutral and is tested without a preconfigured external agent.
 
 ## Active Blockers
 

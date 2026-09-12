@@ -59,6 +59,7 @@ const publicCommandIds = Object.freeze([
   'pea.searchTdn', 'pea.searchDictionary', 'pea.prepareBuild', 'pea.runBuild',
   'pea.buildStatus', 'pea.cancelBuild', 'pea.buildEvidence', 'pea.reviewActiveFile',
   'pea.reviewChanges', 'pea.refreshEngineeringCenter', 'pea.openSampleWorkspace',
+  'pea.connectChatGpt', 'pea.askCodex',
 ]);
 const stableGateIds = Object.freeze([
   'g0BaselineIntegrity', 'g1PremiumP0', 'g2SemanticP1', 'g3Tier0Virtualization',
