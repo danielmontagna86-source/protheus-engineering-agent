@@ -990,6 +990,14 @@ test('public product metadata declares the canonical brand and repository', asyn
     new URL('README.md', productRoot),
     'utf8',
   );
+  const extensionReadme = await (await import('node:fs/promises')).readFile(
+    new URL('apps/vscode-extension/README.md', productRoot),
+    'utf8',
+  );
+  const extensionLocale = JSON.parse(await (await import('node:fs/promises')).readFile(
+    new URL('apps/vscode-extension/package.nls.json', productRoot),
+    'utf8',
+  ));
 
   assert.equal(manifest.version, '0.3.0');
   assert.equal(extension.version, manifest.version);
@@ -998,12 +1006,17 @@ test('public product metadata declares the canonical brand and repository', asyn
     manifest.repository?.url,
     'https://github.com/danielmontagna86-source/protheus-engineering-agent.git',
   );
-  assert.match(manifest.description, /ADVPL\/TLPP/);
+  assert.equal(
+    manifest.description,
+    'Runtime de engenharia baseado em evidências e interface VS Code fina para projetos Protheus ADVPL/TLPP.',
+  );
   assert.ok(manifest.keywords.includes('vscode'));
   assert.ok(manifest.keywords.includes('mcp'));
   assert.match(readme, /Projeto comunitário independente/);
   assert.match(readme, /Extensão VS Code autônoma para engenharia ADVPL\/TLPP/i);
   assert.match(readme, /não exige Hermes, conta de IA, modelo, Python/i);
+  assert.match(extensionReadme, /Interface VS Code autônoma para engenharia ADVPL\/TLPP/i);
+  assert.match(extensionLocale['extension.description'], /^Ferramentas independentes de engenharia para projetos ADVPL\/TLPP/);
   assert.deepEqual(extension.categories, ['Linters', 'Testing']);
   assert.equal(extension.preview, true);
   assert.equal(extension.pricing, 'Free');
@@ -1033,8 +1046,8 @@ test('public discovery contract makes the Marketplace and GitHub launch actionab
   assert.match(launchOperations, /1,000 stars/i);
   assert.match(launchOperations, /not a release gate/i);
   assert.match(launchOperations, /do not.*productivity/i);
-  assert.match(extensionReadme, /independent community project/i);
-  assert.match(extensionReadme, /does not replace VS Code/i);
+  assert.match(extensionReadme, /projeto comunitário independente/i);
+  assert.match(extensionReadme, /não substitui.*VS Code/i);
 });
 
 test('publication audit rejects a Marketplace-incompatible prerelease version', async () => {

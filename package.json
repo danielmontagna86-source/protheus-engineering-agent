@@ -1,7 +1,7 @@
 {
   "name": "protheus-engineering-agent",
   "version": "0.3.0",
-  "description": "Open-source engineering runtime and thin VS Code interface for ADVPL/TLPP projects.",
+  "description": "Runtime de engenharia baseado em evidências e interface VS Code fina para projetos Protheus ADVPL/TLPP.",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",

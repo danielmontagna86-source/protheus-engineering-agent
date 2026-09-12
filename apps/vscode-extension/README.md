@@ -1,19 +1,19 @@
-# Protheus Engineering Agent for VS Code
+# Protheus Engineering Agent para VS Code
 
-Standalone VS Code interface for evidence-backed ADVPL/TLPP engineering. The reusable deterministic runtime is bundled into the VSIX.
+Interface VS Code autônoma para engenharia ADVPL/TLPP baseada em evidências. O runtime determinístico e reutilizável acompanha o VSIX.
 
-The preview provides a native Engineering Center plus commands for workspace indexing, active-file and Git change review, structured Project Memory and Journal, validated snapshot import, supervised build lifecycle, and runtime health. Review findings appear in the native Problems panel while complete machine-readable reports remain in the Output channel. Domain analysis runs in the bundled reusable runtime; the extension does not replace VS Code's editor, explorer, terminal, Git, diff, compile/debug, or chat interfaces.
+A prévia oferece uma Central de Engenharia nativa e comandos para indexar o workspace, revisar arquivo ativo e mudanças Git, registrar Project Memory e Journal estruturados, importar snapshots validados, supervisionar builds e verificar a saúde do runtime. Achados de revisão aparecem no painel nativo Problemas, enquanto relatórios completos e legíveis por máquina permanecem no canal Saída. A análise de domínio roda no runtime reutilizável empacotado; a extensão não substitui editor, explorer, terminal, Git, diff, compilação, depuração ou chat do VS Code.
 
-Use the built-in **Get Started: Start with evidence-backed Protheus review** walkthrough to validate the workspace, index supported sources, and run the first review.
+Use o walkthrough integrado **Começar: revisão Protheus baseada em evidências** para validar o workspace, indexar fontes compatíveis e executar a primeira revisão.
 
-This is an independent community project. It is not affiliated with, sponsored by, or maintained by TOTVS, the Protheus brand, or Hermes Agent.
+Este é um projeto comunitário independente. Não é afiliado, patrocinado ou mantido pela TOTVS, pela marca Protheus ou pelo Hermes Agent.
 
-## Safety defaults
+## Padrões de segurança
 
-- The extension is disabled for untrusted workspaces.
-- Normal commands require no Hermes, model account, Python, network, Oracle, TDN or AppServer.
-- Experimental Hermes compatibility is optional and uses an isolated profile under the workspace.
-- External integrations are unavailable until explicitly configured and granted.
-- Source, Skills, Rules, logs, and integration results are treated as untrusted project data.
+- A extensão permanece desabilitada em workspaces não confiáveis.
+- Os comandos normais não exigem Hermes, conta de modelo, Python, rede, Oracle, TDN ou AppServer.
+- A compatibilidade experimental com Hermes é opcional e usa perfil isolado dentro do workspace.
+- Integrações externas permanecem indisponíveis até receberem configuração e grants explícitos.
+- Fontes, Skills, Rules, logs e resultados de integração são tratados como dados não confiáveis do projeto.
 
-Project source, documentation, limitations, and security reporting are available at https://github.com/danielmontagna86-source/protheus-engineering-agent.
+Código-fonte, documentação, limitações e o processo de segurança estão disponíveis em https://github.com/danielmontagna86-source/protheus-engineering-agent.

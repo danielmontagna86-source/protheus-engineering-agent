@@ -388,7 +388,7 @@ test('long-running command surfaces use cancellable native progress and forward 
   assert.equal(tokens[0], fake.progressCalls[0].token);
 });
 
-test('extension manifest declares only bounded read-only language model tools', async () => {
+test('extension manifest declara apenas ferramentas de modelo limitadas e somente leitura', async () => {
   const manifest = JSON.parse(await readFile(
     join(productRoot, 'apps', 'vscode-extension', 'package.json'),
     'utf8',
@@ -404,7 +404,7 @@ test('extension manifest declares only bounded read-only language model tools', 
     'pea_readProjectContext', 'pea_reviewChanges', 'pea_reviewFile',
   ]);
   assert.ok(tools.every((tool) => tool.canBeReferencedInPrompt === true));
-  assert.ok(tools.every((tool) => localized(tool.modelDescription).includes('read-only')));
+  assert.ok(tools.every((tool) => localized(tool.modelDescription).includes('somente leitura')));
   assert.ok(tools.every((tool) => tool.inputSchema.additionalProperties === false));
 });
 
