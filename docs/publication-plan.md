@@ -6,7 +6,8 @@ own exact-commit evidence is complete. The standalone VSIX runs without
 Hermes and coexists with official TDS; public CodeQL, OSV, secret scanning and
 the cross-platform CI matrix are active on `main`. The remaining gates are
 clean candidate artifacts, downloaded-asset reproduction, accessibility/UAT,
-live Protheus acceptance, Marketplace identity, legal review and named GO.
+live Protheus acceptance, Marketplace identity and named GO. A aprovação jurídica
+de marca foi registrada em 2026-09-12; os demais gates continuam independentes.
 
 ## Publication model
 

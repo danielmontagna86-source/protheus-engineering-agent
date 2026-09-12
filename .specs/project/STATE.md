@@ -46,7 +46,7 @@
 
 **Decision:** Manter `Protheus Engineering Agent` e o slug `danielmontagna86-source/protheus-engineering-agent`.
 **Reason:** O nome maximiza clareza e intenção de busca para equipes ADVPL/TLPP; não foi encontrado produto ou repositório com o nome exato na validação de 2026-09-07.
-**Trade-off:** `Protheus` é marca de terceiro e exige disclaimer permanente, identidade visual independente e revisão jurídica antes de exploração comercial relevante.
+**Trade-off:** `Protheus` é marca de terceiro e exige disclaimer permanente e identidade visual independente. A revisão jurídica de marca foi aprovada pelo responsável em 2026-09-12 e registrada em `docs/governance/legal-trademark-clearance-2026-09-12.md`; novas jurisdições, campanhas, modelo comercial ou nome exigem revisão adicional.
 **Impact:** Metadados, READMEs e documentação usam uma promessa funcional e não alegam afiliação ou suporte oficial.
 
 ### AD-007: Final release evidence lives outside the tracked tree (2026-09-07)

@@ -14,6 +14,8 @@
 
 ## Gates que permanecem externos
 
-Revisão jurídica da marca, atribuição/renderização do preview social, capturas
-acessíveis do VSIX, publisher/termos Marketplace, UAT assistiva, piloto humano,
-homologação licenciada de AppServer e evidência do artefato do candidato exato.
+Atribuição/renderização do preview social, capturas acessíveis do VSIX,
+publisher/termos Marketplace, UAT assistiva, piloto humano, homologação
+licenciada de AppServer e evidência do artefato do candidato exato. A revisão
+jurídica de marca foi aprovada e registrada em
+`docs/governance/legal-trademark-clearance-2026-09-12.md`.

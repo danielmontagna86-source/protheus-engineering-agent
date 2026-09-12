@@ -19,10 +19,12 @@ comandos e identificadores; não deve ser a identidade pública isolada.
 | ADVPL Engineering Agent | Alta | Média | Média | reduz TLPP, runtime e o contexto de engenharia |
 | PEA | Baixa | Alta | Baixa | sigla genérica e difícil de descobrir |
 
-Não há autorização implícita de marca por esta decisão. Antes de campanha
-comercial relevante, mudança de publisher ou remoção do estágio preview, é
-necessária revisão jurídica de marca. O projeto não usa a identidade visual da
-TOTVS e mantém aviso de independência no README, NOTICE e listing.
+O responsável confirmou em 2026-09-12 que a revisão jurídica de marca foi
+concluída com aprovação; o registro público de escopo está em
+[aprovação jurídica de marca](governance/legal-trademark-clearance-2026-09-12.md).
+O projeto não usa a identidade visual da TOTVS e mantém aviso de independência
+no README, NOTICE e listing. Mudanças relevantes de nome, território, modelo
+comercial ou campanha exigem nova revisão.
 
 ## Modelo de posicionamento
 
