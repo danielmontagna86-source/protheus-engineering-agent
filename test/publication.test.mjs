@@ -1005,7 +1005,7 @@ test('public product metadata declares the canonical brand and repository', asyn
     'utf8',
   ));
 
-  assert.equal(manifest.version, '0.3.0');
+  assert.equal(manifest.version, '0.3.1');
   assert.equal(extension.version, manifest.version);
   assert.match(extension.version, /^\d+\.\d+\.\d+$/);
   assert.equal(
