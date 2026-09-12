@@ -77,7 +77,10 @@ function normalizedZipEntries(entries) {
 
 export async function normalizeZipArchive(path) {
   const entries = await readZipArchive(await readFile(path));
-  await writeZipArchive(path, normalizedZipEntries(entries), { compress: false });
+  await writeZipArchive(path, normalizedZipEntries(entries), {
+    compress: false,
+    forceDosTimestamp: true,
+  });
 }
 
 export function git(root, args) {
@@ -183,7 +186,10 @@ export async function verifySourceArchive(path, version, { root, commit } = {}) 
       } else {
         const rawReproduction = Buffer.from(reproduced.stdout);
         const reproducedEntries = await readZipArchive(rawReproduction);
-        const normalizedReproduction = await createZipBuffer(normalizedZipEntries(reproducedEntries), { compress: false });
+        const normalizedReproduction = await createZipBuffer(normalizedZipEntries(reproducedEntries), {
+          compress: false,
+          forceDosTimestamp: true,
+        });
         if (!rawReproduction.equals(bytes) && !normalizedReproduction.equals(bytes)) {
           errors.push('source archive does not byte-match git archive of the declared commit');
         }

@@ -87,6 +87,7 @@ export function createZipBuffer(entries, options = {}) {
   const zip = new yazl.ZipFile();
   const chunks = [];
   const compress = options.compress ?? true;
+  const forceDosTimestamp = options.forceDosTimestamp ?? false;
   const result = new Promise((resolve, reject) => {
     zip.outputStream.on('data', (chunk) => chunks.push(chunk));
     zip.outputStream.on('error', reject);
@@ -96,12 +97,17 @@ export function createZipBuffer(entries, options = {}) {
     const name = String(entry.name).replaceAll('\\', '/');
     const mtime = entry.mtime ?? options.mtime ?? new Date('2000-01-01T00:00:00.000Z');
     if (entry.isDirectory || name.endsWith('/')) {
-      zip.addEmptyDirectory(name, { mtime, mode: entry.mode ?? 0o40755 });
+      zip.addEmptyDirectory(name, {
+        mtime,
+        mode: entry.mode ?? 0o40755,
+        forceDosTimestamp,
+      });
     } else {
       zip.addBuffer(Buffer.from(entry.data), name, {
         mtime,
         mode: entry.mode ?? 0o100644,
         compress,
+        forceDosTimestamp,
       });
     }
   }
