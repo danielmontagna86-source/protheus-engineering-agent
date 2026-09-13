@@ -48,6 +48,7 @@
   "commands.searchTdn": "Protheus Agent: Pesquisar snapshot TDN local",
   "commands.searchDictionary": "Protheus Agent: Pesquisar snapshot Dictionary local",
   "commands.prepareBuild": "Protheus Agent: Preparar build supervisionado",
+  "commands.compileWithTds": "Protheus Agent: Compilar arquivo com TDS",
   "commands.runBuild": "Protheus Agent: Executar build supervisionado",
   "commands.buildStatus": "Protheus Agent: Mostrar estado do build",
   "commands.cancelBuild": "Protheus Agent: Cancelar build supervisionado",

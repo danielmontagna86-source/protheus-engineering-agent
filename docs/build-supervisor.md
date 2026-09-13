@@ -34,6 +34,20 @@ relative to the declared workspace and are hashed after a successful process exi
 The product deliberately has no default deploy step. A live Protheus compiler/AppServer test is
 an environment acceptance gate and cannot be replaced by the simulation suite.
 
+## Optional TDS language-model bridge
+
+The VS Code extension optionally exposes **Protheus Agent: Compile file with
+TDS** when the installed TDS contributes its public `tds-lm-tools` tool and VS
+Code exposes `vscode.lm.invokeTool`. The bridge sends a fixed `compiler` request
+for one absolute, workspace-contained AdvPL/TLPP path after a modal confirmation;
+it never reads TDS configuration, RPO tokens or output logs.
+
+The bridge is intentionally not a `createBuildSupervisor` runner. TDS returns
+diagnostic refresh data rather than the compiler identity, exit result and
+checksummed workspace artifact required by the `compiler-verified` evidence
+level. A timeout, cancellation, absent diagnostic refresh or malformed result is
+returned as `unverified`, never as completed compiler evidence.
+
 ## Durable resume
 
 For durable workflows, provide a run idempotency key, a per-step idempotency key and a run store.
