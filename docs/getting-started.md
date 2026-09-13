@@ -21,6 +21,20 @@ Esse caminho não exige Docker, Protheus, banco, Hermes, modelo ou rede. O resul
 
 **Preparar build supervisionado** mostra o plano e nunca executa silenciosamente. O pacote público não traz AppServer, RPO nem credenciais. Sem adapter confiável fornecido pelo host, a resposta correta é `BUILD_UNAVAILABLE`.
 
+## Compilação assistida pelo TDS
+
+Em um workspace **confiável**, com TDS-VSCode instalado, conectado e autenticado,
+abra um fonte ADVPL/TLPP e execute **Protheus Agent: Compilar arquivo com TDS**.
+O PEA pede confirmação porque a compilação altera o RPO já selecionado pelo TDS,
+envia somente o caminho absoluto do arquivo aberto e chama a ferramenta pública
+`tds-lm-tools` do TDS. Ele não lê `servers.json`, token RPO, senha nem log.
+
+O resultado exibe diagnósticos saneados: `completed` (diagnósticos atualizados sem
+erros), `failed` (erros retornados) ou `unverified` (timeout, cancelamento ou
+contrato incompleto). `completed` nessa ponte não é ainda a evidência
+`compiler-verified` do build supervisionado: o contrato atual do TDS não entrega
+código de saída, identidade de compilador e hash de artefato para o PEA.
+
 ## Próximos passos
 
 Use as jornadas em `docs/workflows/pt-BR/`, a configuração em `.pea/config.json` conforme `schemas/pea-config.schema.json` e os limites em `docs/limitations.md`.

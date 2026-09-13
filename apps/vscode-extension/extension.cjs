@@ -1,10 +1,135 @@
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const { execFile: nodeExecFile } = require('node:child_process');
+const { realpathSync } = require('node:fs');
 const { appendFile, cp, mkdir, rm } = require('node:fs/promises');
 const { promisify } = require('node:util');
 const MAX_LANGUAGE_MODEL_OUTPUT_BYTES = 256 * 1024;
+const MAX_TDS_TOOL_OUTPUT_BYTES = 64 * 1024;
+const TDS_COMPILER_TOOL = 'tds-lm-tools';
+const TDS_SOURCE_EXTENSIONS = new Set(['.prw', '.prg', '.prx', '.tlpp', '.ppx', '.ppp', '.apw', '.aph']);
 const execFileAsync = promisify(nodeExecFile);
+
+function redactTdsToolText(value) {
+  return String(value)
+    .replace(/(authorization\s*[:=]\s*(?:bearer|basic)\s+)[^\s"'\\,}]+/gi, '$1<redacted>')
+    .replace(/\b(password|passwd|token|api[_-]?key)\s*[:=]\s*["']?[^\s"'\\,}]+/gi, '$1=<redacted>');
+}
+
+function tdsToolUnavailable() {
+  return {
+    adapter: 'tds-language-model-tool',
+    status: 'unavailable',
+    error: {
+      code: 'TDS_TOOL_UNAVAILABLE',
+      message: 'The installed VS Code or TDS does not expose the public TDS language-model compiler tool.',
+    },
+  };
+}
+
+function assertTdsTarget(workspace, target, resolvePath = realpathSync.native) {
+  if (typeof workspace !== 'string' || !path.isAbsolute(workspace)) {
+    throw new Error('a selected absolute workspace is required');
+  }
+  if (typeof target !== 'string' || !path.isAbsolute(target)) {
+    throw new Error('an absolute ADVPL/TLPP target is required');
+  }
+  const normalizedWorkspace = path.resolve(workspace);
+  const normalizedTarget = path.resolve(target);
+  let physicalWorkspace;
+  let physicalTarget;
+  try {
+    physicalWorkspace = path.resolve(resolvePath(normalizedWorkspace));
+    physicalTarget = path.resolve(resolvePath(normalizedTarget));
+  } catch {
+    throw new Error('workspace and target must resolve to regular local paths');
+  }
+  const relative = path.relative(physicalWorkspace, physicalTarget);
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error('target must stay inside the selected workspace');
+  }
+  if (!TDS_SOURCE_EXTENSIONS.has(path.extname(physicalTarget).toLowerCase())) {
+    throw new Error('target must be an ADVPL/TLPP source supported by TDS');
+  }
+  return physicalTarget;
+}
+
+function tdsToolText(result) {
+  if (!Array.isArray(result?.content)) return null;
+  const text = result.content.map((part) => (typeof part?.value === 'string' ? part.value : '')).join('\n');
+  if (Buffer.byteLength(text, 'utf8') > MAX_TDS_TOOL_OUTPUT_BYTES) return null;
+  return redactTdsToolText(text);
+}
+
+async function invokeTdsCompilerTool(vscode, { workspace, target }, token, options = {}) {
+  if (vscode.workspace?.isTrusted !== true) throw new Error('compile with TDS requires a trusted workspace');
+  const source = assertTdsTarget(workspace, target, options.resolvePath);
+  if (typeof vscode.lm?.invokeTool !== 'function') return tdsToolUnavailable();
+  if (token?.isCancellationRequested) {
+    return {
+      adapter: 'tds-language-model-tool', status: 'unverified',
+      error: { code: 'TDS_TOOL_CANCELLED', message: 'TDS compiler invocation was cancelled before it started.' },
+    };
+  }
+  let result;
+  try {
+    result = await vscode.lm.invokeTool(TDS_COMPILER_TOOL, {
+      input: { command: 'compiler', target: source, flags: ['only=all', 'sort=file', 'format=json'] },
+    }, token);
+  } catch (error) {
+    const cancelled = token?.isCancellationRequested || error?.name === 'CancellationError';
+    return {
+      adapter: 'tds-language-model-tool', status: 'unverified',
+      error: {
+        code: cancelled ? 'TDS_TOOL_CANCELLED' : 'TDS_TOOL_INVOCATION_FAILED',
+        message: cancelled ? 'TDS compiler invocation was cancelled.' : 'TDS compiler tool invocation failed.',
+      },
+    };
+  }
+  const text = tdsToolText(result);
+  if (!text) {
+    return {
+      adapter: 'tds-language-model-tool', status: 'unverified',
+      error: { code: 'TDS_TOOL_MALFORMED_RESULT', message: 'TDS compiler tool returned no bounded structured diagnostics.' },
+    };
+  }
+  let diagnostics;
+  try {
+    diagnostics = JSON.parse(text);
+  } catch {
+    return {
+      adapter: 'tds-language-model-tool', status: 'unverified',
+      error: { code: 'TDS_TOOL_MALFORMED_RESULT', message: 'TDS compiler tool returned malformed diagnostics.' },
+    };
+  }
+  if (!diagnostics || typeof diagnostics !== 'object' || !Number.isInteger(diagnostics.errors)
+    || !Number.isInteger(diagnostics.warnings) || typeof diagnostics.timedOut !== 'boolean'
+    || typeof diagnostics.diagnosticsUpdated !== 'boolean' || !Array.isArray(diagnostics.diagnostics)) {
+    return {
+      adapter: 'tds-language-model-tool', status: 'unverified',
+      error: { code: 'TDS_TOOL_MALFORMED_RESULT', message: 'TDS compiler tool returned an unsupported diagnostics contract.' },
+    };
+  }
+  const evidence = {
+    adapter: 'tds-language-model-tool',
+    target: source,
+    diagnostics: {
+      errors: diagnostics.errors,
+      warnings: diagnostics.warnings,
+      updated: diagnostics.diagnosticsUpdated,
+      timedOut: diagnostics.timedOut,
+      entries: diagnostics.diagnostics,
+    },
+  };
+  if (diagnostics.timedOut || !diagnostics.diagnosticsUpdated) {
+    return {
+      ...evidence,
+      status: 'unverified',
+      error: { code: 'TDS_DIAGNOSTICS_UNVERIFIED', message: 'TDS did not provide fresh final diagnostics for this compilation.' },
+    };
+  }
+  return { ...evidence, status: diagnostics.errors > 0 ? 'failed' : 'completed' };
+}
 
 async function createSampleWorkspace(source, storageRoot, options = {}) {
   if (typeof storageRoot !== 'string' || storageRoot.length === 0) throw new Error('VS Code global storage is unavailable');
@@ -972,6 +1097,31 @@ function createExtension(vscode, options = {}) {
         if (output) lastBuildRequestId = parseRuntimeJson(output, t('build preparation')).requestId;
         return output;
       }),
+      vscode.commands.registerCommand('pea.compileWithTds', async (uri) => {
+        const target = uri?.fsPath ?? vscode.window.activeTextEditor?.document?.uri?.fsPath;
+        if (typeof target !== 'string' || !target) return vscode.window.showWarningMessage(t('Open an ADVPL/TLPP source file first.'));
+        const workspace = await workspacePath(uri ?? vscode.window.activeTextEditor?.document?.uri);
+        if (!workspace) return vscode.window.showWarningMessage(t('Open a workspace first.'));
+        const compile = t('Compile with TDS');
+        const choice = await vscode.window.showInformationMessage(
+          t('Compile {0} with TDS? This changes the selected AppServer RPO.', path.basename(target)),
+          { modal: true }, compile,
+        );
+        if (choice !== compile) return undefined;
+        return vscode.window.withProgress({
+          location: vscode.ProgressLocation.Notification,
+          title: t('Compiling with TDS'),
+          cancellable: true,
+        }, async (_progress, token) => {
+          const result = await invokeTdsCompilerTool(vscode, { workspace, target }, token, {
+            resolvePath: options.resolveTdsPath,
+          });
+          channel.clear();
+          channel.appendLine(JSON.stringify(result, null, 2));
+          channel.show(true);
+          return result;
+        });
+      }),
       vscode.commands.registerCommand('pea.runBuild', async () => {
         const workspace = await workspacePath();
         if (!workspace) return vscode.window.showWarningMessage(t('Open a workspace first.'));
@@ -1042,4 +1192,5 @@ module.exports = {
   createInProcessCliRunner,
   createSampleWorkspace,
   createExtension,
+  invokeTdsCompilerTool,
 };

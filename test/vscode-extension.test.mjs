@@ -30,6 +30,7 @@ function fakeVscode() {
   const openDialogResponses = [];
   const openedExternal = [];
   const languageModelTools = new Map();
+  const invokedLanguageModelTools = [];
   const progressCalls = [];
   const changeDocumentListeners = [];
   const closeDocumentListeners = [];
@@ -48,6 +49,7 @@ function fakeVscode() {
     openDialogResponses,
     openedExternal,
     languageModelTools,
+    invokedLanguageModelTools,
     progressCalls,
     fireDidChangeTextDocument(document) {
       for (const listener of changeDocumentListeners) listener({ document });
@@ -60,6 +62,17 @@ function fakeVscode() {
         registerTool(name, tool) {
           languageModelTools.set(name, tool);
           return { dispose() {} };
+        },
+        async invokeTool(name, options, token) {
+          invokedLanguageModelTools.push({ name, options, token });
+          return { content: [{ value: JSON.stringify({
+            target: options.input.target,
+            errors: 0,
+            warnings: 0,
+            diagnosticsUpdated: true,
+            timedOut: false,
+            diagnostics: [],
+          }) }] };
         },
       },
       LanguageModelToolResult: class LanguageModelToolResult {
@@ -194,7 +207,7 @@ test('extension registers only thin orchestration commands and delegates doctor 
 
   assert.deepEqual([...fake.handlers.keys()].sort(), [
     'pea.addJournalEntry', 'pea.addMemoryEntry', 'pea.askAi', 'pea.askCodex', 'pea.buildEvidence', 'pea.buildStatus',
-    'pea.cancelBuild', 'pea.connectChatGpt', 'pea.doctor', 'pea.expireMemory', 'pea.importSnapshot',
+    'pea.cancelBuild', 'pea.compileWithTds', 'pea.connectChatGpt', 'pea.doctor', 'pea.expireMemory', 'pea.importSnapshot',
     'pea.indexWorkspace', 'pea.manageAiConnections', 'pea.openContext', 'pea.openSampleWorkspace', 'pea.prepareBuild',
     'pea.promoteJournalEntry', 'pea.refreshEngineeringCenter', 'pea.reviewActiveFile',
     'pea.reviewChanges', 'pea.runBuild', 'pea.searchDictionary', 'pea.searchTdn',
@@ -454,6 +467,96 @@ test('extension exposes the supervised build lifecycle while preserving unavaila
   ]);
   assert.equal(calls[1].length, 4);
   assert.doesNotMatch(calls[1][3], /maintainer/);
+});
+
+test('TDS bridge invokes only the public compiler tool for a trusted contained source', async () => {
+  const fake = fakeVscode();
+  const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
+  const source = join(workspace, 'pea_lab_cp1252_20260913.prw');
+  fake.api.workspace.workspaceFolders = [{ uri: { fsPath: workspace } }];
+  fake.api.workspace.isTrusted = true;
+
+  const result = await extension.invokeTdsCompilerTool(fake.api, { workspace, target: source }, {}, { resolvePath: (candidate) => candidate });
+
+  assert.equal(result.status, 'completed');
+  assert.equal(result.adapter, 'tds-language-model-tool');
+  assert.deepEqual(fake.invokedLanguageModelTools[0], {
+    name: 'tds-lm-tools',
+    options: { input: { command: 'compiler', target: source, flags: ['only=all', 'sort=file', 'format=json'] } },
+    token: {},
+  });
+});
+
+test('TDS bridge fails closed outside trusted contained AdvPL/TLPP scope and on unavailable API', async () => {
+  const fake = fakeVscode();
+  const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
+  const outside = process.platform === 'win32' ? 'D:\\outside.prw' : '/outside.prw';
+  fake.api.workspace.isTrusted = true;
+  await assert.rejects(
+    extension.invokeTdsCompilerTool(fake.api, { workspace, target: outside }, {}, { resolvePath: (candidate) => candidate }),
+    /inside the selected workspace/,
+  );
+  const linked = join(workspace, 'linked-source.prw');
+  await assert.rejects(
+    extension.invokeTdsCompilerTool(fake.api, { workspace, target: linked }, {}, {
+      resolvePath: (candidate) => candidate === linked ? outside : candidate,
+    }),
+    /inside the selected workspace/,
+  );
+  await assert.rejects(
+    extension.invokeTdsCompilerTool(fake.api, { workspace, target: join(workspace, 'readme.md') }, {}, { resolvePath: (candidate) => candidate }),
+    /ADVPL\/TLPP/,
+  );
+  fake.api.workspace.isTrusted = false;
+  await assert.rejects(
+    extension.invokeTdsCompilerTool(fake.api, { workspace, target: join(workspace, 'source.prw') }, {}, { resolvePath: (candidate) => candidate }),
+    /trusted workspace/,
+  );
+  fake.api.workspace.isTrusted = true;
+  delete fake.api.lm.invokeTool;
+  const unavailable = await extension.invokeTdsCompilerTool(fake.api, { workspace, target: join(workspace, 'source.prw') }, {}, { resolvePath: (candidate) => candidate });
+  assert.deepEqual(unavailable, {
+    adapter: 'tds-language-model-tool', status: 'unavailable',
+    error: { code: 'TDS_TOOL_UNAVAILABLE', message: 'The installed VS Code or TDS does not expose the public TDS language-model compiler tool.' },
+  });
+});
+
+test('TDS bridge marks timeouts and malformed replies unverified and redacts secret-like text', async () => {
+  const fake = fakeVscode();
+  const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
+  const source = join(workspace, 'source.prw');
+  fake.api.workspace.isTrusted = true;
+  fake.api.lm.invokeTool = async () => ({ content: [new fake.api.LanguageModelTextPart(JSON.stringify({
+    errors: 0, warnings: 0, diagnosticsUpdated: false, timedOut: true,
+    diagnostics: [{ message: 'Authorization: Bearer should-not-appear' }],
+  }))] });
+
+  const timeout = await extension.invokeTdsCompilerTool(fake.api, { workspace, target: source }, {}, { resolvePath: (candidate) => candidate });
+  assert.equal(timeout.status, 'unverified');
+  assert.equal(timeout.error.code, 'TDS_DIAGNOSTICS_UNVERIFIED');
+  assert.doesNotMatch(JSON.stringify(timeout), /should-not-appear/);
+
+  fake.api.lm.invokeTool = async () => ({ content: [new fake.api.LanguageModelTextPart('not-json')] });
+  const malformed = await extension.invokeTdsCompilerTool(fake.api, { workspace, target: source }, {}, { resolvePath: (candidate) => candidate });
+  assert.equal(malformed.status, 'unverified');
+  assert.equal(malformed.error.code, 'TDS_TOOL_MALFORMED_RESULT');
+});
+
+test('TDS compile command asks for confirmation and forwards a cancellable native progress token', async () => {
+  const fake = fakeVscode();
+  const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
+  const source = join(workspace, 'source.prw');
+  fake.api.workspace.workspaceFolders = [{ uri: { fsPath: workspace } }];
+  fake.api.workspace.isTrusted = true;
+  fake.api.window.activeTextEditor = { document: { uri: { fsPath: source } } };
+  extension.createExtension(fake.api, { resolveTdsPath: (candidate) => candidate }).activate({ subscriptions: [] });
+
+  await fake.handlers.get('pea.compileWithTds')();
+
+  assert.equal(fake.informationMessages[0].options.modal, true);
+  assert.match(fake.informationMessages[0].message, /RPO/);
+  assert.equal(fake.progressCalls.at(-1).options.cancellable, true);
+  assert.equal(fake.invokedLanguageModelTools.at(-1).token, fake.progressCalls.at(-1).token);
 });
 
 test('in-process runtime aborts the underlying operation on timeout', async () => {
@@ -1068,7 +1171,7 @@ test('real host smoke installs the packaged VSIX before exercising commands', as
   assert.match(runner, /windows1252/i);
   assert.match(host, /vscode\.extensions\.getExtension\('danielmontagna86-source\.protheus-engineering-agent'\)/);
   assert.match(host, /execute\('pea\.doctor', workspace\.uri\)/);
-  assert.match(host, /declaredCommandIds\.length, 23/);
+  assert.match(host, /declaredCommandIds\.length, 24/);
 });
 
 test('package lifecycle harness proves install, upgrade, uninstall, reinstall and rollback', async () => {
