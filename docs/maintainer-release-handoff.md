@@ -14,7 +14,7 @@ This document separates completed engineering from actions that require the prod
 
 ## Owner actions that cannot be manufactured by the build
 
-1. **Name and trademark:** obtain the desired legal review for public/commercial use of the descriptive `Protheus Engineering Agent` name and retain the independent-project disclaimer. Rename before the first public tag if counsel rejects it.
+1. **Name and trademark:** the responsible owner confirmed the legal review for the descriptive `Protheus Engineering Agent` name as approved on 2026-09-12; the scoped record is in `docs/governance/legal-trademark-clearance-2026-09-12.md`. Retain the independent-project disclaimer and obtain a new review before a material change of name, territory, commercial model or campaign.
 2. **Real Protheus acceptance:** provide a disposable homologation AppServer/RPO, the approved compiler command/identity and temporary credentials through the host secret store—not Git. Run one representative compile and retain the supervisor artifact hash. Production/RPO deploy is outside the preview.
 3. **Accessibility/screenshots:** perform the keyboard/screen-reader/high-contrast checklist in `docs/qa/accessibility-review-2026-09-07.md` and capture screenshots from the real installed VSIX.
 4. **GitHub publication:** after the exact candidate CI and OSV runs are green, explicitly approve changing the repository from private to public. Confirm the first CodeQL `security-extended` run, enable private vulnerability reporting, and recreate/verify branch rules immediately because GitHub may disable push rulesets during a private-to-public visibility change; remember that code and Actions history become public.
