@@ -991,6 +991,8 @@ test('extension ships complete VS Code manifest and runtime localization for Eng
   assert.ok(referencedKeys.length >= 15);
   assert.ok(referencedKeys.every((key) => typeof defaults[key] === 'string' && defaults[key].length > 0));
   assert.deepEqual(Object.keys(portuguese).sort(), Object.keys(defaults).sort());
+  assert.equal(defaults['commands.compileWithTds'], 'PEA: Compilar arquivo com TDS');
+  assert.equal(portuguese['commands.compileWithTds'], 'PEA: Compilar arquivo com TDS');
   assert.ok(Object.keys(runtimePortuguese).length >= 10);
   assert.ok(Object.values(runtimePortuguese).every((value) => typeof value === 'string' && value.length > 0));
 });
