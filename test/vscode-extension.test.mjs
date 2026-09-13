@@ -1171,7 +1171,7 @@ test('real host smoke installs the packaged VSIX before exercising commands', as
   assert.match(runner, /windows1252/i);
   assert.match(host, /vscode\.extensions\.getExtension\('danielmontagna86-source\.protheus-engineering-agent'\)/);
   assert.match(host, /execute\('pea\.doctor', workspace\.uri\)/);
-  assert.match(host, /declaredCommandIds\.length, 23/);
+  assert.match(host, /declaredCommandIds\.length, 24/);
 });
 
 test('package lifecycle harness proves install, upgrade, uninstall, reinstall and rollback', async () => {
