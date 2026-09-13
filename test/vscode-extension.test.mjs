@@ -482,7 +482,11 @@ test('TDS bridge invokes only the public compiler tool for a trusted contained s
   assert.equal(result.adapter, 'tds-language-model-tool');
   assert.deepEqual(fake.invokedLanguageModelTools[0], {
     name: 'tds-lm-tools',
-    options: { input: { command: 'compiler', target: source, flags: ['only=all', 'sort=file', 'format=json'] } },
+    options: { input: {
+      command: 'compiler',
+      target: source,
+      flags: { only: 'all', sort: 'file', format: 'json', syntaxOnly: false, applyOld: false, applied: [] },
+    } },
     token: {},
   });
 });
