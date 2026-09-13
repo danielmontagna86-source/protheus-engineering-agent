@@ -74,7 +74,11 @@ async function invokeTdsCompilerTool(vscode, { workspace, target }, token, optio
   let result;
   try {
     result = await vscode.lm.invokeTool(TDS_COMPILER_TOOL, {
-      input: { command: 'compiler', target: source, flags: ['only=all', 'sort=file', 'format=json'] },
+      input: {
+        command: 'compiler',
+        target: source,
+        flags: { only: 'all', sort: 'file', format: 'json', syntaxOnly: false, applyOld: false, applied: [] },
+      },
     }, token);
   } catch (error) {
     const cancelled = token?.isCancellationRequested || error?.name === 'CancellationError';
