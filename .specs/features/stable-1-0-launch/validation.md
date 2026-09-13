@@ -31,7 +31,7 @@
 | G10 compatibility/support | published VS Code/TDS/Node/OS/Protheus matrix, support and deprecation drill | PARTIAL — public policy/matrix documented; live support drill and external matrix remain |
 | G11 effectiveness/claims | preregistered representative pilot and approved claims table | UNPROVEN |
 | G12 exact release | immutable source/VSIX/SBOM/manifest/evidence, hashes and download verification | PARTIAL — source-to-commit reproduction, commit-stamped VSIX rebuilt in an isolated source-archive checkout after clean `npm ci`, full npm-resolved production lock graph reconciliation and a five-subject attestation-verification workflow are enforced; public attestation/download verification not run |
-| G13 publication | legal/brand/publisher and named owner authorization | INCOMPLETE — owner requests to prepare and publish are present; publisher access, legal/brand records and final bound receipt remain unverified |
+| G13 publication | legal/brand/publisher and named owner authorization | PARTIAL — the responsible owner confirmed the legal/brand review on 2026-09-12 and its scoped record is `docs/governance/legal-trademark-clearance-2026-09-12.md`; publisher access, Marketplace terms and final bound authorization/receipt remain unverified |
 
 Detailed code-candidate evidence: `docs/qa/vscode-git-production-validation-2026-09-10.md`; earlier records remain historical.
 
