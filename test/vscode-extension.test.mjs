@@ -1245,6 +1245,12 @@ test('real host smoke installs the packaged VSIX before exercising commands', as
   assert.match(host, /declaredCommandIds\.length, 24/);
 });
 
+test('historical VS Code smoke allows enough time to provision the requested host', async () => {
+  const runner = await readFile(join(productRoot, 'scripts', 'run-vscode-smoke.mjs'), 'utf8');
+
+  assert.match(runner, /downloadAndUnzipVSCode\(\{ version, timeout: 60_000 \}\)/);
+});
+
 test('package lifecycle harness proves install, upgrade, uninstall, reinstall and rollback', async () => {
   const lifecycle = await readFile(join(productRoot, 'scripts', 'run-vscode-lifecycle.mjs'), 'utf8');
   const workflow = await readFile(join(productRoot, '.github', 'workflows', 'ci.yml'), 'utf8');

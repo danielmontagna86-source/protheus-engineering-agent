@@ -6,6 +6,10 @@ All notable changes are recorded here. The project follows Semantic Versioning a
 
 ### Fixed
 
+- O smoke isolado do VS Code mínimo agora concede 60 segundos de espera ociosa
+  ao runner oficial ao provisionar uma versão histórica explícita. Respostas
+  lentas de metadados/download não interrompem mais a bateria de release antes
+  de a extensão empacotada ser exercitada.
 - `npm run validate` agora constrói o runtime autocontido da extensão antes da
   suíte e a executa de forma serial. Assim, um checkout limpo não depende de um
   artefato `dist` deixado por execução anterior nem sofre concorrência sobre ele.
