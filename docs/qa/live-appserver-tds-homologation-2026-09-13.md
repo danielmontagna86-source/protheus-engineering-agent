@@ -116,11 +116,11 @@ compilação no log. Antes de promover qualquer release, ainda faltam:
 
 ## Impacto no gate G6
 
-O gate G6 avança para **PARTIAL**: há saúde do AppServer/TDS, compilação positiva
-identificada CP1252/LF com include real e uma falha controlada com rollback. Ele
-continua `NO-GO` para Stable/Marketplace até os casos pendentes acima, sobretudo
-a homologação live da ponte pública e a reconciliação com o commit e artefatos
-exatos da extensão.
+O gate G6 permanece **PARTIAL**: há saúde do AppServer/TDS, compilação positiva
+identificada CP1252/LF com include real, uma falha controlada com rollback e a
+homologação positiva observada da ponte pública. Ele continua `NO-GO` para
+Stable/Marketplace até os casos pendentes acima, sobretudo a falha controlada
+pela própria ponte e a reconciliação com o commit e artefatos exatos da extensão.
 
 ## Atualização de execução — 2026-09-14
 
@@ -145,20 +145,16 @@ da ponte e não é reinterpretado como sucesso.
 | Adapters Dictionary/Oracle/PostgreSQL | PASS em testes automatizados, com allowlist, binds, limite e redaction | Não houve adapter DBAccess live do produto |
 | Laboratório local | PASS: AppServer, DBAccess, License Server e PostgreSQL em execução | Porta aberta não prova build nem consulta do produto |
 | Banco do laboratório | PASS limitado: PostgreSQL responde a `pg_isready`; sessão de catálogo somente leitura em `WIN1252`; zero tabelas públicas na base `postgres` | Nenhum dicionário Protheus foi inferido e nenhuma DDL/DML/dump foi executado |
-| Fixture positiva | PASS: SHA-256 `97C78DA1CF9411C713B6C4F86848C813F77893C508FB2FAAB00E7747EB6B4D98`; round-trip CP1252, sem BOM UTF-8 e somente LF | Ainda requer build pela ponte recarregada |
+| Fixture positiva | PASS: SHA-256 `97C78DA1CF9411C713B6C4F86848C813F77893C508FB2FAAB00E7747EB6B4D98`; round-trip CP1252, sem BOM UTF-8 e somente LF; compilação pela ponte observada em 2026-09-14 | O retorno da ponte não identifica servidor/ambiente |
 | Perfil isolado VS Code + TDS | PASS: VS Code 1.137.0, VSIX instalado, TDS 2.1.3 ativado, 24 comandos sem conflito, CP1252/LF e multi-root preservados | Não substitui UAT por teclado/leitor de tela nem build live no AppServer |
 | Compatibilidade da entrada estruturada | PASS: o TDS real recebeu uma chamada não mutante com `flags` estruturado e alcançou seu handler público | A chamada propositalmente inválida não compilou fonte nem acessou RPO |
 
 ### Próxima ação mínima e segura
 
-Depois de carregar a versão 0.3.5 em uma janela nova ou recarregada, executar
-`Protheus Agent: Compilar arquivo com TDS` com
-`pea_lab_cp1252_20260913.prw` aberto. A aceitação exige o resultado saneado da
-ponte, mais a confirmação do TDS de que o alvo explícito foi compilado no
-laboratório `P12`. Em seguida, a mesma ponte deve registrar uma falha controlada
-de include ausente. Não induzir lock, timeout ou cancelamento de modo destrutivo:
-esses casos precisam de uma janela de laboratório dedicada e de evidência
-correlacionada ao mesmo VSIX.
+Com a versão 0.3.5 carregada, executar a mesma ponte contra a fixture de include
+ausente e registrar uma falha controlada, sem alterar fontes de produto nem
+induzir lock, timeout ou cancelamento. Esses últimos casos precisam de uma janela
+de laboratório dedicada e de evidência correlacionada ao mesmo VSIX.
 
 ### Correção de alvo da paleta — 2026-09-14
 
@@ -185,5 +181,22 @@ mocks originais e, corretamente, marcou a resposta como não verificada. A vers�
 de entradas continuam `unverified`.
 
 O teste de regressão usa a estrutura concreta do `TOTVS.tds-vscode 2.1.3`.
-Ele comprova leitura local do contrato; a próxima execução autenticada deve ainda
-provar a compilação live do alvo no laboratório.
+Ele comprova leitura local do contrato; a execução positiva autenticada está
+registrada abaixo.
+
+### Homologação positiva observada da ponte — 2026-09-14
+
+Após a instalação e recarga do `Protheus Engineering Agent 0.3.5`, a execução
+informada pelo operador para `pea_lab_cp1252_20260913.prw` retornou:
+
+| Campo | Valor observado |
+|---|---|
+| Adapter | `tds-language-model-tool` |
+| Alvo | caminho absoluto da fixture CP1252/LF no workspace de homologação |
+| Diagnósticos | `errors: 0`, `warnings: 0`, `updated: true`, `timedOut: false`, lista vazia |
+| Status | `completed` |
+
+Isso prova que o PEA invocou a ponte pública do TDS, recebeu o contrato aninhado
+atual e concluiu a compilação sem diagnóstico. O JSON não traz o nome do
+AppServer, ambiente ou identificador RPO; portanto esses dados não são inferidos
+como prova de proveniência a partir deste recibo isolado.
