@@ -185,7 +185,8 @@ export async function runVsCodeSmoke() {
       || expectedCommandIds.some((command) => !hostReceipt.commandIds.includes(command))
       || !Array.isArray(hostReceipt.executedCommandIds)
       || hostReceipt.executedCommandIds.length < 5
-      || hostReceipt.invocations !== 7) {
+      || hostReceipt.invocations !== 7
+      || (tdsSource && hostReceipt.tdsStructuredInputAccepted !== true)) {
       throw new Error('installed Extension Host returned incomplete command evidence');
     }
     const report = {
@@ -200,7 +201,13 @@ export async function runVsCodeSmoke() {
       installedVsix: true,
       vsixSha256: await sha256(packaged.path),
       hermesProbed: false,
-      tds: tdsSource ? { installed: true, version: tdsVersion, activated: true, commandConflicts: 0 } : null,
+      tds: tdsSource ? {
+        installed: true,
+        version: tdsVersion,
+        activated: true,
+        commandConflicts: 0,
+        structuredInputAccepted: hostReceipt.tdsStructuredInputAccepted === true,
+      } : null,
       cp1252Lf: tdsSource ? true : null,
       multiRoot: tdsSource ? true : null,
     };
