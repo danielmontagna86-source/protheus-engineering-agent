@@ -114,7 +114,7 @@ export async function runVsCodeSmoke() {
   const requestedVersion = commandLineVersion();
   const version = requestedVersion || process.env.PEA_VSCODE_VERSION || '1.95.3';
   const vscodeExecutablePath = await localVsCodeExecutable(requestedVersion)
-    ?? await downloadAndUnzipVSCode(version);
+    ?? await downloadAndUnzipVSCode({ version, timeout: 60_000 });
   const hostRoot = join(root, 'integration', 'vscode-host');
   try {
     const [cli, ...baseArgs] = resolveCliArgsFromVSCodeExecutablePath(vscodeExecutablePath, {
