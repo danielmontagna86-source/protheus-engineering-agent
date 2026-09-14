@@ -9,6 +9,8 @@ All notable changes are recorded here. The project follows Semantic Versioning a
 - `PEA: Compilar arquivo com TDS` agora rejeita com segurança contexto sem arquivo
   local absoluto e, quando há exatamente uma fonte ADVPL/TLPP visível, usa essa
   fonte como alvo. Isso evita encaminhar a URI de Saída/Terminal ao TDS.
+- A ponte TDS entende o contrato JSON aninhado de diagnósticos emitido pelo
+  `TOTVS.tds-vscode 2.1.3`, mantendo a validação estrita para respostas incompletas.
 
 ### Added
 

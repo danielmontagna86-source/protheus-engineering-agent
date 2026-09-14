@@ -151,7 +151,7 @@ da ponte e não é reinterpretado como sucesso.
 
 ### Próxima ação mínima e segura
 
-Depois de carregar a versão 0.3.4 em uma janela nova ou recarregada, executar
+Depois de carregar a versão 0.3.5 em uma janela nova ou recarregada, executar
 `Protheus Agent: Compilar arquivo com TDS` com
 `pea_lab_cp1252_20260913.prw` aberto. A aceitação exige o resultado saneado da
 ponte, mais a confirmação do TDS de que o alvo explícito foi compilado no
@@ -165,7 +165,7 @@ correlacionada ao mesmo VSIX.
 O erro `an absolute ADVPL/TLPP target is required` não era uma resposta do
 AppServer. O log confirmou que ele era lançado pelo PEA antes da chamada ao TDS,
 quando a paleta era executada com foco em Saída, Terminal ou outro documento sem
-arquivo local. A versão 0.3.4 passa a aceitar o URI explícito, o editor ativo ou,
+arquivo local. A versão 0.3.5 passa a aceitar o URI explícito, o editor ativo ou,
 na falta deles, exatamente uma fonte ADVPL/TLPP local entre os editores visíveis.
 Com zero ou mais de uma fonte candidata, a extensão encerra antes de abrir o TDS e
 exibe uma orientação clara, sem inventar um alvo.
@@ -173,3 +173,17 @@ exibe uma orientação clara, sem inventar um alvo.
 Os testes de regressão cobrem o fallback com uma única fonte visível e a recusa
 de duas fontes visíveis sem invocar a ponte. Esta é evidência do contrato local;
 ainda não constitui compilação live pela ponte no AppServer.
+
+### Compatibilidade do contrato de diagnósticos — 2026-09-14
+
+Na tentativa seguinte, o TDS foi chamado mas retornou seu contrato JSON atual:
+metadados da chamada na raiz e o resumo `{ errors, warnings, diagnostics }`
+dentro de `diagnostics`. O PEA 0.3.4 somente aceitava a forma plana usada pelos
+mocks originais e, corretamente, marcou a resposta como não verificada. A versão
+0.3.5 reconhece ambas as formas completas, preservando `diagnosticsUpdated` e
+`timedOut` como condições obrigatórias. Respostas parciais, não JSON ou sem lista
+de entradas continuam `unverified`.
+
+O teste de regressão usa a estrutura concreta do `TOTVS.tds-vscode 2.1.3`.
+Ele comprova leitura local do contrato; a próxima execução autenticada deve ainda
+provar a compilação live do alvo no laboratório.

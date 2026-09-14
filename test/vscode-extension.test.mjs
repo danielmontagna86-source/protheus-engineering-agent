@@ -546,6 +546,37 @@ test('TDS bridge marks timeouts and malformed replies unverified and redacts sec
   assert.equal(malformed.error.code, 'TDS_TOOL_MALFORMED_RESULT');
 });
 
+test('TDS bridge accepts the nested JSON diagnostics contract emitted by TDS 2.1.3', async () => {
+  const fake = fakeVscode();
+  const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
+  const source = join(workspace, 'source.prw');
+  fake.api.workspace.isTrusted = true;
+  fake.api.lm.invokeTool = async () => ({ content: [new fake.api.LanguageModelTextPart(JSON.stringify({
+    command: 'totvs-developer-studio.rebuild.file',
+    target: source,
+    flags: { format: 'json' },
+    diagnosticsUpdated: true,
+    timedOut: false,
+    diagnostics: {
+      target: source,
+      errors: 0,
+      warnings: 0,
+      truncated: false,
+      diagnostics: [],
+    },
+  }))] });
+
+  const result = await extension.invokeTdsCompilerTool(
+    fake.api,
+    { workspace, target: source },
+    {},
+    { resolvePath: (candidate) => candidate },
+  );
+
+  assert.equal(result.status, 'completed');
+  assert.deepEqual(result.diagnostics, { errors: 0, warnings: 0, updated: true, timedOut: false, entries: [] });
+});
+
 test('TDS compile command asks for confirmation and forwards a cancellable native progress token', async () => {
   const fake = fakeVscode();
   const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';

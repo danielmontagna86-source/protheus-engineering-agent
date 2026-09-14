@@ -124,9 +124,13 @@ async function invokeTdsCompilerTool(vscode, { workspace, target }, token, optio
       error: { code: 'TDS_TOOL_MALFORMED_RESULT', message: 'TDS compiler tool returned malformed diagnostics.' },
     };
   }
-  if (!diagnostics || typeof diagnostics !== 'object' || !Number.isInteger(diagnostics.errors)
-    || !Number.isInteger(diagnostics.warnings) || typeof diagnostics.timedOut !== 'boolean'
-    || typeof diagnostics.diagnosticsUpdated !== 'boolean' || !Array.isArray(diagnostics.diagnostics)) {
+  const diagnosticSummary = diagnostics?.diagnostics;
+  const errors = Number.isInteger(diagnostics?.errors) ? diagnostics.errors : diagnosticSummary?.errors;
+  const warnings = Number.isInteger(diagnostics?.warnings) ? diagnostics.warnings : diagnosticSummary?.warnings;
+  const entries = Array.isArray(diagnosticSummary) ? diagnosticSummary : diagnosticSummary?.diagnostics;
+  if (!diagnostics || typeof diagnostics !== 'object' || !Number.isInteger(errors)
+    || !Number.isInteger(warnings) || typeof diagnostics.timedOut !== 'boolean'
+    || typeof diagnostics.diagnosticsUpdated !== 'boolean' || !Array.isArray(entries)) {
     return {
       adapter: 'tds-language-model-tool', status: 'unverified',
       error: { code: 'TDS_TOOL_MALFORMED_RESULT', message: 'TDS compiler tool returned an unsupported diagnostics contract.' },
@@ -136,11 +140,11 @@ async function invokeTdsCompilerTool(vscode, { workspace, target }, token, optio
     adapter: 'tds-language-model-tool',
     target: source,
     diagnostics: {
-      errors: diagnostics.errors,
-      warnings: diagnostics.warnings,
+      errors,
+      warnings,
       updated: diagnostics.diagnosticsUpdated,
       timedOut: diagnostics.timedOut,
-      entries: diagnostics.diagnostics,
+      entries,
     },
   };
   if (diagnostics.timedOut || !diagnostics.diagnosticsUpdated) {
@@ -150,7 +154,7 @@ async function invokeTdsCompilerTool(vscode, { workspace, target }, token, optio
       error: { code: 'TDS_DIAGNOSTICS_UNVERIFIED', message: 'TDS did not provide fresh final diagnostics for this compilation.' },
     };
   }
-  return { ...evidence, status: diagnostics.errors > 0 ? 'failed' : 'completed' };
+  return { ...evidence, status: errors > 0 ? 'failed' : 'completed' };
 }
 
 async function createSampleWorkspace(source, storageRoot, options = {}) {
