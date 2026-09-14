@@ -546,6 +546,37 @@ test('TDS bridge marks timeouts and malformed replies unverified and redacts sec
   assert.equal(malformed.error.code, 'TDS_TOOL_MALFORMED_RESULT');
 });
 
+test('TDS bridge accepts the nested JSON diagnostics contract emitted by TDS 2.1.3', async () => {
+  const fake = fakeVscode();
+  const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
+  const source = join(workspace, 'source.prw');
+  fake.api.workspace.isTrusted = true;
+  fake.api.lm.invokeTool = async () => ({ content: [new fake.api.LanguageModelTextPart(JSON.stringify({
+    command: 'totvs-developer-studio.rebuild.file',
+    target: source,
+    flags: { format: 'json' },
+    diagnosticsUpdated: true,
+    timedOut: false,
+    diagnostics: {
+      target: source,
+      errors: 0,
+      warnings: 0,
+      truncated: false,
+      diagnostics: [],
+    },
+  }))] });
+
+  const result = await extension.invokeTdsCompilerTool(
+    fake.api,
+    { workspace, target: source },
+    {},
+    { resolvePath: (candidate) => candidate },
+  );
+
+  assert.equal(result.status, 'completed');
+  assert.deepEqual(result.diagnostics, { errors: 0, warnings: 0, updated: true, timedOut: false, entries: [] });
+});
+
 test('TDS compile command asks for confirmation and forwards a cancellable native progress token', async () => {
   const fake = fakeVscode();
   const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
@@ -561,6 +592,40 @@ test('TDS compile command asks for confirmation and forwards a cancellable nativ
   assert.match(fake.informationMessages[0].message, /RPO/);
   assert.equal(fake.progressCalls.at(-1).options.cancellable, true);
   assert.equal(fake.invokedLanguageModelTools.at(-1).token, fake.progressCalls.at(-1).token);
+});
+
+test('TDS compile command falls back to the sole visible local ADVPL/TLPP editor', async () => {
+  const fake = fakeVscode();
+  const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
+  const source = join(workspace, 'source.prw');
+  fake.api.workspace.workspaceFolders = [{ uri: { fsPath: workspace } }];
+  fake.api.workspace.isTrusted = true;
+  fake.api.window.activeTextEditor = { document: { uri: { scheme: 'output', fsPath: '' } } };
+  fake.api.window.visibleTextEditors = [{ document: { uri: { scheme: 'file', fsPath: source } } }];
+  extension.createExtension(fake.api, { resolveTdsPath: (candidate) => candidate }).activate({ subscriptions: [] });
+
+  await fake.handlers.get('pea.compileWithTds')();
+
+  assert.equal(fake.warnings.length, 0);
+  assert.equal(fake.invokedLanguageModelTools.at(-1).options.input.target, source);
+});
+
+test('TDS compile command rejects an ambiguous visible ADVPL/TLPP selection before invoking TDS', async () => {
+  const fake = fakeVscode();
+  const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
+  fake.api.workspace.workspaceFolders = [{ uri: { fsPath: workspace } }];
+  fake.api.workspace.isTrusted = true;
+  fake.api.window.activeTextEditor = { document: { uri: { scheme: 'output', fsPath: '' } } };
+  fake.api.window.visibleTextEditors = [
+    { document: { uri: { scheme: 'file', fsPath: join(workspace, 'first.prw') } } },
+    { document: { uri: { scheme: 'file', fsPath: join(workspace, 'second.tlpp') } } },
+  ];
+  extension.createExtension(fake.api, { resolveTdsPath: (candidate) => candidate }).activate({ subscriptions: [] });
+
+  await fake.handlers.get('pea.compileWithTds')();
+
+  assert.match(fake.warnings.at(-1), /Open one local ADVPL\/TLPP source file first/);
+  assert.equal(fake.invokedLanguageModelTools.length, 0);
 });
 
 test('in-process runtime aborts the underlying operation on timeout', async () => {

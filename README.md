@@ -106,7 +106,7 @@ Para gerar o mesmo VSIX auditado que será anexado ao GitHub Release:
 
 ```sh
 npm run package:extension
-code --install-extension release-artifacts/protheus-engineering-agent-v0.3.3.vsix
+code --install-extension release-artifacts/protheus-engineering-agent-v0.3.5.vsix
 ```
 
 No workspace ADVPL/TLPP, use a Central de Engenharia ou a paleta para:

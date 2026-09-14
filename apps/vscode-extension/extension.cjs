@@ -16,6 +16,24 @@ function redactTdsToolText(value) {
     .replace(/\b(password|passwd|token|api[_-]?key)\s*[:=]\s*["']?[^\s"'\\,}]+/gi, '$1=<redacted>');
 }
 
+function localTdsSourcePath(uri) {
+  const candidate = uri?.fsPath;
+  if (typeof candidate !== 'string' || !path.isAbsolute(candidate)) return null;
+  if (typeof uri?.scheme === 'string' && uri.scheme !== 'file') return null;
+  return TDS_SOURCE_EXTENSIONS.has(path.extname(candidate).toLowerCase()) ? candidate : null;
+}
+
+function resolveTdsCompileTarget(vscode, uri) {
+  const direct = localTdsSourcePath(uri);
+  if (direct) return direct;
+  const active = localTdsSourcePath(vscode.window?.activeTextEditor?.document?.uri);
+  if (active) return active;
+  const visible = (vscode.window?.visibleTextEditors ?? [])
+    .map((editor) => localTdsSourcePath(editor?.document?.uri))
+    .filter(Boolean);
+  return [...new Set(visible)].length === 1 ? visible[0] : null;
+}
+
 function tdsToolUnavailable() {
   return {
     adapter: 'tds-language-model-tool',
@@ -106,9 +124,13 @@ async function invokeTdsCompilerTool(vscode, { workspace, target }, token, optio
       error: { code: 'TDS_TOOL_MALFORMED_RESULT', message: 'TDS compiler tool returned malformed diagnostics.' },
     };
   }
-  if (!diagnostics || typeof diagnostics !== 'object' || !Number.isInteger(diagnostics.errors)
-    || !Number.isInteger(diagnostics.warnings) || typeof diagnostics.timedOut !== 'boolean'
-    || typeof diagnostics.diagnosticsUpdated !== 'boolean' || !Array.isArray(diagnostics.diagnostics)) {
+  const diagnosticSummary = diagnostics?.diagnostics;
+  const errors = Number.isInteger(diagnostics?.errors) ? diagnostics.errors : diagnosticSummary?.errors;
+  const warnings = Number.isInteger(diagnostics?.warnings) ? diagnostics.warnings : diagnosticSummary?.warnings;
+  const entries = Array.isArray(diagnosticSummary) ? diagnosticSummary : diagnosticSummary?.diagnostics;
+  if (!diagnostics || typeof diagnostics !== 'object' || !Number.isInteger(errors)
+    || !Number.isInteger(warnings) || typeof diagnostics.timedOut !== 'boolean'
+    || typeof diagnostics.diagnosticsUpdated !== 'boolean' || !Array.isArray(entries)) {
     return {
       adapter: 'tds-language-model-tool', status: 'unverified',
       error: { code: 'TDS_TOOL_MALFORMED_RESULT', message: 'TDS compiler tool returned an unsupported diagnostics contract.' },
@@ -118,11 +140,11 @@ async function invokeTdsCompilerTool(vscode, { workspace, target }, token, optio
     adapter: 'tds-language-model-tool',
     target: source,
     diagnostics: {
-      errors: diagnostics.errors,
-      warnings: diagnostics.warnings,
+      errors,
+      warnings,
       updated: diagnostics.diagnosticsUpdated,
       timedOut: diagnostics.timedOut,
-      entries: diagnostics.diagnostics,
+      entries,
     },
   };
   if (diagnostics.timedOut || !diagnostics.diagnosticsUpdated) {
@@ -132,7 +154,7 @@ async function invokeTdsCompilerTool(vscode, { workspace, target }, token, optio
       error: { code: 'TDS_DIAGNOSTICS_UNVERIFIED', message: 'TDS did not provide fresh final diagnostics for this compilation.' },
     };
   }
-  return { ...evidence, status: diagnostics.errors > 0 ? 'failed' : 'completed' };
+  return { ...evidence, status: errors > 0 ? 'failed' : 'completed' };
 }
 
 async function createSampleWorkspace(source, storageRoot, options = {}) {
@@ -1102,9 +1124,9 @@ function createExtension(vscode, options = {}) {
         return output;
       }),
       vscode.commands.registerCommand('pea.compileWithTds', async (uri) => {
-        const target = uri?.fsPath ?? vscode.window.activeTextEditor?.document?.uri?.fsPath;
-        if (typeof target !== 'string' || !target) return vscode.window.showWarningMessage(t('Open an ADVPL/TLPP source file first.'));
-        const workspace = await workspacePath(uri ?? vscode.window.activeTextEditor?.document?.uri);
+        const target = resolveTdsCompileTarget(vscode, uri);
+        if (!target) return vscode.window.showWarningMessage(t('Open one local ADVPL/TLPP source file first.'));
+        const workspace = await workspacePath({ scheme: 'file', fsPath: target });
         if (!workspace) return vscode.window.showWarningMessage(t('Open a workspace first.'));
         const compile = t('Compile with TDS');
         const choice = await vscode.window.showInformationMessage(
