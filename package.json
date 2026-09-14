@@ -1,6 +1,6 @@
 {
   "name": "protheus-engineering-agent",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "Runtime de engenharia baseado em evidências e interface VS Code fina para projetos Protheus ADVPL/TLPP.",
   "private": true,
   "license": "Apache-2.0",
@@ -42,7 +42,7 @@
     "benchmark:large:release": "node benchmark/large-repository.mjs release",
     "publication:check": "node scripts/publication-check.mjs",
     "publication:release-check": "npm run verify:release && node scripts/publication-check.mjs --release",
-    "validate": "node --test && node scripts/check.mjs && node scripts/publication-check.mjs",
+    "validate": "npm run build:extension && node --test && node scripts/check.mjs && node scripts/publication-check.mjs",
     "validate:release-candidate": "npm run validate && npm run benchmark && npm run smoke && npm run build:release && npm run verify:release && npm run test:vscode:host && npm run test:vscode:minimum && npm run test:vscode:tds && npm audit --audit-level=moderate && npm run test:mutation",
     "doctor": "node packages/runtime/src/cli.mjs doctor",
     "mcp": "node packages/mcp/src/stdio.mjs"

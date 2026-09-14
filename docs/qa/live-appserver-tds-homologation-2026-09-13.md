@@ -117,10 +117,11 @@ compilação no log. Antes de promover qualquer release, ainda faltam:
 ## Impacto no gate G6
 
 O gate G6 permanece **PARTIAL**: há saúde do AppServer/TDS, compilação positiva
-identificada CP1252/LF com include real, uma falha controlada com rollback e a
-homologação positiva observada da ponte pública. Ele continua `NO-GO` para
-Stable/Marketplace até os casos pendentes acima, sobretudo a falha controlada
-pela própria ponte e a reconciliação com o commit e artefatos exatos da extensão.
+identificada CP1252/LF com include real, uma falha controlada com rollback e as
+homologações positiva e negativa observadas pela ponte pública. A subvalidação
+funcional PEA → TDS está concluída. O release continua `NO-GO` para
+Stable/Marketplace até a reconciliação com o commit e artefatos exatos da
+extensão e os demais gates externos de publicação.
 
 ## Atualização de execução — 2026-09-14
 
@@ -151,10 +152,10 @@ da ponte e não é reinterpretado como sucesso.
 
 ### Próxima ação mínima e segura
 
-Com a versão 0.3.5 carregada, executar a mesma ponte contra a fixture de include
-ausente e registrar uma falha controlada, sem alterar fontes de produto nem
-induzir lock, timeout ou cancelamento. Esses últimos casos precisam de uma janela
-de laboratório dedicada e de evidência correlacionada ao mesmo VSIX.
+Com os cenários positivo e negativo observados pela mesma ponte pública, gerar e
+validar um candidato de release a partir do commit exato. Casos de lock, timeout
+e cancelamento continuam cobertos no contrato automatizado e só devem virar UAT
+live se houver uma janela de laboratório dedicada, sem induzir mutações no RPO.
 
 ### Correção de alvo da paleta — 2026-09-14
 
@@ -200,3 +201,23 @@ Isso prova que o PEA invocou a ponte pública do TDS, recebeu o contrato aninhad
 atual e concluiu a compilação sem diagnóstico. O JSON não traz o nome do
 AppServer, ambiente ou identificador RPO; portanto esses dados não são inferidos
 como prova de proveniência a partir deste recibo isolado.
+
+### Homologação negativa controlada da ponte — 2026-09-14
+
+Na mesma janela já autenticada, a execução informada pelo operador para
+`pea_lab_invalid.prw` retornou uma falha verificável da própria ponte, sem editar
+configuração de servidor, RPO ou credenciais:
+
+| Campo | Valor observado |
+|---|---|
+| Adapter | `tds-language-model-tool` |
+| Alvo | `pea_lab_invalid.prw` no workspace de homologação |
+| Diagnósticos | `errors: 1`, `warnings: 0`, `updated: true`, `timedOut: false` |
+| Entrada | `ERROR`, origem `Linter`, linha `2` |
+| Erro | `C2090 File not found PEA_LAB_REQUIRED_MISSING_20260912.CH` |
+| Status | `failed` |
+
+O resultado fecha o cenário negativo controlado do fluxo público PEA → TDS: o
+agente preservou o alvo absoluto e devolveu o diagnóstico estruturado, sem
+converter uma falha de compilação em sucesso. Como o recibo não identifica
+AppServer, ambiente ou RPO, esses atributos continuam fora desta evidência.
