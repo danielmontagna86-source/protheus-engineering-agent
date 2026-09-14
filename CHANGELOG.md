@@ -6,6 +6,9 @@ All notable changes are recorded here. The project follows Semantic Versioning a
 
 ### Fixed
 
+- `npm run validate` agora constrói o runtime autocontido da extensão antes da
+  suíte. Assim, um checkout limpo não depende de um artefato `dist` deixado por
+  uma execução anterior.
 - `PEA: Compilar arquivo com TDS` agora rejeita com segurança contexto sem arquivo
   local absoluto e, quando há exatamente uma fonte ADVPL/TLPP visível, usa essa
   fonte como alvo. Isso evita encaminhar a URI de Saída/Terminal ao TDS.
