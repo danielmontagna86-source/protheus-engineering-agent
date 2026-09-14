@@ -16,6 +16,24 @@ function redactTdsToolText(value) {
     .replace(/\b(password|passwd|token|api[_-]?key)\s*[:=]\s*["']?[^\s"'\\,}]+/gi, '$1=<redacted>');
 }
 
+function localTdsSourcePath(uri) {
+  const candidate = uri?.fsPath;
+  if (typeof candidate !== 'string' || !path.isAbsolute(candidate)) return null;
+  if (typeof uri?.scheme === 'string' && uri.scheme !== 'file') return null;
+  return TDS_SOURCE_EXTENSIONS.has(path.extname(candidate).toLowerCase()) ? candidate : null;
+}
+
+function resolveTdsCompileTarget(vscode, uri) {
+  const direct = localTdsSourcePath(uri);
+  if (direct) return direct;
+  const active = localTdsSourcePath(vscode.window?.activeTextEditor?.document?.uri);
+  if (active) return active;
+  const visible = (vscode.window?.visibleTextEditors ?? [])
+    .map((editor) => localTdsSourcePath(editor?.document?.uri))
+    .filter(Boolean);
+  return [...new Set(visible)].length === 1 ? visible[0] : null;
+}
+
 function tdsToolUnavailable() {
   return {
     adapter: 'tds-language-model-tool',
@@ -1102,9 +1120,9 @@ function createExtension(vscode, options = {}) {
         return output;
       }),
       vscode.commands.registerCommand('pea.compileWithTds', async (uri) => {
-        const target = uri?.fsPath ?? vscode.window.activeTextEditor?.document?.uri?.fsPath;
-        if (typeof target !== 'string' || !target) return vscode.window.showWarningMessage(t('Open an ADVPL/TLPP source file first.'));
-        const workspace = await workspacePath(uri ?? vscode.window.activeTextEditor?.document?.uri);
+        const target = resolveTdsCompileTarget(vscode, uri);
+        if (!target) return vscode.window.showWarningMessage(t('Open one local ADVPL/TLPP source file first.'));
+        const workspace = await workspacePath({ scheme: 'file', fsPath: target });
         if (!workspace) return vscode.window.showWarningMessage(t('Open a workspace first.'));
         const compile = t('Compile with TDS');
         const choice = await vscode.window.showInformationMessage(

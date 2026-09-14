@@ -4,6 +4,12 @@ All notable changes are recorded here. The project follows Semantic Versioning a
 
 ## Unreleased
 
+### Fixed
+
+- `PEA: Compilar arquivo com TDS` agora rejeita com segurança contexto sem arquivo
+  local absoluto e, quando há exatamente uma fonte ADVPL/TLPP visível, usa essa
+  fonte como alvo. Isso evita encaminhar a URI de Saída/Terminal ao TDS.
+
 ### Added
 
 - Public product specification, governance, publication audit, and cross-platform CI.

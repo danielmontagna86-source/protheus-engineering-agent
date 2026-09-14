@@ -563,6 +563,40 @@ test('TDS compile command asks for confirmation and forwards a cancellable nativ
   assert.equal(fake.invokedLanguageModelTools.at(-1).token, fake.progressCalls.at(-1).token);
 });
 
+test('TDS compile command falls back to the sole visible local ADVPL/TLPP editor', async () => {
+  const fake = fakeVscode();
+  const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
+  const source = join(workspace, 'source.prw');
+  fake.api.workspace.workspaceFolders = [{ uri: { fsPath: workspace } }];
+  fake.api.workspace.isTrusted = true;
+  fake.api.window.activeTextEditor = { document: { uri: { scheme: 'output', fsPath: '' } } };
+  fake.api.window.visibleTextEditors = [{ document: { uri: { scheme: 'file', fsPath: source } } }];
+  extension.createExtension(fake.api, { resolveTdsPath: (candidate) => candidate }).activate({ subscriptions: [] });
+
+  await fake.handlers.get('pea.compileWithTds')();
+
+  assert.equal(fake.warnings.length, 0);
+  assert.equal(fake.invokedLanguageModelTools.at(-1).options.input.target, source);
+});
+
+test('TDS compile command rejects an ambiguous visible ADVPL/TLPP selection before invoking TDS', async () => {
+  const fake = fakeVscode();
+  const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
+  fake.api.workspace.workspaceFolders = [{ uri: { fsPath: workspace } }];
+  fake.api.workspace.isTrusted = true;
+  fake.api.window.activeTextEditor = { document: { uri: { scheme: 'output', fsPath: '' } } };
+  fake.api.window.visibleTextEditors = [
+    { document: { uri: { scheme: 'file', fsPath: join(workspace, 'first.prw') } } },
+    { document: { uri: { scheme: 'file', fsPath: join(workspace, 'second.tlpp') } } },
+  ];
+  extension.createExtension(fake.api, { resolveTdsPath: (candidate) => candidate }).activate({ subscriptions: [] });
+
+  await fake.handlers.get('pea.compileWithTds')();
+
+  assert.match(fake.warnings.at(-1), /Open one local ADVPL\/TLPP source file first/);
+  assert.equal(fake.invokedLanguageModelTools.length, 0);
+});
+
 test('in-process runtime aborts the underlying operation on timeout', async () => {
   let aborted = false;
   const runner = extension.createInProcessCliRunner('runtime.cjs', {

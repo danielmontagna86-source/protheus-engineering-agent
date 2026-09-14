@@ -151,7 +151,7 @@ da ponte e não é reinterpretado como sucesso.
 
 ### Próxima ação mínima e segura
 
-Depois de carregar a versão 0.3.3 em uma janela nova ou recarregada, executar
+Depois de carregar a versão 0.3.4 em uma janela nova ou recarregada, executar
 `Protheus Agent: Compilar arquivo com TDS` com
 `pea_lab_cp1252_20260913.prw` aberto. A aceitação exige o resultado saneado da
 ponte, mais a confirmação do TDS de que o alvo explícito foi compilado no
@@ -159,3 +159,17 @@ laboratório `P12`. Em seguida, a mesma ponte deve registrar uma falha controlad
 de include ausente. Não induzir lock, timeout ou cancelamento de modo destrutivo:
 esses casos precisam de uma janela de laboratório dedicada e de evidência
 correlacionada ao mesmo VSIX.
+
+### Correção de alvo da paleta — 2026-09-14
+
+O erro `an absolute ADVPL/TLPP target is required` não era uma resposta do
+AppServer. O log confirmou que ele era lançado pelo PEA antes da chamada ao TDS,
+quando a paleta era executada com foco em Saída, Terminal ou outro documento sem
+arquivo local. A versão 0.3.4 passa a aceitar o URI explícito, o editor ativo ou,
+na falta deles, exatamente uma fonte ADVPL/TLPP local entre os editores visíveis.
+Com zero ou mais de uma fonte candidata, a extensão encerra antes de abrir o TDS e
+exibe uma orientação clara, sem inventar um alvo.
+
+Os testes de regressão cobrem o fallback com uma única fonte visível e a recusa
+de duas fontes visíveis sem invocar a ponte. Esta é evidência do contrato local;
+ainda não constitui compilação live pela ponte no AppServer.
