@@ -26,6 +26,7 @@ async function run() {
     'product extension was not loaded from the isolated installed-extension directory',
   );
   const expectTds = process.env.PEA_EXPECT_TDS === '1';
+  let tdsStructuredInputAccepted = null;
   if (expectTds) {
     assert.equal(vscode.workspace.workspaceFolders.length, 2, 'TDS smoke must use a multi-root workspace');
     const tds = vscode.extensions.getExtension('TOTVS.tds-vscode');
@@ -43,6 +44,24 @@ async function run() {
     assert.deepEqual(conflicts, [], 'product and TDS command identifiers conflict');
     await tds.activate();
     assert.equal(tds.isActive, true, 'TDS did not activate in the isolated workspace');
+    const compatibilityToken = new vscode.CancellationTokenSource();
+    try {
+      const compatibilityResult = await vscode.lm.invokeTool('tds-lm-tools', {
+        input: {
+          command: 'unsupported-command-for-contract-probe',
+          target: '',
+          flags: { only: 'all', sort: 'file', format: 'json', syntaxOnly: false, applyOld: false, applied: [] },
+        },
+      }, compatibilityToken.token);
+      const compatibilityText = compatibilityResult.content
+        .map((part) => typeof part?.value === 'string' ? part.value : '')
+        .join('\n');
+      assert.match(compatibilityText, /Command not recognized/i,
+        'TDS rejected the structured compiler-input contract before its handler executed');
+      tdsStructuredInputAccepted = true;
+    } finally {
+      compatibilityToken.dispose();
+    }
   }
 
   const doctor = await execute('pea.doctor', workspace.uri);
@@ -114,6 +133,7 @@ async function run() {
     commandIds: declaredCommandIds,
     executedCommandIds: [...executedCommandIds].sort(),
     invocations: 7,
+    tdsStructuredInputAccepted,
   }, null, 2));
 
   process.stdout.write(`VS Code Extension Host smoke: PASS (7 core command invocations${expectTds ? ', TDS + CP1252/LF + multi-root' : ''})\n`);

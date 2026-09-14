@@ -121,3 +121,41 @@ identificada CP1252/LF com include real e uma falha controlada com rollback. Ele
 continua `NO-GO` para Stable/Marketplace até os casos pendentes acima, sobretudo
 a homologação live da ponte pública e a reconciliação com o commit e artefatos
 exatos da extensão.
+
+## Atualização de execução — 2026-09-14
+
+### Diagnóstico da tentativa `pea.compileWithTds`
+
+O erro `TDS_TOOL_MALFORMED_RESULT` foi localizado no log de uma janela do VS Code
+iniciada em 2026-09-12. Essa janela ainda carregava a extensão anterior à correção
+da ponte. A instalação global agora contém `Protheus Engineering Agent 0.3.3` e
+`TOTVS.tds-vscode 2.1.3`; a ponte instalada envia as opções estruturadas exigidas
+pela implementação atual do TDS. A janela antiga precisa ser recarregada antes de
+uma nova tentativa, para que a evidência possa ser atribuída à versão 0.3.3.
+
+Não foi registrado conteúdo de credenciais, token RPO, configuração de servidores
+ou diagnóstico bruto. O resultado anterior permanece inválido como prova positiva
+da ponte e não é reinterpretado como sucesso.
+
+### Verificações repetidas sem mutação
+
+| Caso | Resultado | Limite da evidência |
+|---|---|---|
+| Bridge TDS: cancelamento, timeout, indisponibilidade, alvo fora do workspace, extensão não suportada e retorno malformado | PASS em testes automatizados | Contrato do PEA; não substitui operação live pelo TDS/AppServer |
+| Adapters Dictionary/Oracle/PostgreSQL | PASS em testes automatizados, com allowlist, binds, limite e redaction | Não houve adapter DBAccess live do produto |
+| Laboratório local | PASS: AppServer, DBAccess, License Server e PostgreSQL em execução | Porta aberta não prova build nem consulta do produto |
+| Banco do laboratório | PASS limitado: PostgreSQL responde a `pg_isready`; sessão de catálogo somente leitura em `WIN1252`; zero tabelas públicas na base `postgres` | Nenhum dicionário Protheus foi inferido e nenhuma DDL/DML/dump foi executado |
+| Fixture positiva | PASS: SHA-256 `97C78DA1CF9411C713B6C4F86848C813F77893C508FB2FAAB00E7747EB6B4D98`; round-trip CP1252, sem BOM UTF-8 e somente LF | Ainda requer build pela ponte recarregada |
+| Perfil isolado VS Code + TDS | PASS: VS Code 1.137.0, VSIX instalado, TDS 2.1.3 ativado, 24 comandos sem conflito, CP1252/LF e multi-root preservados | Não substitui UAT por teclado/leitor de tela nem build live no AppServer |
+| Compatibilidade da entrada estruturada | PASS: o TDS real recebeu uma chamada não mutante com `flags` estruturado e alcançou seu handler público | A chamada propositalmente inválida não compilou fonte nem acessou RPO |
+
+### Próxima ação mínima e segura
+
+Depois de carregar a versão 0.3.3 em uma janela nova ou recarregada, executar
+`Protheus Agent: Compilar arquivo com TDS` com
+`pea_lab_cp1252_20260913.prw` aberto. A aceitação exige o resultado saneado da
+ponte, mais a confirmação do TDS de que o alvo explícito foi compilado no
+laboratório `P12`. Em seguida, a mesma ponte deve registrar uma falha controlada
+de include ausente. Não induzir lock, timeout ou cancelamento de modo destrutivo:
+esses casos precisam de uma janela de laboratório dedicada e de evidência
+correlacionada ao mesmo VSIX.
