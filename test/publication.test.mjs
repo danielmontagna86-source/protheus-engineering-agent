@@ -983,10 +983,10 @@ test('the documented release gate cannot skip exact source rebuild verification'
   assert.match(manifest.scripts['validate:release-candidate'], /npm run build:release && npm run verify:release/);
 });
 
-test('local validation builds the extension runtime before tests in a clean checkout', async () => {
+test('local validation builds the extension runtime and runs the suite serially in a clean checkout', async () => {
   const manifest = JSON.parse(await readFile(join(process.cwd(), 'package.json'), 'utf8'));
 
-  assert.match(manifest.scripts.validate, /^npm run build:extension && node --test/);
+  assert.match(manifest.scripts.validate, /^npm run build:extension && node --test --test-concurrency=1/);
 });
 
 test('public product metadata declares the canonical brand and repository', async () => {
@@ -1012,7 +1012,7 @@ test('public product metadata declares the canonical brand and repository', asyn
     'utf8',
   ));
 
-  assert.equal(manifest.version, '0.3.6');
+  assert.equal(manifest.version, '0.3.7');
   assert.equal(extension.version, manifest.version);
   assert.match(extension.version, /^\d+\.\d+\.\d+$/);
   assert.equal(
