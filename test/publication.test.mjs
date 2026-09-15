@@ -1170,8 +1170,8 @@ test('CodeQL is pinned, least-privilege and activates automatically when the rep
   );
 
   assert.match(workflow, /if: github\.event\.repository\.private == false/);
-  assert.match(workflow, /github\/codeql-action\/init@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4\.36\.0/);
-  assert.match(workflow, /github\/codeql-action\/analyze@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4\.36\.0/);
+  assert.match(workflow, /github\/codeql-action\/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4\.38\.0/);
+  assert.match(workflow, /github\/codeql-action\/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4\.38\.0/);
   assert.match(workflow, /languages: javascript-typescript/);
   assert.match(workflow, /queries: security-extended/);
   assert.match(workflow, /security-events: write/);
