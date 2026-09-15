@@ -6,6 +6,10 @@ All notable changes are recorded here. The project follows Semantic Versioning a
 
 ### Fixed
 
+- O alvo explícito da especificação pública de release foi alinhado a `v0.3.9`.
+  O gate de publicação volta a avaliar a candidata atual e mantém bloqueada apenas
+  a evidência final externa que ainda não foi produzida.
+
 - O smoke isolado do VS Code mínimo agora concede 60 segundos de espera ociosa
   ao runner oficial ao provisionar uma versão histórica explícita. Respostas
   lentas de metadados/download não interrompem mais a bateria de release antes
