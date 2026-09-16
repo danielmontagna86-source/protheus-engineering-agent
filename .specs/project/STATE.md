@@ -1,7 +1,7 @@
 # State
 
-**Last Updated:** 2026-09-12
-**Current Work:** O candidato técnico `f9a7450` passou CI remoto, instalação do VSIX em VS Code atual/1.95.3/TDS, checks de segredo/dependência e mutação de 95,05%. Esta atualização de documentação deve receber a bateria do commit exato antes de promoção. O programa end-to-end separa gates determinísticos de ambiente, uso humano, supply-chain pública e publisher; aceitação Stable/Marketplace permanece NO-GO até existir evidência externa exata.
+**Last Updated:** 2026-09-15
+**Current Work:** A prévia pública `v0.3.9` vinculada ao commit `29993a8` passou a bateria de candidata em clone limpo, com VSIX instalado em VS Code 1.137/1.95.3, coexistência TDS, auditoria sem vulnerabilidades e mutação de 95,05%. Seus ativos públicos foram baixados, reconciliados por SHA-256 e tiveram atestação verificada. O commit de manutenção `877b87b` atualizou CodeQL atomicamente e passou CI pós-merge; ele não é um novo artefato de release. O programa end-to-end separa gates determinísticos de ambiente, uso humano, supply-chain pública e publisher; Stable/Marketplace permanecem `NO-GO` até existir evidência externa exata.
 
 ---
 
@@ -169,7 +169,7 @@
 
 ## Active Blockers
 
-Current evidence: [VS Code, Git and production validation](../../docs/qa/vscode-git-production-validation-2026-09-10.md). Code candidate `7123805` passed the complete CI matrix and 95.05% mutation. Fresh installed VSIX tests passed on VS Code 1.95.3/1.136.2, with TDS 2.1.2 and Windows lifecycle/rollback. actionlint 1.7.12 passed. The owner has requested publication repeatedly; further general permission to continue is not the blocker. Working AppServer/product integration, assistive/representative UAT, remote/Linux lifecycle, publisher access and final release receipts remain incomplete. Historical progress below is retained as history and does not supersede this candidate record.
+Current evidence: [v0.3.9 Preview record](../../RELEASE-v0.3.9.md), [release gate issue](https://github.com/danielmontagna86-source/protheus-engineering-agent/issues/22) and the historical [VS Code, Git and production validation](../../docs/qa/vscode-git-production-validation-2026-09-10.md). The exact Preview commit `29993a8` passed the complete candidate battery and download/attestation reconciliation; post-merge commit `877b87b` passed the protected CI matrix after the CodeQL maintenance update. The owner has requested publication repeatedly; further general permission to continue is not the blocker. Live AppServer/product integration, assistive/representative UAT, Marketplace publisher access and final release receipts remain incomplete. Historical progress below is retained as history and does not supersede this record.
 
 ### B-003: External release evidence is incomplete
 
