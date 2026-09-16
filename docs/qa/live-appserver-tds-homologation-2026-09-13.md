@@ -221,3 +221,45 @@ O resultado fecha o cenário negativo controlado do fluxo público PEA → TDS: 
 agente preservou o alvo absoluto e devolveu o diagnóstico estruturado, sem
 converter uma falha de compilação em sucesso. Como o recibo não identifica
 AppServer, ambiente ou RPO, esses atributos continuam fora desta evidência.
+
+### VSIX isolado atual pela ponte pública — 2026-09-16
+
+Foi criado um perfil temporário e isolado do VS Code, com diretórios próprios
+de dados e extensões. Nesse perfil, o VSIX local do PEA foi instalado junto ao
+TDS 2.1.3, sem reutilizar a instalação do PEA do perfil cotidiano. A conexão
+autenticada de teste continuou pertencendo ao TDS; senhas, tokens, ambiente e
+identidade não foram lidos nem registrados pelo harness.
+
+| Campo | Valor observado |
+| --- | --- |
+| Commit declarado no manifesto do VSIX | `3ba2bd45c6f2bf220ea87f7a6722ccc25ca03fea` |
+| PEA | `0.3.9` |
+| SHA-256 do VSIX local | `4be5acd5ccba76142c986dc506fc60a33771204488951b356151f861d3376175` |
+| TDS | `2.1.3` |
+| Ponte chamada | `invokeTdsCompilerTool` → ferramenta pública `tds-lm-tools` |
+| Fixture positiva | `pea_lab_cp1252_20260913.prw`, CP1252/LF, SHA-256 `97c78da1cf9411c713b6c4f86848c813f77893c508fb2faab00e7747eb6b4d98` |
+| Fixture negativa | `pea_lab_invalid.prw`, SHA-256 `d04ba5e934137779cae9f4a6f91399ac416607d571fcc1ba13a0278b6e856594` |
+
+Após a homologação, `scripts/verify-vsix.mjs` reabriu o arquivo de 1.439.135
+bytes, validou as 28 entradas permitidas, a versão `0.3.9`, as informações
+legais e o campo `peaRelease.commit` contra o hash acima. O resultado foi
+`PASS`, sem erros. Essa verificação liga o binário local ao commit **declarado
+no próprio pacote**, mas não é um recibo de compilação reproduzível: ela não
+atesta que a árvore estava limpa quando o VSIX foi gerado, nem torna esse
+arquivo local o candidato público `v0.3.9` ou um artefato Stable.
+
+O harness abriu e ativou cada fonte antes da chamada, pois a ferramenta do TDS
+executa a recompilação do editor ativo. O caso positivo retornou `completed`,
+`errors: 0`, `warnings: 0`, `updated: true` e `timedOut: false`. O caso negativo
+retornou `failed`, `errors: 1`, `updated: true`, `timedOut: false` e um diagnóstico
+`ERROR` na linha 2 do arquivo esperado. Antes de abrir o editor, a mesma chamada
+atingia o handler do TDS mas expirava sem diagnóstico; isso é uma pré-condição do
+TDS, não um sucesso convertido pelo PEA.
+
+Esta é uma evidência de integração funcional do código do VSIX local com a
+ferramenta pública do TDS. Ela não é um teste manual da confirmação modal do
+comando `pea.compileWithTds` (essa confirmação tem contrato automatizado), não
+identifica o RPO e não transforma a imagem comunitária em ambiente Protheus
+licenciado. Portanto, G6 permanece **PARTIAL**; cancelamento, timeout, RPO
+bloqueado, DBAccess/dicionário via adapter, ciclo remoto e artefato Stable exato
+continuam obrigatórios.
