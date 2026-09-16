@@ -7,7 +7,7 @@ Este é o checklist operacional para transformar o repositório e a listing do V
 Code em um produto público confiável. Ele não altera a decisão `NO-GO`, não cria
 endosso e não autoriza uma release por si só.
 
-## Estado observado em 2026-09-12
+## Estado observado em 2026-09-15
 
 - O repositório canônico é público. O Community Profile marca 100%, há 15
   tópicos específicos e o homepage permanece vazio até existir site de produto
@@ -22,8 +22,11 @@ endosso e não autoriza uma release por si só.
 - Dependabot, secret scanning, push protection, CodeQL e private vulnerability
   reporting estão ativos. Checks verdes devem sempre ser lidos no commit do
   candidato, não herdados de uma revisão anterior.
-- A prévia pública `v0.3.0` no GitHub possui source ZIP, VSIX, SBOM, manifesto
-  e `SHA256SUMS`. Ela não é uma release Stable nem uma publicação Marketplace.
+- A prévia pública `v0.3.9` no GitHub possui source ZIP, VSIX, SBOM, manifesto
+  e `SHA256SUMS`, todos vinculados ao commit `29993a8`; os ativos baixados foram
+  conferidos por SHA-256 e por atestação. A manutenção posterior de CodeQL no
+  commit `877b87b` passou a matriz protegida, mas não cria um novo artefato. A
+  prévia não é uma release Stable nem uma publicação Marketplace.
 - Toda Action externa continua fixada por SHA completo; Actions locais seguem
   permitidas conforme a política do repositório.
 - Publisher e identificador da extensão no Marketplace não estão verificados

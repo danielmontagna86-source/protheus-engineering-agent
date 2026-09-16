@@ -4,13 +4,13 @@ Extensão VS Code autônoma para engenharia ADVPL/TLPP, com runtime aberto e reu
 
 > Projeto comunitário independente, em estágio alpha. Não é afiliado, patrocinado ou mantido pela TOTVS, pela marca Protheus ou pelo projeto Hermes Agent. As marcas pertencem aos seus respectivos titulares.
 
-[English](README.en.md) · [Instalar a prévia](RELEASE-v0.3.0.md) · [Começar](docs/getting-started.md) · [IA e Hermes](docs/ai-and-hermes.md) · [Homologação de providers](docs/provider-uat.md) · [Contrato público](docs/public-contract.md) · [Compatibilidade](docs/compatibility.md) · [Limites](docs/limitations.md) · [Roadmap](docs/roadmap.md) · [Segurança](SECURITY.md) · [Como contribuir](CONTRIBUTING.md)
+[English](README.en.md) · [Instalar a prévia](https://github.com/danielmontagna86-source/protheus-engineering-agent/releases/tag/v0.3.9) · [Começar](docs/getting-started.md) · [IA e Hermes](docs/ai-and-hermes.md) · [Homologação de providers](docs/provider-uat.md) · [Contrato público](docs/public-contract.md) · [Compatibilidade](docs/compatibility.md) · [Limites](docs/limitations.md) · [Roadmap](docs/roadmap.md) · [Segurança](SECURITY.md) · [Como contribuir](CONTRIBUTING.md)
 
 O caminho principal exige somente o VSIX: não exige Hermes, conta de IA, modelo, Python, Oracle, TDN ou AppServer. O runtime determinístico é empacotado junto da extensão.
 
 ## Primeiro valor em cinco minutos
 
-Baixe o VSIX da [prévia publicada no GitHub](RELEASE-v0.3.0.md), instale-o em
+Baixe o VSIX da [prévia publicada no GitHub](https://github.com/danielmontagna86-source/protheus-engineering-agent/releases/tag/v0.3.9), instale-o em
 um perfil isolado do VS Code e use o walkthrough **Comece pela revisão Protheus
 baseada em evidências**. Ele cria uma amostra legal e offline para mostrar
 `diagnóstico → indexação → revisão → Problemas`, sem rede, Docker, banco,

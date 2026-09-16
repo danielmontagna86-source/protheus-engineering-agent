@@ -4,7 +4,7 @@ A standalone VS Code extension for ADVPL/TLPP engineering, backed by an open reu
 
 > Independent community project in alpha stage. It is not affiliated with, sponsored by, or maintained by TOTVS, the Protheus brand, or the Hermes Agent project. All trademarks belong to their respective owners.
 
-[Português](README.md) · [Get started](docs/getting-started.en.md) · [AI and Hermes](docs/ai-and-hermes.md) · [Provider UAT](docs/provider-uat.md) · [Public contract](docs/public-contract.md) · [Compatibility](docs/compatibility.md) · [Limitations](docs/limitations.md) · [Roadmap](docs/roadmap.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
+[Português](README.md) · [Install Preview](https://github.com/danielmontagna86-source/protheus-engineering-agent/releases/tag/v0.3.9) · [Get started](docs/getting-started.en.md) · [AI and Hermes](docs/ai-and-hermes.md) · [Provider UAT](docs/provider-uat.md) · [Public contract](docs/public-contract.md) · [Compatibility](docs/compatibility.md) · [Limitations](docs/limitations.md) · [Roadmap](docs/roadmap.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
 
 The primary path requires only the VSIX. It does not require Hermes, an AI account, a model, Python, Oracle, TDN, or AppServer. The deterministic runtime ships inside the extension.
 
