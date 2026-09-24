@@ -81,6 +81,24 @@ function fakeVscode() {
       LanguageModelTextPart: class LanguageModelTextPart {
         constructor(value) { this.value = value; }
       },
+      CancellationTokenSource: class CancellationTokenSource {
+        constructor() {
+          this.listeners = new Set();
+          this.token = {
+            isCancellationRequested: false,
+            onCancellationRequested: (listener) => {
+              this.listeners.add(listener);
+              return { dispose: () => this.listeners.delete(listener) };
+            },
+          };
+        }
+        cancel() {
+          if (this.token.isCancellationRequested) return;
+          this.token.isCancellationRequested = true;
+          for (const listener of [...this.listeners]) listener();
+        }
+        dispose() { this.listeners.clear(); }
+      },
       commands: {
         registerCommand(name, handler) {
           handlers.set(name, handler);
@@ -480,15 +498,18 @@ test('TDS bridge invokes only the public compiler tool for a trusted contained s
 
   assert.equal(result.status, 'completed');
   assert.equal(result.adapter, 'tds-language-model-tool');
-  assert.deepEqual(fake.invokedLanguageModelTools[0], {
+  assert.deepEqual({
+    name: fake.invokedLanguageModelTools[0].name,
+    options: fake.invokedLanguageModelTools[0].options,
+  }, {
     name: 'tds-lm-tools',
     options: { input: {
       command: 'compiler',
       target: source,
       flags: { only: 'all', sort: 'file', format: 'json', syntaxOnly: false, applyOld: false, applied: [] },
     } },
-    token: {},
   });
+  assert.equal(fake.invokedLanguageModelTools[0].token.isCancellationRequested, false);
 });
 
 test('TDS bridge fails closed outside trusted contained AdvPL/TLPP scope and on unavailable API', async () => {
@@ -546,6 +567,57 @@ test('TDS bridge marks timeouts and malformed replies unverified and redacts sec
   assert.equal(malformed.error.code, 'TDS_TOOL_MALFORMED_RESULT');
 });
 
+test('TDS bridge bounds a compiler tool that ignores downstream cancellation', async () => {
+  const fake = fakeVscode();
+  const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
+  const source = join(workspace, 'source.prw');
+  fake.api.workspace.isTrusted = true;
+  let downstreamToken;
+  fake.api.lm.invokeTool = async (_name, _options, token) => {
+    downstreamToken = token;
+    return new Promise(() => {});
+  };
+
+  const result = await Promise.race([
+    extension.invokeTdsCompilerTool(fake.api, { workspace, target: source }, {}, {
+      resolvePath: (candidate) => candidate,
+      timeoutMs: 5,
+    }),
+    new Promise((resolve) => setTimeout(() => resolve({ status: 'test-harness-timeout' }), 50)),
+  ]);
+
+  assert.equal(result.status, 'unverified');
+  assert.equal(result.error.code, 'TDS_TOOL_TIMEOUT');
+  assert.equal(downstreamToken.isCancellationRequested, true);
+});
+
+test('TDS bridge observes in-flight user cancellation when the compiler tool ignores its token', async () => {
+  const fake = fakeVscode();
+  const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
+  const source = join(workspace, 'source.prw');
+  fake.api.workspace.isTrusted = true;
+  const parent = new fake.api.CancellationTokenSource();
+  let downstreamToken;
+  fake.api.lm.invokeTool = async (_name, _options, token) => {
+    downstreamToken = token;
+    return new Promise(() => {});
+  };
+
+  const pending = extension.invokeTdsCompilerTool(fake.api, { workspace, target: source }, parent.token, {
+    resolvePath: (candidate) => candidate,
+    timeoutMs: 1_000,
+  });
+  parent.cancel();
+  const result = await Promise.race([
+    pending,
+    new Promise((resolve) => setTimeout(() => resolve({ status: 'test-harness-timeout' }), 50)),
+  ]);
+
+  assert.equal(result.status, 'unverified');
+  assert.equal(result.error.code, 'TDS_TOOL_CANCELLED');
+  assert.equal(downstreamToken.isCancellationRequested, true);
+});
+
 test('TDS bridge accepts the nested JSON diagnostics contract emitted by TDS 2.1.3', async () => {
   const fake = fakeVscode();
   const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
@@ -577,7 +649,7 @@ test('TDS bridge accepts the nested JSON diagnostics contract emitted by TDS 2.1
   assert.deepEqual(result.diagnostics, { errors: 0, warnings: 0, updated: true, timedOut: false, entries: [] });
 });
 
-test('TDS compile command asks for confirmation and forwards a cancellable native progress token', async () => {
+test('TDS compile command asks for confirmation and links a cancellable native progress token', async () => {
   const fake = fakeVscode();
   const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
   const source = join(workspace, 'source.prw');
@@ -591,7 +663,8 @@ test('TDS compile command asks for confirmation and forwards a cancellable nativ
   assert.equal(fake.informationMessages[0].options.modal, true);
   assert.match(fake.informationMessages[0].message, /RPO/);
   assert.equal(fake.progressCalls.at(-1).options.cancellable, true);
-  assert.equal(fake.invokedLanguageModelTools.at(-1).token, fake.progressCalls.at(-1).token);
+  assert.notEqual(fake.invokedLanguageModelTools.at(-1).token, fake.progressCalls.at(-1).token);
+  assert.equal(fake.invokedLanguageModelTools.at(-1).token.isCancellationRequested, false);
 });
 
 test('TDS compile command falls back to the sole visible local ADVPL/TLPP editor', async () => {

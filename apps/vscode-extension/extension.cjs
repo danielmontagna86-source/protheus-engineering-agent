@@ -6,6 +6,7 @@ const { appendFile, cp, mkdir, rm } = require('node:fs/promises');
 const { promisify } = require('node:util');
 const MAX_LANGUAGE_MODEL_OUTPUT_BYTES = 256 * 1024;
 const MAX_TDS_TOOL_OUTPUT_BYTES = 64 * 1024;
+const DEFAULT_TDS_TOOL_TIMEOUT_MS = 120_000;
 const TDS_COMPILER_TOOL = 'tds-lm-tools';
 const TDS_SOURCE_EXTENSIONS = new Set(['.prw', '.prg', '.prx', '.tlpp', '.ppx', '.ppp', '.apw', '.aph']);
 const execFileAsync = promisify(nodeExecFile);
@@ -89,25 +90,60 @@ async function invokeTdsCompilerTool(vscode, { workspace, target }, token, optio
       error: { code: 'TDS_TOOL_CANCELLED', message: 'TDS compiler invocation was cancelled before it started.' },
     };
   }
-  let result;
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TDS_TOOL_TIMEOUT_MS;
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 600_000) {
+    throw new TypeError('TDS compiler timeout is invalid');
+  }
+  const cancellationSource = new vscode.CancellationTokenSource();
+  let resolveCancelled;
+  const cancelled = new Promise((resolve) => { resolveCancelled = () => resolve({ kind: 'cancelled' }); });
+  const cancellationSubscription = token?.onCancellationRequested?.(() => resolveCancelled());
+  let timeoutHandle;
+  const timeout = new Promise((resolve) => {
+    timeoutHandle = setTimeout(() => resolve({ kind: 'timeout' }), timeoutMs);
+  });
+  const invocation = Promise.resolve().then(() => vscode.lm.invokeTool(TDS_COMPILER_TOOL, {
+    input: {
+      command: 'compiler',
+      target: source,
+      flags: { only: 'all', sort: 'file', format: 'json', syntaxOnly: false, applyOld: false, applied: [] },
+    },
+  }, cancellationSource.token)).then(
+    (value) => ({ kind: 'result', value }),
+    (error) => ({ kind: 'error', error }),
+  );
+  let outcome;
   try {
-    result = await vscode.lm.invokeTool(TDS_COMPILER_TOOL, {
-      input: {
-        command: 'compiler',
-        target: source,
-        flags: { only: 'all', sort: 'file', format: 'json', syntaxOnly: false, applyOld: false, applied: [] },
-      },
-    }, token);
-  } catch (error) {
-    const cancelled = token?.isCancellationRequested || error?.name === 'CancellationError';
+    outcome = await Promise.race([invocation, timeout, cancelled]);
+  } finally {
+    clearTimeout(timeoutHandle);
+    cancellationSubscription?.dispose?.();
+    if (outcome?.kind !== 'result') cancellationSource.cancel();
+    cancellationSource.dispose();
+  }
+  if (outcome.kind === 'timeout') {
+    return {
+      adapter: 'tds-language-model-tool', status: 'unverified',
+      error: { code: 'TDS_TOOL_TIMEOUT', message: 'TDS compiler invocation exceeded its bounded timeout.' },
+    };
+  }
+  if (outcome.kind === 'cancelled') {
+    return {
+      adapter: 'tds-language-model-tool', status: 'unverified',
+      error: { code: 'TDS_TOOL_CANCELLED', message: 'TDS compiler invocation was cancelled.' },
+    };
+  }
+  if (outcome.kind === 'error') {
+    const wasCancelled = token?.isCancellationRequested || outcome.error?.name === 'CancellationError';
     return {
       adapter: 'tds-language-model-tool', status: 'unverified',
       error: {
-        code: cancelled ? 'TDS_TOOL_CANCELLED' : 'TDS_TOOL_INVOCATION_FAILED',
-        message: cancelled ? 'TDS compiler invocation was cancelled.' : 'TDS compiler tool invocation failed.',
+        code: wasCancelled ? 'TDS_TOOL_CANCELLED' : 'TDS_TOOL_INVOCATION_FAILED',
+        message: wasCancelled ? 'TDS compiler invocation was cancelled.' : 'TDS compiler tool invocation failed.',
       },
     };
   }
+  const result = outcome.value;
   const text = tdsToolText(result);
   if (!text) {
     return {
