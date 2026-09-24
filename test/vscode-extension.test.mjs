@@ -1326,6 +1326,38 @@ test('historical VS Code smoke allows enough time to provision the requested hos
   assert.match(runner, /downloadAndUnzipVSCode\(\{ version, timeout: 60_000 \}\)/);
 });
 
+test('installed VSIX accessibility smoke uses native high-contrast and keyboard surfaces', async () => {
+  const runner = await readFile(join(productRoot, 'scripts', 'run-vscode-smoke.mjs'), 'utf8');
+  const host = await readFile(join(productRoot, 'integration', 'vscode-host', 'index.cjs'), 'utf8');
+
+  assert.match(runner, /--accessibility/);
+  assert.match(runner, /--force-renderer-accessibility/);
+  assert.match(runner, /PEA_EXPECT_ACCESSIBILITY/);
+  assert.match(runner, /Default High Contrast/);
+  assert.match(runner, /window\.zoomLevel/);
+  assert.match(runner, /firstValueDurationMs/);
+  assert.match(host, /activeColorTheme\.kind/);
+  assert.match(host, /accessibilitySupport/);
+  assert.match(host, /nativeViews/);
+});
+
+test('WSL smoke installs and executes the packaged extension in a remote extension host', async () => {
+  const runner = await readFile(join(productRoot, 'scripts', 'run-vscode-wsl-smoke.mjs'), 'utf8');
+  const probe = await readFile(join(productRoot, 'integration', 'vscode-wsl-probe', 'extension.cjs'), 'utf8');
+
+  assert.match(runner, /--remote/);
+  assert.match(runner, /wsl\+/);
+  assert.match(runner, /--install-extension/);
+  assert.match(runner, /PEA_WSL_ALLOW_RESTART/);
+  assert.match(runner, /--terminate/);
+  assert.match(runner, /packageProbe/);
+  assert.match(runner, /server-main\.js/);
+  assert.match(runner, /WSL_REMOTE_ACTIVATION_UNPROVEN/);
+  assert.match(runner, /--uninstall-extension/);
+  assert.match(probe, /vscode\.env\.remoteName/);
+  assert.match(probe, /pea\.reviewActiveFile/);
+});
+
 test('package lifecycle harness proves install, upgrade, uninstall, reinstall and rollback', async () => {
   const lifecycle = await readFile(join(productRoot, 'scripts', 'run-vscode-lifecycle.mjs'), 'utf8');
   const workflow = await readFile(join(productRoot, '.github', 'workflows', 'ci.yml'), 'utf8');

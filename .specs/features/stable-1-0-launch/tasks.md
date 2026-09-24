@@ -104,7 +104,7 @@ Nothing in this track is packaged as a user feature or required by the VSIX/runt
 
 ### SL-310 — Prove install, upgrade, rollback and remote compatibility
 
-- **Status:** Partial; fresh Windows minimum/current VSIX, TDS coexistence and complete Windows lifecycle/rollback passed locally. Commit `a1a4f4a` passed the GitHub-hosted Linux 1.95.3 installed-VSIX lifecycle (preview package build, install, upgrade, uninstall, reinstall and rollback); remote matrix remains.
+- **Status:** Partial; fresh Windows minimum/current VSIX, TDS coexistence and complete Windows lifecycle/rollback passed locally. Commit `a1a4f4a` passed the GitHub-hosted Linux 1.95.3 installed-VSIX lifecycle. The 2026-09-24 WSL rerun proved catalog placement and connection but produced no remote command receipt because the Remote WSL 0.104.3 host raised `PendingMigrationError`; remote remains unsupported/unproven.
 - **Files:** VSIX smoke harness, CI matrices, migration tests, user rollback guide
 - **Depends on:** SL-300
 - **Tests:** clean install; upgrade from latest preview; uninstall/reinstall; rollback; minimum/current VS Code; Windows/Linux; local and declared remote modes; offline first value.
@@ -112,7 +112,7 @@ Nothing in this track is packaged as a user feature or required by the VSIX/runt
 
 ### SL-320 — Complete accessibility, localization and usability UAT
 
-- **Status:** Automated localization coverage complete; assistive and three-user UAT not run
+- **Status:** Automated localization plus installed high-contrast, zoom, accessibility mode, native-view and 24-command keyboard-surface checks passed on VS Code 1.139.0; the isolated automated journey reached first value in 12.988 seconds. Screen-reader and three-user UAT remain unrun.
 - **Files:** accessibility checklist/evidence, screenshots, UAT protocol/results, issue log
 - **Depends on:** SL-120, SL-310
 - **Tests:** keyboard, focus, screen reader, high contrast, zoom, pt-BR/en, three clean-profile first-value sessions.

@@ -128,6 +128,12 @@ Run the three focused suites and then `npm run validate`.
 
 ### Task 6: Close autonomous package, accessibility and support gates
 
+**Status 2026-09-24:** Automated installed accessibility and clean-profile
+timing PASS. Support/rollback tabletop PASS at documentation level. WSL package
+placement and connection PASS, but remote activation receipt
+`BLOCKED-HOST-RUNTIME`; screen-reader/human UAT and Marketplace operations stay
+external. Evidence: `docs/qa/accessibility-remote-support-validation-2026-09-24.md`.
+
 **Files:**
 - Modify/create under `test/`, `scripts/`, `docs/qa/`, and `.specs/features/stable-1-0-launch/` as identified by each focused RED test.
 

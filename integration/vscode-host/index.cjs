@@ -16,6 +16,8 @@ async function execute(command, ...args) {
 async function run() {
   const workspace = vscode.workspace.workspaceFolders?.[0];
   assert.ok(workspace, 'isolated smoke workspace was not opened');
+  const expectRemote = process.env.PEA_EXPECT_REMOTE === '1';
+  if (expectRemote) assert.equal(vscode.env.remoteName, 'wsl', 'smoke did not run in the WSL extension host');
   const product = vscode.extensions.getExtension('danielmontagna86-source.protheus-engineering-agent');
   assert.ok(product, 'packaged Protheus Engineering Agent VSIX is not installed');
   const expectedExtensionsDir = process.env.PEA_EXPECTED_EXTENSIONS_DIR;
@@ -126,6 +128,26 @@ async function run() {
     [],
     'every packaged public command must be registered in the installed Extension Host',
   );
+  const expectAccessibility = process.env.PEA_EXPECT_ACCESSIBILITY === '1';
+  let accessibility = null;
+  if (expectAccessibility) {
+    const declaredViews = Object.values(product.packageJSON.contributes?.views ?? {}).flat();
+    const nativeViews = declaredViews.length > 0
+      && declaredViews.every((view) => view.type === undefined || view.type === 'tree');
+    const accessibilitySupport = vscode.workspace.getConfiguration('editor').get('accessibilitySupport');
+    const zoomLevel = vscode.workspace.getConfiguration('window').get('zoomLevel');
+    const highContrast = [vscode.ColorThemeKind.HighContrast, vscode.ColorThemeKind.HighContrastLight]
+      .includes(vscode.window.activeColorTheme.kind);
+    accessibility = {
+      passed: nativeViews && accessibilitySupport === 'on' && zoomLevel === 2 && highContrast,
+      nativeViews,
+      accessibilitySupport,
+      zoomLevel,
+      highContrast,
+      keyboardCommandCount: declaredCommandIds.length,
+    };
+    assert.equal(accessibility.passed, true, 'installed accessibility profile is incomplete');
+  }
   const receiptPath = process.env.PEA_SMOKE_RECEIPT;
   assert.ok(receiptPath, 'installed smoke receipt path was not provided');
   await fs.writeFile(receiptPath, JSON.stringify({
@@ -134,6 +156,9 @@ async function run() {
     executedCommandIds: [...executedCommandIds].sort(),
     invocations: 7,
     tdsStructuredInputAccepted,
+    accessibility,
+    remoteName: vscode.env.remoteName ?? null,
+    workspaceScheme: workspace.uri.scheme,
   }, null, 2));
 
   process.stdout.write(`VS Code Extension Host smoke: PASS (7 core command invocations${expectTds ? ', TDS + CP1252/LF + multi-root' : ''})\n`);
