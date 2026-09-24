@@ -8,6 +8,12 @@
 
 **Tech Stack:** Node.js 22+, VS Code Extension API, VS Code Language Model Tools, MCP TypeScript SDK, `node:test`, Docker Compose, PostgreSQL, TDS-VSCode.
 
+**Execution status (2026-09-24):** Tasks 1–5 complete for candidate
+`90b311512db7f44dfecb80710a5b6d123e59a3e7`. The live unavailable case exposed
+an upstream diagnostics-only false positive; the bridge now fails closed with
+`TDS_COMPILE_SUCCESS_UNPROVEN`. Tasks 6–7 remain, with human/external evidence
+kept explicitly separate from autonomous checks.
+
 ---
 
 ### Task 1: Correct the functional AppServer/RPO acceptance contract

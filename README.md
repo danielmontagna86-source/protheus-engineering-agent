@@ -38,7 +38,7 @@ Marketplace e não é apresentada como release estável; os gates abertos estão
 - adaptador experimental e opcional para Hermes, fora do caminho crítico e do gate de release;
 - extensão VS Code fina com Central de Engenharia, comandos determinísticos, Language Model Tools e skill portável, sem UI de terminal/explorer/Git própria.
 
-As integrações são contratos prontos, mas continuam inativas até o host fornecer configuração, autorização e, quando aplicável, credenciais. O compilador/AppServer/RPO real e um driver Oracle real não estão embutidos. O produto nunca transforma simulação em prova de compilação.
+As integrações são contratos prontos, mas continuam inativas até o host fornecer configuração, autorização e, quando aplicável, credenciais. O compilador/AppServer/RPO e drivers de banco não estão embutidos. O produto nunca transforma ausência de diagnóstico, simulação ou retorno antecipado em prova de compilação ou cancelamento no servidor.
 
 ## Desenvolvimento local
 
@@ -193,7 +193,7 @@ npm run publication:release-check
 - O CodeGraph usa parser léxico tolerante incremental com IR versionada e corpus legal declarado, não uma gramática completa nem equivalência ao compilador.
 - O review é um pre-gate determinístico; não substitui compilação, análise oficial, testes funcionais ou revisão humana.
 - A extensão não implementa chat próprio; usa comandos, superfícies nativas, Language Model Tools, skill portável e MCP governado.
-- TDN/Dictionary foram exercitados com snapshots; Oracle/build/IA foram exercitados com adapters sintéticos e processos locais, não com infraestrutura de cliente.
+- TDN/Dictionary foram exercitados com snapshots e o adapter PostgreSQL genérico foi exercitado em laboratório privado descartável; Oracle/build/IA continuam limitados a adapters sintéticos e processos locais, não a infraestrutura de cliente.
 - Integrações externas permanecem fail-closed, não recebem credenciais implicitamente e exigem validação no ambiente homologado do adotante.
 - A cobertura automatizada confirma contratos, VSIX e rotas de API, mas não substitui UAT de conta/fornecedor; Claude Code, Gemini CLI, Cline e OpenCode não são runners diretos do PEA.
 - Ganho de produtividade e liderança de mercado não são alegações aprovadas; exigem o piloto humano publicado em `docs/effectiveness-methodology.md`.

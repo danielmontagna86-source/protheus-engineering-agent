@@ -64,7 +64,7 @@ Nothing in this track is packaged as a user feature or required by the VSIX/runt
 
 ### SL-220 — Validate through the official PostgreSQL lane
 
-- **Status:** Partial; isolated environment/read/write-denial checks passed, live product dialect evidence remains capability-gated
+- **Status:** Partial; the generic adapter and MCP route passed the live private PostgreSQL 16 matrix on `90b3115`, including server-side cancellation. Exact Stable repetition and a supported host-driver recipe remain.
 - **Files:** opt-in Compose/test harness, named-query adapter fixtures, CI workflow, docs
 - **Depends on:** SL-200, PC-025
 - **Tests:** health/readiness, SX2/SX3 lookup, unknown query, injection, write denial, timeout, concurrent reads and teardown.
@@ -76,8 +76,9 @@ Nothing in this track is packaged as a user feature or required by the VSIX/runt
   positive/negative PEA→TDS and direct TDS→AppServer receipts, and the owner
   attested on 2026-09-24 that its RPO was obtained from the official TOTVS
   portal. Commercial-license status is not a functional criterion for this
-  private lab. Locked/unavailable RPO, live timeout/cancel and
-  DBAccess/dictionary adapter coverage remain open.
+  private lab. Live timeout, pre/in-flight cancellation and AppServer unavailable
+  passed on `90b3115`; locked/unavailable RPO, DBAccess/dictionary adapter
+  coverage and exact Stable repetition remain open.
 - **Files:** test-only private-input manifest schema, preflight/admission scripts, build smoke and internal evidence docs; no proprietary artifacts
 - **Depends on:** SL-210, SL-220
 - **Tests:** missing/invalid provenance metadata, missing artifact, digest mismatch, compile success/failure, locked RPO, bad include, server unavailable, timeout/cancel and secret redaction.
