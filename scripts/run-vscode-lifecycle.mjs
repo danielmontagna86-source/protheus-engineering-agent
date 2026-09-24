@@ -32,10 +32,12 @@ function requireSuccess(result, step) {
 
 export function parseVsCodeLifecycleArgs(argv = process.argv) {
   const previousIndex = argv.indexOf('--previous-vsix');
-  const versionIndex = argv.indexOf('--version');
-  const previousVsix = previousIndex >= 0 ? argv[previousIndex + 1] : null;
-  const vscodeVersion = versionIndex >= 0 ? argv[versionIndex + 1] : null;
-  if (versionIndex >= 0 && !/^\d+\.\d+\.\d+$/.test(vscodeVersion ?? '')) {
+  const npmSafeVersionIndex = argv.indexOf('--vscode-version');
+  const versionIndex = npmSafeVersionIndex >= 0 ? npmSafeVersionIndex : argv.indexOf('--version');
+  const positionalMode = previousIndex < 0 && versionIndex < 0;
+  const previousVsix = previousIndex >= 0 ? argv[previousIndex + 1] : (positionalMode ? argv[2] ?? null : null);
+  const vscodeVersion = versionIndex >= 0 ? argv[versionIndex + 1] : (positionalMode ? argv[3] ?? null : null);
+  if ((versionIndex >= 0 || vscodeVersion !== null) && !/^\d+\.\d+\.\d+$/.test(vscodeVersion ?? '')) {
     throw new Error('--version requires an exact VS Code version such as 1.95.3');
   }
   return { previousVsix, vscodeVersion };

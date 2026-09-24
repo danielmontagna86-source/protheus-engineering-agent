@@ -263,3 +263,27 @@ identifica o RPO e não transforma a imagem comunitária em ambiente Protheus
 licenciado. Portanto, G6 permanece **PARTIAL**; cancelamento, timeout, RPO
 bloqueado, DBAccess/dicionário via adapter, ciclo remoto e artefato Stable exato
 continuam obrigatórios.
+
+### Recibos saneados repetidos — 2026-09-17
+
+Dois recibos foram preservados fora da árvore Git do produto para evitar incluir
+configuração local ou transformar evidência histórica em artefato de release:
+
+| Recibo | SHA-256 | Escopo comprovado |
+| --- | --- | --- |
+| `pea-bridge-result.json` | `84a467d86c8f832b683951db5f030c9201b972819225bfdfd800717ee6d64a17` | PEA 0.3.9/VSIX `67655ff...`, TDS 2.1.3, caso válido `completed` sem diagnóstico e caso inválido `failed` com um erro na linha 2 |
+| `result.json` | `d3a1756bb2f7e5da806866524027e2cdf839087e20c8cf42e16fa35206d4f9c1` | reconexão direta a `localhost:1234`, caso válido com retorno `0/SUCCESS` e caso inválido com retorno `-1` e `C2090`; este recibo não registra rollback |
+
+Os JSONs não contêm senha, token RPO ou identidade de usuário. Eles confirmam a
+repetibilidade positiva/negativa no laboratório autorizado, mas não registram
+identidade licenciada, nome do RPO, procedimento de reset ou o futuro artefato
+Stable. Por isso, G6 permanece `PARTIAL`.
+
+### Preflight somente leitura — 2026-09-23
+
+Às `22:12:43-03:00`, uma repetição somente leitura não encontrou listener nas
+portas locais `1234` ou `18080`, nem contêiner Protheus ativo no Docker. Nenhum
+serviço foi iniciado ou alterado. Os dois recibos externos acima continuavam
+presentes e seus SHA-256 permaneceram idênticos. Assim, a indisponibilidade
+transitória do laboratório foi registrada sem converter evidência histórica em
+um passe do candidato atual e sem rebaixar a validade criptográfica dos recibos.

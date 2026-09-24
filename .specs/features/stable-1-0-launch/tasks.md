@@ -72,7 +72,10 @@ Nothing in this track is packaged as a user feature or required by the VSIX/runt
 
 ### SL-230 — Build the private AppServer homologation harness
 
-- **Status:** External / blocked on lawful licensed inputs and environment
+- **Status:** Partial; the authorized disposable laboratory now has sanitized
+  positive/negative PEA→TDS and direct TDS→AppServer receipts dated 2026-09-17.
+  Licensed identity, disposable-RPO reset evidence, locked-RPO, live
+  timeout/cancel and DBAccess/dictionary adapter coverage remain external.
 - **Files:** test-only private-input manifest schema, preflight/admission scripts, build smoke and internal evidence docs; no proprietary artifacts
 - **Depends on:** SL-210, SL-220
 - **Tests:** missing/invalid entitlement metadata, missing artifact, digest mismatch, compile success/failure, locked RPO, bad include, server unavailable, timeout/cancel and secret redaction.
@@ -114,7 +117,9 @@ Nothing in this track is packaged as a user feature or required by the VSIX/runt
 
 ### SL-330 — Complete live compatibility and effectiveness evidence
 
-- **Status:** External / not complete
+- **Status:** Partial for laboratory compatibility; representative effectiveness,
+  licensed support identity and the final Stable artifact remain external / not
+  complete
 - **Delegates to:** PC-030..PC-033
 - **Depends on:** SL-230, SL-320
 - **Tests:** licensed AppServer/RPO/database/TDS matrix and preregistered representative pilot.
