@@ -25,6 +25,7 @@
     "node": ">=22.0.0"
   },
   "scripts": {
+    "pretest": "npm run build:extension",
     "test": "node --test",
     "test:mutation": "stryker run",
     "test:vscode:host": "node scripts/run-vscode-smoke.mjs",
@@ -50,10 +51,10 @@
   "devDependencies": {
     "@stryker-mutator/core": "10.0.0",
     "@vscode/test-electron": "3.1.0",
-    "@vscode/vsce": "3.9.2",
+    "@vscode/vsce": "4.0.0",
     "buffer-crc32": "1.0.0",
     "esbuild": "0.28.2",
-    "yaml": "2.9.0",
+    "yaml": "2.9.1",
     "yauzl": "3.4.0",
     "yazl": "3.3.1"
   },

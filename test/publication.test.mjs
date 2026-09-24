@@ -986,6 +986,7 @@ test('the documented release gate cannot skip exact source rebuild verification'
 test('local validation builds the extension runtime and runs the suite serially in a clean checkout', async () => {
   const manifest = JSON.parse(await readFile(join(process.cwd(), 'package.json'), 'utf8'));
 
+  assert.equal(manifest.scripts.pretest, 'npm run build:extension');
   assert.match(manifest.scripts.validate, /^npm run build:extension && node --test --test-concurrency=1/);
 });
 
@@ -1156,7 +1157,7 @@ test('dependency security gate uses pinned actions, fails closed and supports a 
   );
 
   assert.match(workflow, /actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1/);
-  assert.match(workflow, /google\/osv-scanner-action\/osv-scanner-action@8e5cf47b818121e8b405931c82126c2630b0b20d/);
+  assert.match(workflow, /google\/osv-scanner-action\/osv-scanner-action@8ac9e5ce44cc7178e0e04229a91bdcc003166e57 # v2\.6\.0/);
   assert.match(workflow, /--lockfile=package-lock\.json/);
   assert.doesNotMatch(workflow, /continue-on-error:\s*true/);
   assert.doesNotMatch(workflow, /security-events:\s*write/);
@@ -1170,8 +1171,12 @@ test('CodeQL is pinned, least-privilege and activates automatically when the rep
   );
 
   assert.match(workflow, /if: github\.event\.repository\.private == false/);
-  assert.match(workflow, /github\/codeql-action\/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4\.38\.0/);
-  assert.match(workflow, /github\/codeql-action\/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4\.38\.0/);
+  const pins = [...workflow.matchAll(/github\/codeql-action\/(init|analyze)@([0-9a-f]{40}) # v([0-9]+\.[0-9]+\.[0-9]+)/g)];
+  assert.deepEqual(pins.map((match) => match[1]), ['init', 'analyze']);
+  assert.equal(pins[0][2], '1c5b675653bb5c22dbe9b12b556ec555138e09fd');
+  assert.equal(pins[0][2], pins[1][2]);
+  assert.equal(pins[0][3], '4.38.1');
+  assert.equal(pins[0][3], pins[1][3]);
   assert.match(workflow, /languages: javascript-typescript/);
   assert.match(workflow, /queries: security-extended/);
   assert.match(workflow, /security-events: write/);
@@ -1191,7 +1196,8 @@ test('supply-chain workflows are pinned, least-privilege and fail closed', async
   assert.match(dependencyReview, /fail-on-severity: moderate/);
   assert.match(dependencyReview, /if: github\.event\.repository\.private == false/);
   assert.match(secretScan, /fetch-depth: 0/);
-  assert.match(secretScan, /version: 3\.97\.4/);
+  assert.match(secretScan, /trufflesecurity\/trufflehog@f714bf454f350590f4a24c3ddb1aef02c35bf5b6 # v3\.97\.5/);
+  assert.match(secretScan, /version: 3\.97\.5/);
   assert.match(secretScan, /name: Verified secrets/);
   assert.match(secretScan, /extra_args: --results=verified/);
   assert.doesNotMatch(secretScan, /results=verified,unknown/);

@@ -1270,11 +1270,23 @@ test('package lifecycle harness proves install, upgrade, uninstall, reinstall an
 
 test('package lifecycle accepts an exact hosted VS Code version and provisions it when no local executable exists', async () => {
   assert.deepEqual(
+    parseVsCodeLifecycleArgs(['node', 'lifecycle', 'previous.vsix', '1.95.3']),
+    { previousVsix: 'previous.vsix', vscodeVersion: '1.95.3' },
+  );
+  assert.deepEqual(
+    parseVsCodeLifecycleArgs(['node', 'lifecycle', '--previous-vsix', 'previous.vsix', '--vscode-version', '1.95.3']),
+    { previousVsix: 'previous.vsix', vscodeVersion: '1.95.3' },
+  );
+  assert.deepEqual(
     parseVsCodeLifecycleArgs(['node', 'lifecycle', '--previous-vsix', 'previous.vsix', '--version', '1.95.3']),
     { previousVsix: 'previous.vsix', vscodeVersion: '1.95.3' },
   );
   assert.throws(
     () => parseVsCodeLifecycleArgs(['node', 'lifecycle', '--previous-vsix', 'previous.vsix', '--version', 'latest']),
+    /--version requires an exact VS Code version/,
+  );
+  assert.throws(
+    () => parseVsCodeLifecycleArgs(['node', 'lifecycle', '--previous-vsix', 'previous.vsix', '--version']),
     /--version requires an exact VS Code version/,
   );
   const executable = await resolveLifecycleVsCodeExecutable({

@@ -109,6 +109,12 @@ npm run package:extension
 code --install-extension release-artifacts/protheus-engineering-agent-v0.3.9.vsix
 ```
 
+Para validar instalação, upgrade, remoção, reinstalação e rollback com um VSIX anterior, passe o caminho e a versão do VS Code como argumentos posicionais. Esse formato também funciona no npm 12, que rejeita opções desconhecidas após um único separador:
+
+```sh
+npm run test:vscode:lifecycle -- /caminho/para/versao-anterior.vsix 1.95.3
+```
+
 No workspace ADVPL/TLPP, use a Central de Engenharia ou a paleta para:
 
 - `Protheus Agent: Doctor`
