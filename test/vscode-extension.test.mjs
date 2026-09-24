@@ -10,6 +10,7 @@ import {
   requireExactVsCodeVersion,
   resolveLifecycleVsCodeExecutable,
 } from '../scripts/run-vscode-lifecycle.mjs';
+import { installedExtensionLine } from '../scripts/run-vscode-wsl-smoke.mjs';
 
 const require = createRequire(import.meta.url);
 const productRoot = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -1356,6 +1357,13 @@ test('WSL smoke installs and executes the packaged extension in a remote extensi
   assert.match(runner, /--uninstall-extension/);
   assert.match(probe, /vscode\.env\.remoteName/);
   assert.match(probe, /pea\.reviewActiveFile/);
+});
+
+test('WSL smoke matches the packaged extension version instead of a release literal', () => {
+  assert.equal(
+    installedExtensionLine('danielmontagna86-source.protheus-engineering-agent', '1.0.0'),
+    'danielmontagna86-source.protheus-engineering-agent@1.0.0',
+  );
 });
 
 test('package lifecycle harness proves install, upgrade, uninstall, reinstall and rollback', async () => {

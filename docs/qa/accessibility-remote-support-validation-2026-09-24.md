@@ -75,4 +75,3 @@ and the Stable artifact do not exist yet.
 - [Supporting remote development](https://code.visualstudio.com/api/advanced-topics/remote-extensions)
 - [Remote development in WSL](https://code.visualstudio.com/docs/remote/wsl-tutorial)
 - [Upstream Remote WSL 0.104.3 navigator report](https://github.com/microsoft/vscode-remote-release/issues/11376)
-

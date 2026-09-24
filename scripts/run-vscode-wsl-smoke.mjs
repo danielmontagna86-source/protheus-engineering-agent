@@ -64,6 +64,10 @@ function installRemoteVsix(distro, serverRoot, windowsVsix) {
   ]);
 }
 
+export function installedExtensionLine(id, version) {
+  return `${id}@${version}`;
+}
+
 function uninstallRemoteProbe(distro, serverRoot) {
   run('wsl.exe', [
     '-d', distro, '--', `${serverRoot}/node`, `${serverRoot}/out/server-main.js`,
@@ -101,8 +105,13 @@ export async function runVsCodeWslSmoke() {
   packageProbe(probeVsix);
   installRemoteVsix(distro, serverRoot, packaged.path);
   const installed = installRemoteVsix(distro, serverRoot, probeVsix);
-  if (!/^danielmontagna86-source\.protheus-engineering-agent@0\.3\.9$/im.test(installed)
-    || !/^local-test\.pea-wsl-smoke-probe@0\.0\.0$/im.test(installed)) {
+  const installedLines = installed.split(/\r?\n/).map((line) => line.trim().toLowerCase());
+  const productLine = installedExtensionLine(
+    'danielmontagna86-source.protheus-engineering-agent',
+    packaged.version,
+  ).toLowerCase();
+  if (!installedLines.includes(productLine)
+    || !installedLines.includes('local-test.pea-wsl-smoke-probe@0.0.0')) {
     throw new Error('packaged product and probe are not installed in the WSL extension host');
   }
   run('wsl.exe', ['--terminate', distro]);
