@@ -72,14 +72,16 @@ Nothing in this track is packaged as a user feature or required by the VSIX/runt
 
 ### SL-230 — Build the private AppServer homologation harness
 
-- **Status:** Partial; the authorized disposable laboratory now has sanitized
-  positive/negative PEA→TDS and direct TDS→AppServer receipts dated 2026-09-17.
-  Licensed identity, disposable-RPO reset evidence, locked-RPO, live
-  timeout/cancel and DBAccess/dictionary adapter coverage remain external.
+- **Status:** Partial; the authorized disposable laboratory has sanitized
+  positive/negative PEA→TDS and direct TDS→AppServer receipts, and the owner
+  attested on 2026-09-24 that its RPO was obtained from the official TOTVS
+  portal. Commercial-license status is not a functional criterion for this
+  private lab. Locked/unavailable RPO, live timeout/cancel and
+  DBAccess/dictionary adapter coverage remain open.
 - **Files:** test-only private-input manifest schema, preflight/admission scripts, build smoke and internal evidence docs; no proprietary artifacts
 - **Depends on:** SL-210, SL-220
-- **Tests:** missing/invalid entitlement metadata, missing artifact, digest mismatch, compile success/failure, locked RPO, bad include, server unavailable, timeout/cancel and secret redaction.
-- **Gate:** official image by digest plus lawful user-owned inputs; nothing proprietary enters Git or public artifacts.
+- **Tests:** missing/invalid provenance metadata, missing artifact, digest mismatch, compile success/failure, locked RPO, bad include, server unavailable, timeout/cancel and secret redaction.
+- **Gate:** admitted image by digest plus lawful user-owned inputs and explicit owner authorization; nothing proprietary enters Git or public artifacts, and no result is presented as official TOTVS certification.
 
 ### SL-240 — Implement internal community-container admission without default execution
 
@@ -118,11 +120,11 @@ Nothing in this track is packaged as a user feature or required by the VSIX/runt
 ### SL-330 — Complete live compatibility and effectiveness evidence
 
 - **Status:** Partial for laboratory compatibility; representative effectiveness,
-  licensed support identity and the final Stable artifact remain external / not
+  support ownership and the final Stable artifact remain external / not
   complete
 - **Delegates to:** PC-030..PC-033
 - **Depends on:** SL-230, SL-320
-- **Tests:** licensed AppServer/RPO/database/TDS matrix and preregistered representative pilot.
+- **Tests:** authorized AppServer/RPO/database/TDS matrix and preregistered representative pilot.
 - **Gate:** supported matrix and claim table match raw evidence; unsupported combinations remain explicit.
 
 ### SL-340 — Harden public supply chain and release workflow
@@ -152,7 +154,7 @@ Parallelizable after SL-100: `SL-200 -> SL-210/SL-220 -> SL-230`, and `SL-340` a
 
 These items cannot be fabricated by repository work:
 
-1. obtain lawful AppServer/RPO/dictionary/include and test License Server/DBAccess access, or arrange a customer/partner homologation window;
+1. retain auditable provenance for the authorized AppServer/RPO/dictionary/include inputs without placing proprietary artifacts in Git;
 2. approve a non-customer smoke project and test data;
 3. recruit representative Protheus users for UAT/pilot;
 4. establish Marketplace publisher/domain and legal/trademark review;

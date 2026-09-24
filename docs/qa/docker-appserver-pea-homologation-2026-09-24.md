@@ -3,14 +3,17 @@
 ## Decisão
 
 O laboratório comunitário autorizado está **apto para desenvolvimento e para a
-matriz local PEA → TDS → AppServer**, mas continua **não elegível como prova de
-AppServer licenciado ou de produção TOTVS**. O DBAccess declara explicitamente
-`TOP_NO_LICENSE`; nenhuma evasão ou arquivo de licença externo foi aplicado.
+matriz local PEA → TDS → AppServer**. O responsável atestou em 2026-09-24 que o
+RPO usado no laboratório foi obtido no portal oficial TOTVS. O DBAccess declara
+`TOP_NO_LICENSE`; esse estado comercial é registrado, mas não invalida os
+resultados funcionais observados. Nenhuma evasão ou licença externa foi aplicada.
 
 Esta execução fecha a pendência técnica do fluxo positivo/negativo no candidato
 exato `0.3.9`, melhora a resiliência do laboratório e substitui o antigo erro de
-inicialização REST. Ela não fecha o gate Stable G6, que exige identidade
-licenciada e RPO identificável para o mesmo candidato Stable.
+inicialização REST. Ela fecha o caminho funcional positivo/negativo do gate G6,
+sem alegar certificação ou suporte oficial TOTVS. Os casos live de timeout,
+cancelamento e RPO indisponível, além da repetição no candidato Stable exato,
+continuam abertos.
 
 ## Autorização e limites
 
@@ -88,12 +91,16 @@ ferramenta pública do TDS, uma fonte válida chega ao AppServer e uma fonte
 inválida volta como falha estruturada. Resiliência e exposição local também
 foram verificadas.
 
-G6 permanece **PARTIAL** por três limites materiais:
+G6 permanece **PARTIAL** por dois limites materiais:
 
-1. `TOP_NO_LICENSE` não atende a exigência de identidade licenciada;
-2. o recibo público do TDS não identifica o RPO;
-3. o artefato avaliado é `0.3.9`, não um futuro candidato Stable único com todos
+1. timeout, cancelamento e RPO temporariamente indisponível ainda não foram
+   exercitados no caminho live;
+2. o artefato avaliado é `0.3.9`, não um futuro candidato Stable único com todos
    os demais gates G0–G13 verdes.
+
+A origem oficial do RPO é uma declaração nominal do responsável e não autoriza
+redistribuição. `TOP_NO_LICENSE` não é usado como bloqueio funcional e também
+não é convertido em alegação de ambiente comercial licenciado.
 
 ## Fontes primárias e upstream
 
