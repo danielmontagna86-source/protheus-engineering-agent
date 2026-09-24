@@ -90,6 +90,7 @@ test('external integrations are fail-closed when no adapter is configured', asyn
   const registry = createIntegrationRegistry();
 
   assert.deepEqual(registry.status(), [
+    { name: 'database', available: false },
     { name: 'dictionary', available: false },
     { name: 'oracle', available: false },
     { name: 'tdn', available: false },
@@ -431,6 +432,33 @@ test('generic PostgreSQL named-query adapter keeps dialect, policy and catalog s
     authorize: async () => ({ allowed: true }),
     execute: async () => ({ rows: [] }),
   }), /read-only SELECT/);
+});
+
+test('integration registry exposes a host-injected provider-neutral database adapter', async () => {
+  const calls = [];
+  const adapter = createReadOnlyNamedQueryAdapter({
+    dialect: 'postgres',
+    capability: 'database:read',
+    queries: {
+      catalog: { sql: 'SELECT table_name FROM information_schema.tables WHERE table_schema = $1', bindNames: ['schema'] },
+    },
+    authorize: async () => ({ allowed: true }),
+    async execute(sql, values, context) {
+      calls.push({ sql, values, context });
+      return { rows: [{ table_name: 'sys_usr' }] };
+    },
+  });
+  const registry = createIntegrationRegistry({ database: adapter });
+
+  const result = await registry.invoke('database', 'query', {
+    name: 'catalog', binds: { schema: 'public' },
+  });
+
+  assert.equal(registry.status().find((item) => item.name === 'database').available, true);
+  assert.equal(result.ok, true);
+  assert.equal(result.integration, 'postgres');
+  assert.deepEqual(calls[0].values, ['public']);
+  assert.equal(calls[0].context.readOnly, true);
 });
 
 test('database adapters reject oversized and non-scalar result cells before returning evidence', async () => {

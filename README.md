@@ -161,7 +161,7 @@ packages/policy/              permissões por ambiente
 packages/hermes-adapter/      compatibilidade Hermes opcional
 packages/review/              review e bug sheet
 packages/mcp/                 MCP stdio
-packages/integrations/        portas TDN/Dictionary/Oracle
+packages/integrations/        portas TDN/Dictionary/Oracle/PostgreSQL
 packages/build-supervisor/    máquina de estados
 packages/subagents/           execução filha limitada e recuperável
 packages/ai-gateway/          provider de IA opcional e governado

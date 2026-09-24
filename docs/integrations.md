@@ -66,7 +66,8 @@ The generic adapter limits timeout, bind size, rows and fields; declares read-on
 - `pea_tdn_search`
 - `pea_dictionary_table`
 - `pea_dictionary_field`
-- `pea_oracle_query` (unavailable until a host injects an approved adapter)
+- `pea_database_query` (provider-neutral; unavailable until a host injects an approved dialect adapter)
+- `pea_oracle_query` (legacy-compatible Oracle surface; unavailable until a host injects an approved adapter)
 
 Missing configuration returns `INTEGRATION_UNAVAILABLE`; invalid snapshots, unsupported
 operations and load timeouts return their own structured error codes. Snapshot data is

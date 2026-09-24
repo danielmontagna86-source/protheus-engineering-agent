@@ -92,7 +92,7 @@ Run the three focused suites and then `npm run validate`.
 ### Task 4: Execute live negative TDS/AppServer cases
 
 **Files:**
-- Modify outside public repository: `C:/Users/montagna/Documents/Protheus-Teste/pea-tds-homologation/pea-bridge-runner.cjs`
+- Modify outside public repository: `<private-lab>/pea-tds-homologation/pea-bridge-runner.cjs`
 - Create outside public repository: sanitized live receipt under the same laboratory directory
 - Modify: `docs/qa/docker-appserver-pea-homologation-2026-09-24.md`
 
@@ -109,7 +109,7 @@ Run the three focused suites and then `npm run validate`.
 ### Task 5: Exercise the generic adapter against the Docker PostgreSQL database
 
 **Files:**
-- Create outside public repository: a temporary host-driver harness in `C:/Users/montagna/Documents/Protheus-Teste`
+- Create outside public repository: a temporary host-driver harness under `<private-lab>`
 - Modify: `docs/qa/docker-appserver-pea-homologation-2026-09-24.md`
 
 **Step 1:** Inject a host-owned PostgreSQL executor into `createReadOnlyNamedQueryAdapter` and the public runtime/MCP surface.

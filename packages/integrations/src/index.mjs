@@ -3,7 +3,7 @@ import { constants } from 'node:fs';
 import { lstat, mkdir, open, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
-const KNOWN_INTEGRATIONS = Object.freeze(['dictionary', 'oracle', 'tdn']);
+const KNOWN_INTEGRATIONS = Object.freeze(['database', 'dictionary', 'oracle', 'tdn']);
 const DEFAULT_TIMEOUT_MS = 5_000;
 const DEFAULT_CACHE_MS = 5 * 60 * 1_000;
 const MAX_RESULT_LIMIT = 50;
