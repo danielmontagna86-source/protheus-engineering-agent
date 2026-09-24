@@ -1,7 +1,7 @@
 # State
 
 **Last Updated:** 2026-09-23
-**Current Work:** A branch isolada `release/stable-1.0-completion` parte do `origin/main` exato `138cd2c`. A linha de base executada em 2026-09-23 passou 357/357 testes depois do build obrigatório da extensão; a execução direta de `npm test` em checkout recém-instalado revelou três falhas por módulo gerado ausente e agora é autocontida pelo `pretest`. A prévia pública `v0.3.9` continua vinculada ao commit `29993a8`, não ao candidato atual. Recibos saneados de 2026-09-17 confirmam novamente PEA→TDS e TDS→AppServer para caso positivo e negativo, sem elevar a evidência histórica do laboratório a prova licenciada ou a artefato Stable. O programa end-to-end continua separando gates determinísticos de ambiente, uso humano, supply-chain pública e publisher; Stable/Marketplace permanecem `NO-GO` até existir evidência externa exata.
+**Current Work:** A `main` pública incorporou o PR #42 no merge `3a2c0c622fcca883ee4f641467b9ead28c5df5a5`. Esse commit passou a matriz pública e a repetição local completa em checkout limpo: 357/357 testes, mutação 95,05%, audit sem vulnerabilidades, hosts VS Code atual/mínimo/TDS, lifecycle 0.3.8→0.3.9 e artefatos reproduzíveis. O `npm test` é autocontido pelo `pretest`. A prévia pública `v0.3.9` continua vinculada ao commit `29993a8`; o merge atual ainda não é uma nova release nem Stable. Recibos saneados de 2026-09-17 confirmam historicamente PEA→TDS e TDS→AppServer para caso positivo e negativo, sem constituir prova licenciada. Stable/Marketplace permanecem `NO-GO` até os gates externos e a evidência final existirem para um único artefato.
 
 ---
 

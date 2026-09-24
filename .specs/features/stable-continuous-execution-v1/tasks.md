@@ -5,9 +5,9 @@ protocol. `EXTERNAL` is intentionally non-fabricable.
 
 | ID | Gates | Mode | Status | Depends on | Done condition |
 | --- | --- | --- | --- | --- | --- |
-| SCE-001 | G0/G3 | AUTO | READY | locked checkout | full deterministic candidate battery passes or fails with captured exit status |
-| SCE-002 | G1/G2/G7/G8/G10 | AUTO | READY | SCE-001 | installed VSIX, localization, product contract and lifecycle checks are replayed on the exact candidate |
-| SCE-003 | G9 | AUTO | READY | SCE-001 | dependency, secret, CodeQL/OSV evidence is reconciled to the exact commit |
+| SCE-001 | G0/G3 | AUTO | DONE (`3a2c0c6`) | locked checkout | full deterministic candidate battery passes or fails with captured exit status |
+| SCE-002 | G1/G2/G7/G8/G10 | AUTO | DONE (`3a2c0c6`) | SCE-001 | installed VSIX, localization, product contract and lifecycle checks are replayed on the exact candidate |
+| SCE-003 | G9 | AUTO | DONE (`3a2c0c6`) | SCE-001 | dependency, secret, CodeQL/OSV evidence is reconciled to the exact commit |
 | SCE-004 | G4/G5 | DETECT | READY | admitted official lab | preflight records image/digest/loopback/read-only prerequisites, or records unavailable without a false pass |
 | SCE-005 | G6 | DETECT + EXTERNAL | READY | current local TDS session plus an approved disposable-RPO protocol | read-only health is detected automatically; a PEA-to-TDS compilation replay runs only against an explicitly identified disposable RPO under the laboratory protocol; label remains non-Stable unless lawful identity is supplied |
 | SCE-006 | G7 | EXTERNAL | READY | declared WSL/SSH/Dev Container host | packaged VSIX remote Extension Host protocol is executed and receipt records the host location |
@@ -29,3 +29,13 @@ protocol. `EXTERNAL` is intentionally non-fabricable.
    `READY`/`BLOCKED` until their real prerequisite appears.
 4. Re-run SCE-001..SCE-005 after every candidate change. Re-run SCE-011 only
    after a clean versioned Stable candidate is selected.
+
+## Latest exact execution
+
+The repository-automated portion SCE-001..003 passed for public `main` merge
+`3a2c0c622fcca883ee4f641467b9ead28c5df5a5` on 2026-09-23. The local clean
+checkout and public GitHub runs are recorded in
+`docs/qa/stable-completion-merge-validation-2026-09-23.md`. SCE-004..012 keep
+their existing states because Docker/AppServer availability, remote hosts,
+assistive/human UAT, pilot, licensed inputs, publisher identity and immutable
+release authorization were not manufactured by that execution.
