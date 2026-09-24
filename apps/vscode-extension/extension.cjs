@@ -190,7 +190,15 @@ async function invokeTdsCompilerTool(vscode, { workspace, target }, token, optio
       error: { code: 'TDS_DIAGNOSTICS_UNVERIFIED', message: 'TDS did not provide fresh final diagnostics for this compilation.' },
     };
   }
-  return { ...evidence, status: errors > 0 ? 'failed' : 'completed' };
+  if (errors > 0) return { ...evidence, status: 'failed' };
+  return {
+    ...evidence,
+    status: 'unverified',
+    error: {
+      code: 'TDS_COMPILE_SUCCESS_UNPROVEN',
+      message: 'TDS returned fresh zero-error diagnostics, but its public tool does not expose positive compilation proof.',
+    },
+  };
 }
 
 async function createSampleWorkspace(source, storageRoot, options = {}) {

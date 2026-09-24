@@ -487,7 +487,7 @@ test('extension exposes the supervised build lifecycle while preserving unavaila
   assert.doesNotMatch(calls[1][3], /maintainer/);
 });
 
-test('TDS bridge invokes only the public compiler tool for a trusted contained source', async () => {
+test('TDS bridge invokes only the public compiler tool and does not overclaim zero diagnostics', async () => {
   const fake = fakeVscode();
   const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
   const source = join(workspace, 'pea_lab_cp1252_20260913.prw');
@@ -496,7 +496,8 @@ test('TDS bridge invokes only the public compiler tool for a trusted contained s
 
   const result = await extension.invokeTdsCompilerTool(fake.api, { workspace, target: source }, {}, { resolvePath: (candidate) => candidate });
 
-  assert.equal(result.status, 'completed');
+  assert.equal(result.status, 'unverified');
+  assert.equal(result.error.code, 'TDS_COMPILE_SUCCESS_UNPROVEN');
   assert.equal(result.adapter, 'tds-language-model-tool');
   assert.deepEqual({
     name: fake.invokedLanguageModelTools[0].name,
@@ -618,7 +619,7 @@ test('TDS bridge observes in-flight user cancellation when the compiler tool ign
   assert.equal(downstreamToken.isCancellationRequested, true);
 });
 
-test('TDS bridge accepts the nested JSON diagnostics contract emitted by TDS 2.1.3', async () => {
+test('TDS bridge accepts nested diagnostics but keeps zero-error compilation unverified', async () => {
   const fake = fakeVscode();
   const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
   const source = join(workspace, 'source.prw');
@@ -645,7 +646,8 @@ test('TDS bridge accepts the nested JSON diagnostics contract emitted by TDS 2.1
     { resolvePath: (candidate) => candidate },
   );
 
-  assert.equal(result.status, 'completed');
+  assert.equal(result.status, 'unverified');
+  assert.equal(result.error.code, 'TDS_COMPILE_SUCCESS_UNPROVEN');
   assert.deepEqual(result.diagnostics, { errors: 0, warnings: 0, updated: true, timedOut: false, entries: [] });
 });
 
