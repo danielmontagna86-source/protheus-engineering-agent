@@ -4,18 +4,26 @@ version: 1.0
 date_created: 2026-09-23
 last_updated: 2026-09-23
 owner: Protheus Engineering Agent maintainers
-status: 'In progress'
+status: 'Repository phase complete; external gates open'
 tags: [release, qa, supply-chain, vscode, protheus, stable]
 ---
 
 # Introduction
 
-![Status: In progress](https://img.shields.io/badge/status-In%20progress-yellow)
+![Status: Repository phase complete](https://img.shields.io/badge/status-Repository%20phase%20complete-blue)
 
 Este plano executa todo trabalho seguro e reproduzivel que ainda depende apenas
 do repositorio e do laboratorio autorizado. Gates humanos, de publisher e de
 publicacao permanecem fail-closed ate produzirem evidencia real vinculada ao
 mesmo commit e conjunto de artefatos Stable.
+
+## Execution result
+
+TASK-001..010 foram executadas até o limite de evidência disponível. O PR #42
+foi mesclado em `3a2c0c6`; a bateria local completa, o lifecycle instalado e os
+checks públicos passaram. TASK-011 foi concluída para o merge técnico. TASK-012
+permanece bloqueada porque `publication-check --release` retorna
+`RELEASE_EVIDENCE_INCOMPLETE` e G4..G13 ainda contêm gates externos legítimos.
 
 ## 1. Requirements & Constraints
 
