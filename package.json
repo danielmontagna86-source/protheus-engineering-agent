@@ -29,6 +29,8 @@
     "test": "node --test",
     "test:mutation": "stryker run",
     "test:vscode:host": "node scripts/run-vscode-smoke.mjs",
+    "test:vscode:accessibility": "node scripts/run-vscode-smoke.mjs --accessibility",
+    "test:vscode:wsl": "node scripts/run-vscode-wsl-smoke.mjs",
     "test:vscode:minimum": "node scripts/run-vscode-smoke.mjs --version 1.95.3",
     "test:vscode:tds": "node scripts/run-vscode-smoke.mjs --with-tds",
     "test:vscode:lifecycle": "node scripts/run-vscode-lifecycle.mjs",

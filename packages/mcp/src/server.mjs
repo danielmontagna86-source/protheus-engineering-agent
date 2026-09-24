@@ -204,6 +204,16 @@ const TOOLS = Object.freeze([
     },
   })),
   {
+    name: 'pea_database_query',
+    description: 'Execute one configured provider-neutral read-only named database query with bind variables.',
+    inputSchema: {
+      type: 'object',
+      properties: { name: { type: 'string' }, binds: { type: 'object' } },
+      required: ['name', 'binds'],
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'pea_oracle_query',
     description: 'Execute one configured read-only Oracle named query with bind variables.',
     inputSchema: {
@@ -257,6 +267,9 @@ const TOOL_ARGUMENTS = Object.freeze({
   pea_build_status: Object.freeze({ allowed: ['requestId'], required: ['requestId'] }),
   pea_build_cancel: Object.freeze({ allowed: ['requestId'], required: ['requestId'] }),
   pea_build_evidence: Object.freeze({ allowed: ['requestId'], required: ['requestId'] }),
+  pea_database_query: Object.freeze({
+    allowed: ['name', 'binds'], required: ['name', 'binds'], nonStringRequired: ['binds'],
+  }),
   pea_oracle_query: Object.freeze({
     allowed: ['name', 'binds'], required: ['name', 'binds'], nonStringRequired: ['binds'],
   }),
@@ -320,6 +333,7 @@ function runtimeOptions(options) {
     subagentAllowedTools: options.subagentAllowedTools,
     aiGateway: options.aiGateway,
     buildService: options.buildService,
+    databaseAdapter: options.databaseAdapter,
     oracleAdapter: options.oracleAdapter,
     scm: options.scm,
     hermes: options.hermes,
@@ -427,6 +441,9 @@ async function executeTool(runtime, name, rawArgs, context = {}) {
   if (name === 'pea_build_status') return runtime.buildStatus(args.requestId);
   if (name === 'pea_build_cancel') return runtime.cancelBuild(args.requestId);
   if (name === 'pea_build_evidence') return runtime.buildEvidence(args.requestId);
+  if (name === 'pea_database_query') {
+    return runtime.invokeIntegration('database', 'query', { name: args.name, binds: args.binds }, { signal: context.signal });
+  }
   if (name === 'pea_oracle_query') {
     return runtime.invokeIntegration('oracle', 'query', { name: args.name, binds: args.binds }, { signal: context.signal });
   }

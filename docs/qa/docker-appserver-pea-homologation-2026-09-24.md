@@ -3,14 +3,20 @@
 ## Decisão
 
 O laboratório comunitário autorizado está **apto para desenvolvimento e para a
-matriz local PEA → TDS → AppServer**, mas continua **não elegível como prova de
-AppServer licenciado ou de produção TOTVS**. O DBAccess declara explicitamente
-`TOP_NO_LICENSE`; nenhuma evasão ou arquivo de licença externo foi aplicado.
+matriz local PEA → TDS → AppServer**. O responsável atestou em 2026-09-24 que o
+RPO usado no laboratório foi obtido no portal oficial TOTVS. O DBAccess declara
+`TOP_NO_LICENSE`; esse estado comercial é registrado, mas não invalida os
+resultados funcionais observados. Nenhuma evasão ou licença externa foi aplicada.
 
 Esta execução fecha a pendência técnica do fluxo positivo/negativo no candidato
 exato `0.3.9`, melhora a resiliência do laboratório e substitui o antigo erro de
-inicialização REST. Ela não fecha o gate Stable G6, que exige identidade
-licenciada e RPO identificável para o mesmo candidato Stable.
+inicialização REST. Durante o teste de AppServer indisponível foi encontrado e
+corrigido um falso positivo: a ferramenta pública do TDS informa apenas mudança
+de diagnósticos, não confirmação positiva de compilação. O PEA agora falha
+fechado com `TDS_COMPILE_SUCCESS_UNPROVEN` quando há zero erros. Timeout,
+cancelamento prévio/em voo, AppServer indisponível e o adapter PostgreSQL real
+também foram exercitados. Restam RPO bloqueado/indisponível e a repetição no
+candidato Stable exato; nenhuma certificação ou suporte oficial TOTVS é alegado.
 
 ## Autorização e limites
 
@@ -27,9 +33,9 @@ licenciada e RPO identificável para o mesmo candidato Stable.
 
 | Item | Evidência |
 | --- | --- |
-| Commit do candidato | `d033443f1c5dede967fa9c7eac6a904a4f7bc016` |
+| Commit do candidato | `90b311512db7f44dfecb80710a5b6d123e59a3e7` |
 | PEA | `0.3.9` |
-| VSIX SHA-256 | `d61e7b97c458660a9d20d08885477c58ccc55a5d6152b48675e0e0ab272fb776` |
+| VSIX SHA-256 | `c3439e3825b076933758a10e6d6c6a63b2f5e330f37aaa57856d526ae728029f` |
 | TDS | `2.1.4` |
 | AppServer | `24.3.1.5`, build `7.00.240223P` |
 | DBAccess | `24.1.1.1`, modo declarado `TOP_NO_LICENSE` |
@@ -67,16 +73,24 @@ laboratório sobre a base comunitária também fixada por digest.
 | Encerramento real de `dbaccess64` | PASS, reinício automático e saúde recuperada |
 | TDS direto, fixture CP1252/LF válida | PASS, retorno `0` e `SUCCESS` |
 | TDS direto, include inexistente | EXPECTED FAIL, retorno `-1` e C2090 |
-| Ponte do PEA, fixture válida | PASS, `completed`, 0 erros, diagnóstico atualizado |
+| Ponte do PEA, fixture válida | PASS fail-closed, `unverified/TDS_COMPILE_SUCCESS_UNPROVEN`, 0 erros e diagnóstico atualizado; prova positiva vem do TDS direto |
 | Ponte do PEA, fixture inválida | EXPECTED FAIL, `failed`, 1 erro na linha 2 |
+| Ponte do PEA, cancelada antes de iniciar | PASS, `unverified/TDS_TOOL_CANCELLED` |
+| Ponte do PEA, timeout de 1 ms | PASS, `unverified/TDS_TOOL_TIMEOUT` |
+| Ponte do PEA, cancelamento em voo | PASS, `unverified/TDS_TOOL_CANCELLED` |
+| AppServer parado durante a ponte | PASS, `unverified/TDS_COMPILE_SUCCESS_UNPROVEN`; nenhum falso `completed` |
 | PostgreSQL em transação somente leitura | PASS, 80 tabelas, 159 MB, 0 índices inválidos |
+| Adapter PostgreSQL via runtime/MCP | PASS: consulta nomeada, binds exatos, negação de SQL bruto/escrita, limite, redação, 8 leituras concorrentes |
+| Timeout/cancelamento PostgreSQL | PASS em 33/31 ms; protocolo de cancelamento encerrou consultas lentas no servidor em 3 ms na execução registrada |
 
 Recibos saneados mantidos fora da árvore pública:
 
 | Recibo | SHA-256 |
 | --- | --- |
 | TDS direto (`result.json`) | `024bfaa4a66a4e3d085e0962f36a3a9762b161da5fc1238c74e4d17559c6d88b` |
-| PEA → TDS (`pea-bridge-result.json`) | `0cf3383b96635b11730b230f9a0eaf4e1431431776f98a0c8ef121101403abc8` |
+| PEA → TDS (`pea-bridge-result.json`) | `a7acf7ffbcede2ca191544602247f7fe13f0805cb8ca7a0a6ea4d6a96b6c3934` |
+| PEA → TDS com AppServer indisponível | `a4dcd5f781a15accef44b1550f82dcc5c2210e412c6c8983ad38773983bf9e23` |
+| Adapter PostgreSQL (`database-adapter-result.json`) | `22e09639447ea2ee100e45de36ba361b05cb8ef9b2536753f0a30e7c1f97a181` |
 
 Os recibos não contêm senha, token RPO, identidade de usuário ou configuração
 de servidor. O hash muda a cada repetição e liga apenas a execução descrita.
@@ -84,16 +98,29 @@ de servidor. O hash muda a cada repetição e liga apenas a execução descrita.
 ## Interpretação do gate G6
 
 O caminho técnico solicitado está comprovado no candidato exato: o PEA chama a
-ferramenta pública do TDS, uma fonte válida chega ao AppServer e uma fonte
-inválida volta como falha estruturada. Resiliência e exposição local também
-foram verificadas.
+ferramenta pública do TDS, preserva falhas estruturadas, limita espera e
+cancelamento e não promove ausência de diagnósticos a sucesso. A compilação
+positiva da fonte válida no AppServer é comprovada pelo recibo direto do TDS; a
+ponte pública, por limitação do contrato upstream, registra apenas diagnóstico
+zero atualizado e mantém o estado `unverified`. Resiliência, exposição local e
+restauração após AppServer indisponível também foram verificadas.
 
-G6 permanece **PARTIAL** por três limites materiais:
+G6 permanece **PARTIAL** por dois limites materiais:
 
-1. `TOP_NO_LICENSE` não atende a exigência de identidade licenciada;
-2. o recibo público do TDS não identifica o RPO;
-3. o artefato avaliado é `0.3.9`, não um futuro candidato Stable único com todos
+1. RPO especificamente bloqueado/indisponível ainda não foi exercitado; desligar
+   o AppServer comprova indisponibilidade do serviço, não o estado interno do RPO;
+2. o artefato avaliado é `0.3.9`, não um futuro candidato Stable único com todos
    os demais gates G0–G13 verdes.
+
+O gate PostgreSQL do laboratório passou para o mesmo commit: o produto continuou
+sem driver ou credencial embutidos, enquanto um host privado injetou `pg` 8.23.0,
+transação `READ ONLY`, allowlist e cancelamento real no servidor. A API de
+cancelamento usada pelo harness é de baixo nível e está marcada para mudança no
+futuro `pg` 9; isso é uma restrição do harness privado, não dependência pública.
+
+A origem oficial do RPO é uma declaração nominal do responsável e não autoriza
+redistribuição. `TOP_NO_LICENSE` não é usado como bloqueio funcional e também
+não é convertido em alegação de ambiente comercial licenciado.
 
 ## Fontes primárias e upstream
 

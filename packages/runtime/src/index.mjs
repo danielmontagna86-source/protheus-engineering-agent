@@ -132,13 +132,19 @@ export function createRuntime(options) {
     const profile = configuration.config.profiles[configuration.config.activeProfile];
     const tdnSnapshotPath = explicitTdnSnapshotPath ?? profileSnapshotPath(profile.tdnSnapshotPath);
     const dictionarySnapshotPath = explicitDictionarySnapshotPath ?? profileSnapshotPath(profile.dictionarySnapshotPath);
-    const key = JSON.stringify([tdnSnapshotPath ?? null, dictionarySnapshotPath ?? null, Boolean(options.oracleAdapter)]);
+    const key = JSON.stringify([
+      tdnSnapshotPath ?? null,
+      dictionarySnapshotPath ?? null,
+      Boolean(options.databaseAdapter),
+      Boolean(options.oracleAdapter),
+    ]);
     if (integrationRegistryCache.has(key)) return integrationRegistryCache.get(key);
     const configuredAdapters = {};
     if (tdnSnapshotPath) configuredAdapters.tdn = createTdnSnapshotAdapter({ snapshotPath: tdnSnapshotPath });
     if (dictionarySnapshotPath) {
       configuredAdapters.dictionary = createDictionarySnapshotAdapter({ snapshotPath: dictionarySnapshotPath });
     }
+    if (options.databaseAdapter) configuredAdapters.database = options.databaseAdapter;
     if (options.oracleAdapter) configuredAdapters.oracle = options.oracleAdapter;
     const registry = createIntegrationRegistry(configuredAdapters);
     integrationRegistryCache.set(key, registry);

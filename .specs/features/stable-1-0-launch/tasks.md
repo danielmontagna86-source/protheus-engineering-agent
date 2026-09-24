@@ -64,7 +64,7 @@ Nothing in this track is packaged as a user feature or required by the VSIX/runt
 
 ### SL-220 — Validate through the official PostgreSQL lane
 
-- **Status:** Partial; isolated environment/read/write-denial checks passed, live product dialect evidence remains capability-gated
+- **Status:** Partial; the generic adapter and MCP route passed the live private PostgreSQL 16 matrix on `90b3115`, including server-side cancellation. Exact Stable repetition and a supported host-driver recipe remain.
 - **Files:** opt-in Compose/test harness, named-query adapter fixtures, CI workflow, docs
 - **Depends on:** SL-200, PC-025
 - **Tests:** health/readiness, SX2/SX3 lookup, unknown query, injection, write denial, timeout, concurrent reads and teardown.
@@ -72,14 +72,17 @@ Nothing in this track is packaged as a user feature or required by the VSIX/runt
 
 ### SL-230 — Build the private AppServer homologation harness
 
-- **Status:** Partial; the authorized disposable laboratory now has sanitized
-  positive/negative PEA→TDS and direct TDS→AppServer receipts dated 2026-09-17.
-  Licensed identity, disposable-RPO reset evidence, locked-RPO, live
-  timeout/cancel and DBAccess/dictionary adapter coverage remain external.
+- **Status:** Partial; the authorized disposable laboratory has sanitized
+  positive/negative PEA→TDS and direct TDS→AppServer receipts, and the owner
+  attested on 2026-09-24 that its RPO was obtained from the official TOTVS
+  portal. Commercial-license status is not a functional criterion for this
+  private lab. Live timeout, pre/in-flight cancellation and AppServer unavailable
+  passed on `90b3115`; locked/unavailable RPO, DBAccess/dictionary adapter
+  coverage and exact Stable repetition remain open.
 - **Files:** test-only private-input manifest schema, preflight/admission scripts, build smoke and internal evidence docs; no proprietary artifacts
 - **Depends on:** SL-210, SL-220
-- **Tests:** missing/invalid entitlement metadata, missing artifact, digest mismatch, compile success/failure, locked RPO, bad include, server unavailable, timeout/cancel and secret redaction.
-- **Gate:** official image by digest plus lawful user-owned inputs; nothing proprietary enters Git or public artifacts.
+- **Tests:** missing/invalid provenance metadata, missing artifact, digest mismatch, compile success/failure, locked RPO, bad include, server unavailable, timeout/cancel and secret redaction.
+- **Gate:** admitted image by digest plus lawful user-owned inputs and explicit owner authorization; nothing proprietary enters Git or public artifacts, and no result is presented as official TOTVS certification.
 
 ### SL-240 — Implement internal community-container admission without default execution
 
@@ -101,7 +104,7 @@ Nothing in this track is packaged as a user feature or required by the VSIX/runt
 
 ### SL-310 — Prove install, upgrade, rollback and remote compatibility
 
-- **Status:** Partial; fresh Windows minimum/current VSIX, TDS coexistence and complete Windows lifecycle/rollback passed locally. Commit `a1a4f4a` passed the GitHub-hosted Linux 1.95.3 installed-VSIX lifecycle (preview package build, install, upgrade, uninstall, reinstall and rollback); remote matrix remains.
+- **Status:** Partial; fresh Windows minimum/current VSIX, TDS coexistence and complete Windows lifecycle/rollback passed locally. Commit `a1a4f4a` passed the GitHub-hosted Linux 1.95.3 installed-VSIX lifecycle. The 2026-09-24 WSL rerun proved catalog placement and connection but produced no remote command receipt because the Remote WSL 0.104.3 host raised `PendingMigrationError`; remote remains unsupported/unproven.
 - **Files:** VSIX smoke harness, CI matrices, migration tests, user rollback guide
 - **Depends on:** SL-300
 - **Tests:** clean install; upgrade from latest preview; uninstall/reinstall; rollback; minimum/current VS Code; Windows/Linux; local and declared remote modes; offline first value.
@@ -109,7 +112,7 @@ Nothing in this track is packaged as a user feature or required by the VSIX/runt
 
 ### SL-320 — Complete accessibility, localization and usability UAT
 
-- **Status:** Automated localization coverage complete; assistive and three-user UAT not run
+- **Status:** Automated localization plus installed high-contrast, zoom, accessibility mode, native-view and 24-command keyboard-surface checks passed on VS Code 1.139.0; the isolated automated journey reached first value in 12.988 seconds. Screen-reader and three-user UAT remain unrun.
 - **Files:** accessibility checklist/evidence, screenshots, UAT protocol/results, issue log
 - **Depends on:** SL-120, SL-310
 - **Tests:** keyboard, focus, screen reader, high contrast, zoom, pt-BR/en, three clean-profile first-value sessions.
@@ -118,11 +121,11 @@ Nothing in this track is packaged as a user feature or required by the VSIX/runt
 ### SL-330 — Complete live compatibility and effectiveness evidence
 
 - **Status:** Partial for laboratory compatibility; representative effectiveness,
-  licensed support identity and the final Stable artifact remain external / not
+  support ownership and the final Stable artifact remain external / not
   complete
 - **Delegates to:** PC-030..PC-033
 - **Depends on:** SL-230, SL-320
-- **Tests:** licensed AppServer/RPO/database/TDS matrix and preregistered representative pilot.
+- **Tests:** authorized AppServer/RPO/database/TDS matrix and preregistered representative pilot.
 - **Gate:** supported matrix and claim table match raw evidence; unsupported combinations remain explicit.
 
 ### SL-340 — Harden public supply chain and release workflow
@@ -152,7 +155,7 @@ Parallelizable after SL-100: `SL-200 -> SL-210/SL-220 -> SL-230`, and `SL-340` a
 
 These items cannot be fabricated by repository work:
 
-1. obtain lawful AppServer/RPO/dictionary/include and test License Server/DBAccess access, or arrange a customer/partner homologation window;
+1. retain auditable provenance for the authorized AppServer/RPO/dictionary/include inputs without placing proprietary artifacts in Git;
 2. approve a non-customer smoke project and test data;
 3. recruit representative Protheus users for UAT/pilot;
 4. establish Marketplace publisher/domain and legal/trademark review;

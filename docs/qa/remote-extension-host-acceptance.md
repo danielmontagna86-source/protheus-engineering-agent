@@ -26,6 +26,7 @@ container.
 | Hosted installed-VSIX upgrade and rollback on Linux | PASS | Same CI run, `Exercise installed VSIX upgrade and rollback on Linux`. |
 | WSL Remote endpoint deployment | PASS | VS Code Server 1.136.2 installed the exact VSIX in its remote extension directory; its manifest declares `extensionKind: ["workspace"]` and the embedded release commit matches the candidate. |
 | WSL packaged runtime contract | PASS | The VS Code Server Node 24.18.1 on Linux/WSL executed `doctor`, `index`, `review`, and `context` against the isolated candidate checkout. The controlled review returned one INFO finding; unavailable TDN and an absent build-approval resolver failed closed. |
+| WSL operator-facing activation rerun (2026-09-24) | BLOCKED-HOST-RUNTIME | Product VSIX 0.3.9 and the test probe were present in the Ubuntu VS Code Server catalog and the remote agent connected, but Remote WSL 0.104.3 under VS Code 1.139.0 raised the upstream-known `navigator` `PendingMigrationError`; no remote command receipt was produced. |
 | Local Docker runtime | READY | Docker Desktop 29.7.2, Linux engine, and the official JavaScript Node 22 Dev Container image were verified. |
 | Local Dev Container workspace mount | BLOCKED-HOST-RUNTIME | Docker Desktop recorded the folder-sharing approval, but a Windows bind mount still stalled before container creation. No product container was created and no user service was changed. The WSL endpoint provides independent remote-host evidence. |
 
@@ -77,3 +78,7 @@ bounded critical contract. The final UI/reconnect observation remains
 `UNPROVEN`. This does not alter the technical P0 result and keeps
 Stable/Marketplace at `NO-GO` until the interactive record is completed for the
 final release candidate.
+
+The 2026-09-24 rerun and its exact boundary are recorded in
+`docs/qa/accessibility-remote-support-validation-2026-09-24.md`. WSL is not a
+supported Stable mode while this operator-facing receipt is absent.

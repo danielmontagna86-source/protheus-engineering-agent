@@ -59,14 +59,15 @@ The snapshot adapter never opens an Oracle connection or reads live SX tables.
 
 Oracle and PostgreSQL are unavailable by default; no driver or credential is bundled. A host injects a dialect-specific driver, an exact capability authorizer, and a trusted catalog of named `SELECT` queries. Callers provide only a query name and exact declared scalar binds. Raw SQL, comments, multiple statements, `FOR UPDATE`, DDL, DML, and control blocks are rejected while the catalog loads. Oracle uses named placeholders; PostgreSQL uses contiguous positional placeholders derived from declared bind order.
 
-The generic adapter limits timeout, bind size, rows and fields; declares read-only execution to the driver; redacts configured and conventionally sensitive fields; and returns query name plus SHA-256 identity—not SQL, bind values, connection strings, or credentials. Driver errors are normalized. The legacy Oracle wrapper remains for compatibility while hosts migrate to the generic port.
+The generic adapter limits timeout, bind size, rows and fields; declares read-only execution to the driver; redacts configured and conventionally sensitive fields; and returns query name plus SHA-256 identity—not SQL, bind values, connection strings, or credentials. Driver errors are normalized. The host executor must map the supplied `AbortSignal` to real driver/server cancellation and must enforce a read-only transaction; merely returning early while a query continues is not conformant. The legacy Oracle wrapper remains for compatibility while hosts migrate to the generic port.
 
 ## MCP tools
 
 - `pea_tdn_search`
 - `pea_dictionary_table`
 - `pea_dictionary_field`
-- `pea_oracle_query` (unavailable until a host injects an approved adapter)
+- `pea_database_query` (provider-neutral; unavailable until a host injects an approved dialect adapter)
+- `pea_oracle_query` (legacy-compatible Oracle surface; unavailable until a host injects an approved adapter)
 
 Missing configuration returns `INTEGRATION_UNAVAILABLE`; invalid snapshots, unsupported
 operations and load timeouts return their own structured error codes. Snapshot data is

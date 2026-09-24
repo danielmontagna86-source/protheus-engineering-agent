@@ -79,14 +79,16 @@ export function runVsCodeCli(cli, args) {
 }
 
 export async function runVsCodeSmoke() {
+  const startedAt = Date.now();
   const packaged = await packageExtension();
   const tdsSource = await installedTdsExtension();
+  const accessibilityMode = process.argv.includes('--accessibility');
   const sandbox = await mkdtemp(join(tmpdir(), 'pea-vscode-host-'));
   const workspace = join(sandbox, 'workspace');
   const secondWorkspace = join(sandbox, 'workspace-cp1252');
-    const userData = join(sandbox, 'user-data');
-    const extensions = join(sandbox, 'extensions');
-    const hostReceiptPath = join(sandbox, 'installed-host-receipt.json');
+  const userData = join(sandbox, 'user-data');
+  const extensions = join(sandbox, 'extensions');
+  const hostReceiptPath = join(sandbox, 'installed-host-receipt.json');
   await Promise.all([
     mkdir(workspace, { recursive: true }),
     mkdir(secondWorkspace, { recursive: true }),
@@ -110,6 +112,15 @@ export async function runVsCodeSmoke() {
     folders: [{ path: workspace }, { path: secondWorkspace }],
     settings: { 'files.encoding': 'windows1252' },
   }, null, 2));
+  if (accessibilityMode) {
+    const userSettings = join(userData, 'User');
+    await mkdir(userSettings, { recursive: true });
+    await writeFile(join(userSettings, 'settings.json'), JSON.stringify({
+      'editor.accessibilitySupport': 'on',
+      'window.zoomLevel': 2,
+      'workbench.colorTheme': 'Default High Contrast',
+    }, null, 2));
+  }
 
   const requestedVersion = commandLineVersion();
   const version = requestedVersion || process.env.PEA_VSCODE_VERSION || '1.95.3';
@@ -162,6 +173,7 @@ export async function runVsCodeSmoke() {
       extensionTestsPath: join(root, 'integration', 'vscode-host', 'index.cjs'),
       launchArgs: [
         tdsSource ? workspaceFile : workspace,
+        ...(accessibilityMode ? ['--force-renderer-accessibility'] : []),
         '--disable-extension=github.copilot',
         '--disable-extension=github.copilot-chat',
         `--user-data-dir=${userData}`,
@@ -172,6 +184,7 @@ export async function runVsCodeSmoke() {
         PEA_EXPECTED_EXTENSIONS_DIR: extensions,
         PEA_EXPECT_TDS: tdsSource ? '1' : '0',
         PEA_EXPECT_TDS_VERSION: tdsVersion ?? '',
+        PEA_EXPECT_ACCESSIBILITY: accessibilityMode ? '1' : '0',
         PEA_SMOKE_RECEIPT: hostReceiptPath,
       },
     });
@@ -186,6 +199,7 @@ export async function runVsCodeSmoke() {
       || !Array.isArray(hostReceipt.executedCommandIds)
       || hostReceipt.executedCommandIds.length < 5
       || hostReceipt.invocations !== 7
+      || (accessibilityMode && hostReceipt.accessibility?.passed !== true)
       || (tdsSource && hostReceipt.tdsStructuredInputAccepted !== true)) {
       throw new Error('installed Extension Host returned incomplete command evidence');
     }
@@ -199,8 +213,10 @@ export async function runVsCodeSmoke() {
       isolatedWorkspace: true,
       isolatedUserData: true,
       installedVsix: true,
+      firstValueDurationMs: Date.now() - startedAt,
       vsixSha256: await sha256(packaged.path),
       hermesProbed: false,
+      accessibility: accessibilityMode ? hostReceipt.accessibility : null,
       tds: tdsSource ? {
         installed: true,
         version: tdsVersion,

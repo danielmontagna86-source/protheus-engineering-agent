@@ -74,6 +74,27 @@ test('runtime configures read-only TDN and Dictionary snapshots without credenti
   assert.equal(dictionary.data.table.name, 'SE1');
 });
 
+test('runtime exposes a host-injected generic database adapter without bundling a driver', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-runtime-database-'));
+  const calls = [];
+  const databaseAdapter = {
+    async invoke(operation, args, context) {
+      calls.push({ operation, args, signal: context.signal });
+      return { ok: true, integration: 'postgres', operation, data: { rows: [{ table_name: 'sys_usr' }] } };
+    },
+  };
+  const runtime = createRuntime({ workspace, databaseAdapter });
+
+  const doctor = await runtime.doctor();
+  const result = await runtime.invokeIntegration('database', 'query', {
+    name: 'catalog', binds: { schema: 'public' },
+  });
+
+  assert.equal(doctor.integrations.find((item) => item.name === 'database').available, true);
+  assert.equal(result.integration, 'postgres');
+  assert.deepEqual(calls[0].args, { name: 'catalog', binds: { schema: 'public' } });
+});
+
 test('active typed profile configures workspace-contained TDN and Dictionary snapshots', async () => {
   const workspace = await mkdtemp(join(tmpdir(), 'pea-runtime-profile-integrations-'));
   await mkdir(join(workspace, '.pea', 'snapshots'), { recursive: true });
@@ -104,6 +125,7 @@ test('active typed profile configures workspace-contained TDN and Dictionary sna
   const dictionary = await runtime.invokeIntegration('dictionary', 'table', { name: 'SE1' });
 
   assert.deepEqual(doctor.integrations, [
+    { name: 'database', available: false },
     { name: 'dictionary', available: true },
     { name: 'oracle', available: false },
     { name: 'tdn', available: true },

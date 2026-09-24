@@ -33,6 +33,7 @@ test('MCP handler initializes and lists the product tools', async () => {
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_subagent_run'), true);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_ai_task'), true);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_oracle_query'), true);
+  assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_database_query'), true);
   assert.equal(listed.result.tools.some((tool) => tool.name === 'pea_build_run'), false);
 });
 
@@ -238,6 +239,36 @@ test('MCP exposes only configured Oracle named-query adapters', async () => {
   const result = JSON.parse(response.result.content[0].text);
   assert.equal(result.ok, true);
   assert.equal(result.data.name, 'receivable');
+});
+
+test('MCP exposes a host-injected provider-neutral database named-query adapter', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-database-'));
+  const calls = [];
+  const handle = createMcpHandler({
+    workspace,
+    databaseAdapter: {
+      async invoke(operation, args, context) {
+        calls.push({ operation, args, signal: context.signal });
+        return { ok: true, integration: 'postgres', operation, data: { rows: [{ table_name: 'sys_usr' }] } };
+      },
+    },
+  });
+  const response = await handle({
+    jsonrpc: '2.0', id: 145, method: 'tools/call',
+    params: { name: 'pea_database_query', arguments: { name: 'catalog', binds: { schema: 'public' } } },
+  });
+  const result = JSON.parse(response.result.content[0].text);
+
+  assert.equal(response.result.isError, false);
+  assert.equal(result.integration, 'postgres');
+  assert.deepEqual(calls[0].args, { name: 'catalog', binds: { schema: 'public' } });
+
+  const rawSql = await handle({
+    jsonrpc: '2.0', id: 146, method: 'tools/call',
+    params: { name: 'pea_database_query', arguments: { name: 'catalog', binds: {}, sql: 'SELECT secret FROM customer' } },
+  });
+  assert.equal(rawSql.result.isError, true);
+  assert.match(rawSql.result.content[0].text, /unexpected argument: sql/);
 });
 
 test('MCP uses an injected provider-neutral AI gateway without making it a core dependency', async () => {

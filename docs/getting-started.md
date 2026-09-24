@@ -29,11 +29,14 @@ O PEA pede confirmação porque a compilação altera o RPO já selecionado pelo
 envia somente o caminho absoluto do arquivo aberto e chama a ferramenta pública
 `tds-lm-tools` do TDS. Ele não lê `servers.json`, token RPO, senha nem log.
 
-O resultado exibe diagnósticos saneados: `completed` (diagnósticos atualizados sem
-erros), `failed` (erros retornados) ou `unverified` (timeout, cancelamento ou
-contrato incompleto). `completed` nessa ponte não é ainda a evidência
-`compiler-verified` do build supervisionado: o contrato atual do TDS não entrega
-código de saída, identidade de compilador e hash de artefato para o PEA.
+O resultado exibe diagnósticos saneados: `failed` quando o TDS devolve erros e
+`unverified` quando há zero erros, timeout, cancelamento ou contrato incompleto.
+O caso de zero erros usa `TDS_COMPILE_SUCCESS_UNPROVEN`: a ferramenta pública do
+TDS sinaliza mudança de diagnósticos, mas não entrega código de saída, identidade
+de compilador, confirmação de commit no RPO ou hash de artefato. Assim, a ponte
+nunca converte ausência de diagnóstico em prova positiva de compilação. Uma
+evidência `compiler-verified` continua exigindo o build supervisor com um adapter
+de ambiente que forneça esses dados.
 
 ## Próximos passos
 

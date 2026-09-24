@@ -10,6 +10,7 @@ import {
   requireExactVsCodeVersion,
   resolveLifecycleVsCodeExecutable,
 } from '../scripts/run-vscode-lifecycle.mjs';
+import { installedExtensionLine } from '../scripts/run-vscode-wsl-smoke.mjs';
 
 const require = createRequire(import.meta.url);
 const productRoot = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -80,6 +81,24 @@ function fakeVscode() {
       },
       LanguageModelTextPart: class LanguageModelTextPart {
         constructor(value) { this.value = value; }
+      },
+      CancellationTokenSource: class CancellationTokenSource {
+        constructor() {
+          this.listeners = new Set();
+          this.token = {
+            isCancellationRequested: false,
+            onCancellationRequested: (listener) => {
+              this.listeners.add(listener);
+              return { dispose: () => this.listeners.delete(listener) };
+            },
+          };
+        }
+        cancel() {
+          if (this.token.isCancellationRequested) return;
+          this.token.isCancellationRequested = true;
+          for (const listener of [...this.listeners]) listener();
+        }
+        dispose() { this.listeners.clear(); }
       },
       commands: {
         registerCommand(name, handler) {
@@ -469,7 +488,7 @@ test('extension exposes the supervised build lifecycle while preserving unavaila
   assert.doesNotMatch(calls[1][3], /maintainer/);
 });
 
-test('TDS bridge invokes only the public compiler tool for a trusted contained source', async () => {
+test('TDS bridge invokes only the public compiler tool and does not overclaim zero diagnostics', async () => {
   const fake = fakeVscode();
   const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
   const source = join(workspace, 'pea_lab_cp1252_20260913.prw');
@@ -478,17 +497,21 @@ test('TDS bridge invokes only the public compiler tool for a trusted contained s
 
   const result = await extension.invokeTdsCompilerTool(fake.api, { workspace, target: source }, {}, { resolvePath: (candidate) => candidate });
 
-  assert.equal(result.status, 'completed');
+  assert.equal(result.status, 'unverified');
+  assert.equal(result.error.code, 'TDS_COMPILE_SUCCESS_UNPROVEN');
   assert.equal(result.adapter, 'tds-language-model-tool');
-  assert.deepEqual(fake.invokedLanguageModelTools[0], {
+  assert.deepEqual({
+    name: fake.invokedLanguageModelTools[0].name,
+    options: fake.invokedLanguageModelTools[0].options,
+  }, {
     name: 'tds-lm-tools',
     options: { input: {
       command: 'compiler',
       target: source,
       flags: { only: 'all', sort: 'file', format: 'json', syntaxOnly: false, applyOld: false, applied: [] },
     } },
-    token: {},
   });
+  assert.equal(fake.invokedLanguageModelTools[0].token.isCancellationRequested, false);
 });
 
 test('TDS bridge fails closed outside trusted contained AdvPL/TLPP scope and on unavailable API', async () => {
@@ -546,7 +569,58 @@ test('TDS bridge marks timeouts and malformed replies unverified and redacts sec
   assert.equal(malformed.error.code, 'TDS_TOOL_MALFORMED_RESULT');
 });
 
-test('TDS bridge accepts the nested JSON diagnostics contract emitted by TDS 2.1.3', async () => {
+test('TDS bridge bounds a compiler tool that ignores downstream cancellation', async () => {
+  const fake = fakeVscode();
+  const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
+  const source = join(workspace, 'source.prw');
+  fake.api.workspace.isTrusted = true;
+  let downstreamToken;
+  fake.api.lm.invokeTool = async (_name, _options, token) => {
+    downstreamToken = token;
+    return new Promise(() => {});
+  };
+
+  const result = await Promise.race([
+    extension.invokeTdsCompilerTool(fake.api, { workspace, target: source }, {}, {
+      resolvePath: (candidate) => candidate,
+      timeoutMs: 5,
+    }),
+    new Promise((resolve) => setTimeout(() => resolve({ status: 'test-harness-timeout' }), 50)),
+  ]);
+
+  assert.equal(result.status, 'unverified');
+  assert.equal(result.error.code, 'TDS_TOOL_TIMEOUT');
+  assert.equal(downstreamToken.isCancellationRequested, true);
+});
+
+test('TDS bridge observes in-flight user cancellation when the compiler tool ignores its token', async () => {
+  const fake = fakeVscode();
+  const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
+  const source = join(workspace, 'source.prw');
+  fake.api.workspace.isTrusted = true;
+  const parent = new fake.api.CancellationTokenSource();
+  let downstreamToken;
+  fake.api.lm.invokeTool = async (_name, _options, token) => {
+    downstreamToken = token;
+    return new Promise(() => {});
+  };
+
+  const pending = extension.invokeTdsCompilerTool(fake.api, { workspace, target: source }, parent.token, {
+    resolvePath: (candidate) => candidate,
+    timeoutMs: 1_000,
+  });
+  parent.cancel();
+  const result = await Promise.race([
+    pending,
+    new Promise((resolve) => setTimeout(() => resolve({ status: 'test-harness-timeout' }), 50)),
+  ]);
+
+  assert.equal(result.status, 'unverified');
+  assert.equal(result.error.code, 'TDS_TOOL_CANCELLED');
+  assert.equal(downstreamToken.isCancellationRequested, true);
+});
+
+test('TDS bridge accepts nested diagnostics but keeps zero-error compilation unverified', async () => {
   const fake = fakeVscode();
   const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
   const source = join(workspace, 'source.prw');
@@ -573,11 +647,12 @@ test('TDS bridge accepts the nested JSON diagnostics contract emitted by TDS 2.1
     { resolvePath: (candidate) => candidate },
   );
 
-  assert.equal(result.status, 'completed');
+  assert.equal(result.status, 'unverified');
+  assert.equal(result.error.code, 'TDS_COMPILE_SUCCESS_UNPROVEN');
   assert.deepEqual(result.diagnostics, { errors: 0, warnings: 0, updated: true, timedOut: false, entries: [] });
 });
 
-test('TDS compile command asks for confirmation and forwards a cancellable native progress token', async () => {
+test('TDS compile command asks for confirmation and links a cancellable native progress token', async () => {
   const fake = fakeVscode();
   const workspace = process.platform === 'win32' ? 'C:\\workspace' : '/workspace';
   const source = join(workspace, 'source.prw');
@@ -591,7 +666,8 @@ test('TDS compile command asks for confirmation and forwards a cancellable nativ
   assert.equal(fake.informationMessages[0].options.modal, true);
   assert.match(fake.informationMessages[0].message, /RPO/);
   assert.equal(fake.progressCalls.at(-1).options.cancellable, true);
-  assert.equal(fake.invokedLanguageModelTools.at(-1).token, fake.progressCalls.at(-1).token);
+  assert.notEqual(fake.invokedLanguageModelTools.at(-1).token, fake.progressCalls.at(-1).token);
+  assert.equal(fake.invokedLanguageModelTools.at(-1).token.isCancellationRequested, false);
 });
 
 test('TDS compile command falls back to the sole visible local ADVPL/TLPP editor', async () => {
@@ -1249,6 +1325,45 @@ test('historical VS Code smoke allows enough time to provision the requested hos
   const runner = await readFile(join(productRoot, 'scripts', 'run-vscode-smoke.mjs'), 'utf8');
 
   assert.match(runner, /downloadAndUnzipVSCode\(\{ version, timeout: 60_000 \}\)/);
+});
+
+test('installed VSIX accessibility smoke uses native high-contrast and keyboard surfaces', async () => {
+  const runner = await readFile(join(productRoot, 'scripts', 'run-vscode-smoke.mjs'), 'utf8');
+  const host = await readFile(join(productRoot, 'integration', 'vscode-host', 'index.cjs'), 'utf8');
+
+  assert.match(runner, /--accessibility/);
+  assert.match(runner, /--force-renderer-accessibility/);
+  assert.match(runner, /PEA_EXPECT_ACCESSIBILITY/);
+  assert.match(runner, /Default High Contrast/);
+  assert.match(runner, /window\.zoomLevel/);
+  assert.match(runner, /firstValueDurationMs/);
+  assert.match(host, /activeColorTheme\.kind/);
+  assert.match(host, /accessibilitySupport/);
+  assert.match(host, /nativeViews/);
+});
+
+test('WSL smoke installs and executes the packaged extension in a remote extension host', async () => {
+  const runner = await readFile(join(productRoot, 'scripts', 'run-vscode-wsl-smoke.mjs'), 'utf8');
+  const probe = await readFile(join(productRoot, 'integration', 'vscode-wsl-probe', 'extension.cjs'), 'utf8');
+
+  assert.match(runner, /--remote/);
+  assert.match(runner, /wsl\+/);
+  assert.match(runner, /--install-extension/);
+  assert.match(runner, /PEA_WSL_ALLOW_RESTART/);
+  assert.match(runner, /--terminate/);
+  assert.match(runner, /packageProbe/);
+  assert.match(runner, /server-main\.js/);
+  assert.match(runner, /WSL_REMOTE_ACTIVATION_UNPROVEN/);
+  assert.match(runner, /--uninstall-extension/);
+  assert.match(probe, /vscode\.env\.remoteName/);
+  assert.match(probe, /pea\.reviewActiveFile/);
+});
+
+test('WSL smoke matches the packaged extension version instead of a release literal', () => {
+  assert.equal(
+    installedExtensionLine('danielmontagna86-source.protheus-engineering-agent', '1.0.0'),
+    'danielmontagna86-source.protheus-engineering-agent@1.0.0',
+  );
 });
 
 test('package lifecycle harness proves install, upgrade, uninstall, reinstall and rollback', async () => {
