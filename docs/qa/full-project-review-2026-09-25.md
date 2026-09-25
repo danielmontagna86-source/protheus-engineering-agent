@@ -23,6 +23,7 @@ Revisão do commit `c354e980f71af082e0015b0bc435a6758d0ff34f` cobrindo runtime, 
 | PEA-REV-004 | Minor | Mitigado | SDK MCP 2.1.0 está disponível, mas perdeu respostas assíncronas quando stdin finito fechou. A versão 2.0.0 permanece fixada e coberta pelo teste real de processo. |
 | PEA-REV-005 | Minor | Planejado P1 | `apps/vscode-extension/extension.cjs` concentra 1.266 linhas. A decomposição precisa de spec própria e paridade VSIX; não é bloqueador funcional ou de segurança deste release. |
 | PEA-REV-006 | Minor | Documentado | Empacotamentos simultâneos no mesmo checkout disputam o mesmo destino VSIX no Windows. O fluxo suportado de CI/release é sequencial e passou; execução concorrente deve usar checkouts ou diretórios de saída separados. |
+| PEA-REV-007 | Major | Corrigido | O GitHub anunciou a migração de `ubuntu-latest` para Ubuntu 26 em 19/10/2026. A matriz foi fixada em `ubuntu-24.04` e ganhou contrato contra regressão para evitar mudança silenciosa do ambiente de validação. |
 
 ## Limites e decisão
 
