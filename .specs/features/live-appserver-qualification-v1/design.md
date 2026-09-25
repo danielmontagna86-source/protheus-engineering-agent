@@ -7,13 +7,13 @@ Fixture CP1252/LF ── TDS VS Code ── AppServer P12/RPO
        │                    │                │
        └── hash local       └── log saneado  └── resultado/rollback
 
-Docker health ── DBAccess ── PostgreSQL (somente metadados)
+Docker health ── DBAccess ── PostgreSQL Protheus (consultas nomeadas read-only)
 ```
 
 O TDS permanece dono da conexão, autenticação e compilação. O PEA não simula
-o compilador: a evidência manual só documenta a fronteira real. Uma futura
-integração do supervisor deve produzir seu próprio artefato com identidade,
-exit code, correlação e hash.
+o compilador: ele chama a ferramenta pública do TDS, coleta diagnósticos e
+falha fechado quando esse contrato não prova sucesso positivo. O TDS direto
+produz a evidência independente de compilação e commit no RPO custom.
 
 ## Segurança e reversibilidade
 
@@ -22,9 +22,13 @@ exit code, correlação e hash.
   conter tokens;
 - criar fontes de teste no workspace de laboratório, converter in-place para
   CP1252 e não aplicar patch/RPO delete;
-- consultas ao PostgreSQL são `pg_isready` ou catálogos `information_schema`;
-- testes de lock/cancelamento só executam se o TDS expuser comando reversível;
-  do contrário, são `BLOCKED`, nunca emulados como aprovação.
+- consultas ao PostgreSQL usam adapter host-neutral, nomes permitidos,
+  transação `READ ONLY`, timeout, cancelamento e redação;
+- a indisponibilidade do RPO só pode ser injetada no laboratório autorizado,
+  com hipótese escrita, hash antes/depois, restauração byte a byte do INI e
+  compilação pós-recuperação;
+- contenção concorrente de lock permanece `PARTIAL` quando não houver dois
+  escritores isolados e um mecanismo determinístico de liberação.
 
 ## Evidência
 
