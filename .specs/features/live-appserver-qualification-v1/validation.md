@@ -2,15 +2,17 @@
 
 | Requisito | Caso | Tipo | Evidência esperada | Resultado |
 | --- | --- | --- | --- | --- |
-| LAQ-001 | APP-HEALTH-001 | Ambiente | containers/portas ativos | PASS em 2026-09-13 |
-| LAQ-002 | APP-TDS-001 | Live positivo | TDS P12/RPO + sucesso | INVALIDADO — o output do TDS, não a fixture, recebeu a compilação |
-| LAQ-003 | APP-TDS-002 | Live negativo | erro + rollback | PASS em 2026-09-13 |
-| LAQ-004 | APP-TDS-003 | Encoding/include | CP1252/LF + include + sucesso | PASS — 2026-09-13, fixture identificada compilada pelo TDS e hash preservado |
-| LAQ-005 | APP-TDS-004 | Reconexão | sem vazamento de segredo | PARTIAL — sessão reautenticada interativamente |
-| LAQ-006 | APP-TDS-005..007 | Resiliência | cancel/timeout/lock reais | BLOCKED — TDS 2.1.3 não contribui comando público de cancelamento; não há adapter PEA live nem ensaio seguro de lock/timeout |
-| LAQ-007 | APP-DB-001 | Infra read-only | health/catálogos somente leitura | PARTIAL — portas/processos ativos e catálogo PostgreSQL read-only; sem consulta DBAccess/adapter PEA |
-| LAQ-008 | APP-PEA-001 | Produto | artefato do supervisor PEA | PARTIAL — existe ponte opcional VSIX→`tds-lm-tools`, ainda sem evidência live no perfil autenticado e sem artefato supervisor `compiler-verified` |
+| LAQ-001 | APP-HEALTH-001 | Ambiente | containers/portas ativos | PASS — quatro serviços saudáveis, WebApp HTTP 200 |
+| LAQ-002 | APP-TDS-001 | Live positivo | TDS P12/RPO + sucesso | PASS — TDS 2.1.4 retornou `0/SUCCESS`; hash do `custom.rpo` mudou e o RPO padrão foi preservado |
+| LAQ-003 | APP-TDS-002 | Live negativo | erro + rollback | PASS — retorno `-1`, C2090 e nenhuma alteração do RPO padrão |
+| LAQ-004 | APP-TDS-003 | Encoding/include | CP1252/LF + include + sucesso | PASS — fixture CP1252/LF identificada e compilada no AppServer real |
+| LAQ-005 | APP-TDS-004 | Reconexão | sem vazamento de segredo | PASS — token reutilizável permaneceu no TDS; recibos saneados não contêm token, senha ou usuário |
+| LAQ-006 | APP-TDS-005..007 | Resiliência | cancel/timeout/RPO reais | PARTIAL — cancelamento, timeout, AppServer indisponível e RPO custom indisponível passaram; contenção concorrente de lock não foi forçada |
+| LAQ-007 | APP-DB-001 | Infra read-only | health/catálogos somente leitura | PASS técnico — adapter/runtime/MCP e catálogo Protheus passaram; `SX2`/`SX3`/`SIX` registradas como `NOT_INITIALIZED` |
+| LAQ-008 | APP-PEA-001 | Produto | artefato do supervisor PEA | PASS no limite do contrato — VSIX 0.3.9 executou o fluxo live e manteve sucesso positivo como `unverified/TDS_COMPILE_SUCCESS_UNPROVEN` |
 
-**Regra:** PASS de infraestrutura/TDS não é PASS do VSIX. G6 é **PARTIAL** pela
-evidência de compilação correta, mas continua `NO-GO` até APP-PEA-001 e os
-cenários críticos restantes terem evidência exata.
+**Regra:** PASS de infraestrutura/TDS não é PASS do VSIX. A matriz técnica live
+está vinculada ao commit `45a6da5782c5841e0deaa5aafe08953460cddfc1` e ao
+VSIX SHA-256 `72be84d9703ce3eb8069d8109e9ffb73930d8e4a23046ef17725d1721da36d77`.
+G6 permanece **PARTIAL** somente porque a contenção concorrente de lock não foi
+forçada e a promoção Stable depende dos demais gates de release.
