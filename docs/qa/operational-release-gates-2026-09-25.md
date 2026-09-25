@@ -31,6 +31,13 @@ The operational controls below are technically verified for the preview channel.
 
 This evidence is operational and environment-specific. It is not official TOTVS certification, a commercial support SLA, a production customer pilot, Marketplace publication, or authorization to declare Stable. The release audit remains fail-closed until every Stable-only gate is bound to one exact commit and artifact set.
 
+## Public merged-main receipts
+
+- **VERIFIED:** protected PRs [#52](https://github.com/danielmontagna86-source/protheus-engineering-agent/pull/52) and [#53](https://github.com/danielmontagna86-source/protheus-engineering-agent/pull/53) completed with all required checks green.
+- **VERIFIED:** [operational monitor run 36095362613](https://github.com/danielmontagna86-source/protheus-engineering-agent/actions/runs/36095362613) passed against public v0.3.9.
+- **VERIFIED:** [provenance run 36095361023](https://github.com/danielmontagna86-source/protheus-engineering-agent/actions/runs/36095361023) rebuilt, checksummed, attested, and re-verified exact merged-main artifacts.
+- **VERIFIED:** issue [#22](https://github.com/danielmontagna86-source/protheus-engineering-agent/issues/22) now closes only the support/monitoring/rollback item; assistive UAT, representative pilot, Marketplace publisher identity, and Marketplace-downloaded installation remain open.
+
 ## Repository QA
 
 - **VERIFIED:** 371/371 automated tests passed.
