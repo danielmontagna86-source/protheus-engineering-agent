@@ -19,6 +19,12 @@ e RPO custom indisponível também foram exercitados. A contenção concorrente 
 lock do RPO não foi forçada. Nenhuma certificação ou suporte oficial TOTVS é
 alegado.
 
+Em 2026-09-25, a inicialização oficial do dicionário no banco foi concluída no
+mesmo laboratório. O PostgreSQL passou de 80 para 148 tabelas e o grupo físico
+`990` ficou pronto com `SX2990`, `SX3990` e `SIX990`. A bateria abaixo foi
+repetida depois da carga para evitar tratar somente a infraestrutura vazia como
+evidência de integração Protheus.
+
 ## Autorização e limites
 
 - Responsável pelo laboratório e autorização desta execução:
@@ -34,7 +40,7 @@ alegado.
 
 | Item | Evidência |
 | --- | --- |
-| Commit do candidato | `45a6da5782c5841e0deaa5aafe08953460cddfc1` (`main`) |
+| Commit do candidato | `ef09aac35a1b64fa612ba62d2207522361ac812c` (`main`) |
 | PEA | `0.3.9` |
 | VSIX SHA-256 | `72be84d9703ce3eb8069d8109e9ffb73930d8e4a23046ef17725d1721da36d77` |
 | TDS | `2.1.4` |
@@ -109,11 +115,13 @@ preservados durante a injeção. Esta definição foi escrita antes da execuçã
 | Ponte do PEA, timeout de 1 ms | PASS, `unverified/TDS_TOOL_TIMEOUT` |
 | Ponte do PEA, cancelamento em voo | PASS, `unverified/TDS_TOOL_CANCELLED` |
 | AppServer parado durante a ponte | PASS, `unverified/TDS_COMPILE_SUCCESS_UNPROVEN`; nenhum falso `completed` |
-| Banco do laboratório Protheus em transação somente leitura | PASS, PostgreSQL 16.13/WIN1252, 80 tabelas, 159 MB, 0 índices inválidos |
+| Banco do laboratório Protheus em transação somente leitura | PASS, PostgreSQL 16.13/WIN1252, 148 tabelas, 819 MB e 0 índices inválidos |
 | Catálogo de infraestrutura Protheus | PASS: `env_config`, `protheus_reposit`, `sys_company` e `top_field` presentes |
-| Prontidão do dicionário de negócio | NOT INITIALIZED: `SX2`, `SX3` e `SIX` ainda ausentes; `sxsbra.txt` e `sx2.unq` existem em `systemload` |
-| Adapter de banco via runtime/MCP | PASS: consulta nomeada, binds exatos, negação de SQL bruto/escrita, limite, redação, 8 leituras concorrentes |
-| Timeout/cancelamento no banco | PASS em 36/22 ms; consultas lentas ativas zeradas em 8 ms na execução registrada |
+| Prontidão do dicionário de negócio | READY: grupo físico `990` com `SX2990` (10.814 registros), `SX3990` (177.368) e `SIX990` (25.459) |
+| Integridade SX2/SX3/SIX | PASS: zero chaves duplicadas, vazias ou órfãs; 517 índices PostgreSQL válidos e zero locks pendentes |
+| Adapter de banco via runtime/MCP | PASS: catálogo acima de 100 tabelas tratado sem falso negativo, grupo `990` detectado, consultas nomeadas, binds exatos, negação de SQL bruto/escrita, limite, redação e 8 leituras concorrentes |
+| Privilégio mínimo real | PASS: role efêmera recebeu somente `CONNECT/USAGE/SELECT`, executou a matriz, teve `CREATE TABLE` negado fora de transação e foi removida sem deixar objetos |
+| Timeout/cancelamento no banco | PASS em 33/31 ms; consultas lentas ativas zeradas em 64 ms na execução registrada |
 
 Recibos saneados mantidos fora da árvore pública:
 
@@ -122,7 +130,7 @@ Recibos saneados mantidos fora da árvore pública:
 | TDS direto (`result.json`) | `024bfaa4a66a4e3d085e0962f36a3a9762b161da5fc1238c74e4d17559c6d88b` |
 | PEA → TDS (`pea-bridge-result.json`) | `547409a3ea6a215b781863d415594dbef39377f4df2f5b35827fed4d622fe873` |
 | PEA → TDS com AppServer indisponível | `a4dcd5f781a15accef44b1550f82dcc5c2210e412c6c8983ad38773983bf9e23` |
-| Adapter de banco (`database-adapter-result.json`) | `7650cff2e55df4ec27d79cd90507f5066e8b958ed87a6ca777915f00ec09cdd4` |
+| Adapter de banco (`database-adapter-result.json`) | `0a201f238ff7344c3aa46d742ebe830ca28ef4042bcca089bca9a72071a729a4` |
 
 Os recibos não contêm senha, token RPO, identidade de usuário ou configuração
 de servidor. O hash muda a cada repetição e liga apenas a execução descrita.
@@ -146,16 +154,17 @@ G6 permanece **PARTIAL** por dois limites materiais:
 
 O gate de banco do laboratório passou para o mesmo commit: o produto continuou
 sem driver ou credencial embutidos, enquanto um host privado injetou `pg` 8.23.0,
-transação `READ ONLY`, allowlist e cancelamento real no servidor. A API de
-cancelamento usada pelo harness é de baixo nível e está marcada para mudança no
-futuro `pg` 9; isso é uma restrição do harness privado, não dependência pública.
+transação `READ ONLY`, allowlist e cancelamento real no servidor por
+`pg_cancel_backend`. O ensaio adicional com role efêmera provou o limite também
+no SGBD, fora da proteção transacional usada pelo adapter.
 
 A procedência oficial da base e do RPO é uma declaração nominal do responsável
-e não autoriza redistribuição. O catálogo confirma a infraestrutura Protheus,
-mas a ausência de `SX2`, `SX3` e `SIX` demonstra que a carga do dicionário de
-negócio ainda não foi concluída. A TOTVS orienta manter o dicionário completo
-`SXSBRA.TXT` no `systemload` e executar o atualizador apropriado; essa carga é
-uma preparação do laboratório, não requisito do produto distribuído.
+e não autoriza redistribuição. A carga do dicionário foi executada pelo fluxo de
+inicialização do próprio Protheus, com `StartSysInDB=1`, `EnableNumber=1` e o
+`SXSBRA.TXT` completo no `systemload`; nenhum `CREATE TABLE` manual foi usado.
+Os nomes físicos recebem o sufixo do grupo (`990`), portanto procurar apenas por
+`sx2`, `sx3` e `six` sem sufixo produz falso negativo. Essa preparação continua
+sendo exclusiva do laboratório e não é requisito do produto distribuído.
 `TOP_NO_LICENSE` não é usado como bloqueio funcional nem convertido em alegação
 de ambiente comercial licenciado.
 
@@ -164,6 +173,7 @@ de ambiente comercial licenciado.
 - [TOTVS WebMonitor — ativação padrão e `ENABLE=0`](https://tdn.totvs.com/display/tec/TOTVS%2B%7C%2BWebMonitor)
 - [TOTVS: configuração do AppServer](https://tdn.totvs.com/pages/viewpage.action?pageId=6064745)
 - [TOTVS Framework: migradores e UPDDISTR](https://tdn.totvs.com/display/framework/Framework%2B%7C%2BMigradores)
+- [TOTVS: inicialização do dicionário de dados no banco](https://tdn.totvs.com/pages/viewpage.action?pageId=364926893)
 - [TOTVS: dicionário completo em `systemload` e execução do UPDDISTR](https://tdn.totvs.com/pages/viewpage.action?pageId=374311673)
 - [TOTVS Protheus CI Universo](https://github.com/totvs/protheus-ci-universo)
 - [Imagem comunitária usada no laboratório](https://hub.docker.com/r/feliperaposo/protheus)
