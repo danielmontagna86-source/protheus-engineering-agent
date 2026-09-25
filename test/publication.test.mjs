@@ -964,8 +964,8 @@ test('repository CI has a least-privilege cross-platform matrix', async () => {
   assert.match(workflow, /actions\/checkout@[0-9a-f]{40} # v7\.0\.1/);
   assert.match(workflow, /actions\/setup-node@[0-9a-f]{40} # v7\.0\.0/);
   assert.doesNotMatch(workflow, /pull_request_target/);
-  assert.ok(workflow.indexOf('npm run build:extension') < workflow.indexOf('node --test'));
-  assert.match(workflow, /node --test --test-concurrency=1/);
+  assert.ok(workflow.indexOf('npm run build:extension') < workflow.indexOf('npm run test:coverage'));
+  assert.match(workflow, /npm run test:coverage/);
   assert.match(workflow, /node scripts\/smoke\.mjs/);
   assert.match(workflow, /node scripts\/check\.mjs/);
   assert.match(workflow, /npm ci/);
@@ -983,11 +983,19 @@ test('the documented release gate cannot skip exact source rebuild verification'
   assert.match(manifest.scripts['validate:release-candidate'], /npm run build:release && npm run verify:release/);
 });
 
-test('local validation builds the extension runtime and runs the suite serially in a clean checkout', async () => {
+test('local and CI validation enforce bounded core-source coverage', async () => {
   const manifest = JSON.parse(await readFile(join(process.cwd(), 'package.json'), 'utf8'));
+  const workflow = await readFile(join(process.cwd(), '.github', 'workflows', 'ci.yml'), 'utf8');
 
   assert.equal(manifest.scripts.pretest, 'npm run build:extension');
-  assert.match(manifest.scripts.validate, /^npm run build:extension && node --test --test-concurrency=1/);
+  assert.match(manifest.scripts['test:coverage'], /--test-concurrency=1/);
+  assert.match(manifest.scripts['test:coverage'], /--test-coverage-include=packages\/\*\*\/\*\.mjs/);
+  assert.match(manifest.scripts['test:coverage'], /--test-coverage-include=apps\/vscode-extension\/extension\.cjs/);
+  assert.match(manifest.scripts['test:coverage'], /--test-coverage-lines=85/);
+  assert.match(manifest.scripts['test:coverage'], /--test-coverage-branches=70/);
+  assert.match(manifest.scripts['test:coverage'], /--test-coverage-functions=80/);
+  assert.match(manifest.scripts.validate, /^npm run build:extension && npm run test:coverage/);
+  assert.match(workflow, /run: npm run test:coverage/);
 });
 
 test('public product metadata declares the canonical brand and repository', async () => {

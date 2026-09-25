@@ -27,6 +27,7 @@
   "scripts": {
     "pretest": "npm run build:extension",
     "test": "node --test",
+    "test:coverage": "node --test --test-concurrency=1 --experimental-test-coverage \"--test-coverage-include=packages/**/*.mjs\" \"--test-coverage-include=apps/vscode-extension/extension.cjs\" --test-coverage-lines=85 --test-coverage-branches=70 --test-coverage-functions=80",
     "test:mutation": "stryker run",
     "test:vscode:host": "node scripts/run-vscode-smoke.mjs",
     "test:vscode:accessibility": "node scripts/run-vscode-smoke.mjs --accessibility",
@@ -45,7 +46,7 @@
     "benchmark:large:release": "node benchmark/large-repository.mjs release",
     "publication:check": "node scripts/publication-check.mjs",
     "publication:release-check": "npm run verify:release && node scripts/publication-check.mjs --release",
-    "validate": "npm run build:extension && node --test --test-concurrency=1 && node scripts/check.mjs && node scripts/publication-check.mjs",
+    "validate": "npm run build:extension && npm run test:coverage && node scripts/check.mjs && node scripts/publication-check.mjs",
     "validate:release-candidate": "npm run validate && npm run benchmark && npm run smoke && npm run build:release && npm run verify:release && npm run test:vscode:host && npm run test:vscode:minimum && npm run test:vscode:tds && npm audit --audit-level=moderate && npm run test:mutation",
     "doctor": "node packages/runtime/src/cli.mjs doctor",
     "mcp": "node packages/mcp/src/stdio.mjs"

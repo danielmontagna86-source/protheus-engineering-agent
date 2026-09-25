@@ -36,7 +36,7 @@ jobs:
       - name: Build extension runtime for tests
         run: npm run build:extension
       - name: Test
-        run: node --test --test-concurrency=1
+        run: npm run test:coverage
       - name: Smoke critical CLI and MCP path
         run: node scripts/smoke.mjs
       - name: Enforce large-repository performance budget

@@ -316,10 +316,14 @@ function toolResult(value, isError = false) {
 async function notifyProgress(context, progress, message) {
   const progressToken = context?.mcpReq?._meta?.progressToken;
   if (progressToken === undefined || typeof context?.mcpReq?.notify !== 'function') return;
-  await context.mcpReq.notify({
-    method: 'notifications/progress',
-    params: { progressToken, progress, total: 1, message },
-  });
+  try {
+    await context.mcpReq.notify({
+      method: 'notifications/progress',
+      params: { progressToken, progress, total: 1, message },
+    });
+  } catch {
+    // Progress is an optional protocol hint and must not replace the tool result.
+  }
 }
 
 function runtimeOptions(options) {
