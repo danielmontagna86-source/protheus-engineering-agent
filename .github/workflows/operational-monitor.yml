@@ -1,0 +1,42 @@
+name: Operational release monitor
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-public-release:
+    name: Verify public release integrity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PEA_MONITOR_RELEASE_TAG: v0.3.8
+    steps:
+      - name: Checkout monitor
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Install locked dependencies
+        run: npm ci
+      - name: First integrity probe
+        id: first_probe
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run monitor:release
+      - name: Confirm a possible transient failure
+        if: steps.first_probe.outcome == 'failure'
+        shell: bash
+        run: sleep 60
+      - name: Second integrity probe (fail closed)
+        if: steps.first_probe.outcome == 'failure'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run monitor:release

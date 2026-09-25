@@ -45,6 +45,7 @@ const requiredFiles = [
   '.github/workflows/dependency-review.yml',
   '.github/workflows/secret-scan.yml',
   '.github/workflows/provenance.yml',
+  '.github/workflows/operational-monitor.yml',
   '.github/dependabot.yml',
   '.github/CODEOWNERS',
   '.github/PULL_REQUEST_TEMPLATE.md',
@@ -60,6 +61,7 @@ const requiredFiles = [
   '.agents/skills/protheus-evidence-review/SKILL.md',
   'config/skill-providers.json',
   'docs/skills.md',
+  'docs/operations/support-monitoring-rollback.md',
 ];
 
 async function fixture({ license = 'Apache-2.0', repository = true } = {}) {
@@ -1220,6 +1222,41 @@ test('supply-chain workflows are pinned, least-privilege and fail closed', async
   assert.match(provenance, /release-artifacts\/SHA256SUMS/);
   assert.match(provenance, /sha256sum --check SHA256SUMS/);
   assert.match(provenance, /gh attestation verify/);
+  assert.doesNotMatch(provenance, /ubuntu-latest/);
+});
+
+test('operational monitor is scheduled, least-privilege and confirms transient failures', async () => {
+  const workflow = await readFile(join(process.cwd(), '.github', 'workflows', 'operational-monitor.yml'), 'utf8');
+
+  assert.match(workflow, /schedule:/);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /permissions:\s*\r?\n\s+contents: read/);
+  assert.match(workflow, /runs-on: ubuntu-24\.04/);
+  assert.doesNotMatch(workflow, /ubuntu-latest/);
+  assert.match(workflow, /id: first_probe/);
+  assert.match(workflow, /continue-on-error: true/);
+  assert.match(workflow, /steps\.first_probe\.outcome == 'failure'/);
+  assert.match(workflow, /npm run monitor:release/g);
+  assert.match(workflow, /actions\/checkout@[0-9a-f]{40}/);
+  assert.match(workflow, /actions\/setup-node@[0-9a-f]{40}/);
+});
+
+test('support policy defines owned response targets and an exercised rollback path', async () => {
+  const support = await readFile(join(process.cwd(), 'docs', 'support-policy.md'), 'utf8');
+  const runbook = await readFile(join(process.cwd(), 'docs', 'operations', 'support-monitoring-rollback.md'), 'utf8');
+  const rollback = await readFile(join(process.cwd(), 'docs', 'migration-and-rollback.md'), 'utf8');
+
+  for (const document of [support, runbook]) {
+    assert.match(document, /S0/);
+    assert.match(document, /S1/);
+    assert.match(document, /S2/);
+    assert.match(document, /S3/);
+  }
+  assert.match(runbook, /two consecutive|duas tentativas/i);
+  assert.match(runbook, /SHA256SUMS/);
+  assert.match(runbook, /run-vscode-lifecycle\.mjs/);
+  assert.match(runbook, /Marketplace.*publisher|publisher.*Marketplace/i);
+  assert.match(rollback, /run-vscode-lifecycle\.mjs/);
 });
 
 test('mutation testing always removes its local sandbox', async () => {

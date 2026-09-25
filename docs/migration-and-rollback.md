@@ -19,3 +19,5 @@ Schema 0 project configuration is migrated in memory to schema 1; the runtime ne
 5. Re-run the offline smoke. Do not reuse an in-flight build request; reconcile its evidence manually.
 
 The product does not auto-downgrade state or retry a build step with unknown outcome.
+
+Exercise the installed path with `node scripts/run-vscode-lifecycle.mjs <previous-verified.vsix> 1.95.3`. Operational triggers, containment, receipt requirements, and Marketplace limitations are documented in [`operations/support-monitoring-rollback.md`](operations/support-monitoring-rollback.md).
