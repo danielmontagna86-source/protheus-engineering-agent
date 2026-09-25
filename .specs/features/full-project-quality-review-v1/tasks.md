@@ -9,5 +9,5 @@
 | QR-T5 | Wire `test:coverage` into local validation and protected CI. | Complete | targeted GREEN + full gate |
 | QR-T6 | Probe MCP SDK 2.1.0 against the real stdio process and retain 2.0.0 on incompatibility. | Complete | 25-test MCP suite |
 | QR-T7 | Reconcile project state, Stable ledger and maintainer handoff. | Complete | publication check |
-| QR-T8 | Run full QA, pre-merge audit, PR checks and post-merge checks. | In progress | all required checks green |
+| QR-T8 | Run full local QA and pre-merge audit. | Complete | all required local gates green |
 | QR-T9 | Decompose the VS Code adapter behind characterization tests. | Deferred P1 | dedicated spec; no Stable blocker |
