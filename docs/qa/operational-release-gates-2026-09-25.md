@@ -6,8 +6,7 @@ The operational controls below are technically verified for the preview channel.
 
 ## Public artifact monitoring
 
-- **VERIFIED:** the monitor fetched public release `v0.3.8` and verified all five assets.
-- **VERIFIED:** 4,354,096 downloaded bytes matched the GitHub API SHA-256 digests.
+- **VERIFIED:** the monitor fetched the current public release `v0.3.9` and verified all five assets.
 - **VERIFIED:** source ZIP, VSIX, and CycloneDX SBOM also matched `SHA256SUMS` and the release manifest.
 - **VERIFIED:** unit tests reject missing, altered, oversized, malformed, and inconsistent inputs.
 - **VERIFIED:** the scheduled workflow retries once after a possible transient failure and then fails closed.

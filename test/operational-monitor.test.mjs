@@ -57,7 +57,6 @@ test('public release monitor verifies every required asset against API and check
   const result = await probePublicRelease({
     owner: 'example',
     repo: 'pea',
-    tag,
     fetchImpl: releaseFixture().fetchImpl,
     timeoutMs: 1_000,
   });

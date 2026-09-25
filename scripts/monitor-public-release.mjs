@@ -67,7 +67,7 @@ async function boundedRead(url, { fetchImpl, timeoutMs, headers, maxBytes }) {
 export async function probePublicRelease({
   owner = 'danielmontagna86-source',
   repo = 'protheus-engineering-agent',
-  tag = 'v0.3.8',
+  tag = 'v0.3.9',
   fetchImpl = globalThis.fetch,
   token,
   timeoutMs = DEFAULT_TIMEOUT_MS,
