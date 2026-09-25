@@ -1232,6 +1232,7 @@ test('operational monitor is scheduled, least-privilege and confirms transient f
   assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /permissions:\s*\r?\n\s+contents: read/);
   assert.match(workflow, /runs-on: ubuntu-24\.04/);
+  assert.match(workflow, /PEA_MONITOR_RELEASE_TAG: v0\.3\.9/);
   assert.doesNotMatch(workflow, /ubuntu-latest/);
   assert.match(workflow, /id: first_probe/);
   assert.match(workflow, /continue-on-error: true/);
