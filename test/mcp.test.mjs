@@ -174,6 +174,26 @@ test('official MCP wire emits progress and cancels an in-flight tool request', a
   await clientTransport.close();
 });
 
+test('official MCP tools do not fail when optional progress notifications are unavailable', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-progress-failure-'));
+  const server = createOfficialMcpServer({ workspace });
+  let notificationAttempts = 0;
+
+  const result = await server._registeredTools.pea_doctor.handler({}, {
+    mcpReq: {
+      signal: new AbortController().signal,
+      _meta: { progressToken: 'unavailable-progress-channel' },
+      async notify() {
+        notificationAttempts += 1;
+        throw new Error('progress transport unavailable');
+      },
+    },
+  });
+
+  assert.equal(result.isError, false, result.content?.[0]?.text);
+  assert.equal(notificationAttempts, 2);
+});
+
 test('MCP changed-files review preserves the normalized SCM scope contract', async () => {
   const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-changes-'));
   await writeFile(join(workspace, 'changed.prw'), 'User Function Changed()\nReturn\n');
