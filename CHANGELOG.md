@@ -12,6 +12,8 @@ All notable changes are recorded here. The project follows Semantic Versioning a
   now cover standard handshake sessions and the separate finite-input contract.
 - The CI waiver fixture uses a fixed clock only inside its test subprocess and
   verifies rejection at expiry, so it no longer fails as calendar time advances.
+- Development-only lockfile packages brace-expansion and fast-uri are updated
+  to 5.0.12 and 3.1.8 to address the reported expansion and URI advisories.
 
 - O alvo explícito da especificação pública de release foi alinhado a `v0.3.9`.
   O gate de publicação volta a avaliar a candidata atual e mantém bloqueada apenas

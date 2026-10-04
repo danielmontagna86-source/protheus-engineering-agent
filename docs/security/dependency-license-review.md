@@ -40,3 +40,9 @@ The lockfile contains development, runtime and optional platform packages with d
 No mandatory GPL/AGPL runtime dependency was found in the reviewed direct/runtime packages. The generated CycloneDX SBOM captures the exact resolved release tree. The former direct `adm-zip` dependency was removed because no published version simultaneously cleared the two active advisory ranges; the replacement reader verifies CRC32, enforces entry-count, per-entry and aggregate uncompressed-size bounds, and never extracts paths to the filesystem.
 
 This is an engineering distribution review, not legal advice. A future runtime dependency, Marketplace package, embedded third-party asset, or copied corpus fixture requires a new license decision before release.
+
+## 2026-10-04 targeted QA security update
+
+The SDK 2.1 candidate resolves development-only `brace-expansion` 5.0.12 (MIT) and `fast-uri` 3.1.8 (BSD-3-Clause), preserving dependency ranges and every other resolved package. The official registry versions and integrity hashes were verified. These updates address GHSA-q2hr-2g5m-vwhr, GHSA-qhr7-859c-m2p7, GHSA-6j4f-fj2g-mc7p and GHSA-hrr3-gc8f-f4qj. Neither package is added to the distributed MCP runtime bundle.
+
+A fresh online `npm audit --audit-level=moderate` and `npm audit --omit=dev --audit-level=moderate` both reported zero vulnerabilities on this corrected lockfile. This supersedes the separately recorded initial audit failure, without weakening the CI audit policy. Audit and CI evidence must still be assessed for the exact candidate commit before release; the draft PR is not release approval. Detailed local checks and limits are in `.specs/features/mcp-sdk-eof-drain/validation.md`.
