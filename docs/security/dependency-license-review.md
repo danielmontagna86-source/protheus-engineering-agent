@@ -12,9 +12,9 @@ The MCP bundle in the distributed VSIX contains the official MCP server SDK and 
 
 | Package | Pinned version | Declared license | Purpose |
 |---|---:|---|---|
-| `@modelcontextprotocol/server` | 2.0.0 | package metadata: MIT; upstream LICENSE: Apache-2.0 transition with retained MIT contributions and CC-BY-4.0 documentation | official MCP server lifecycle, schema validation and stdio transport |
+| `@modelcontextprotocol/server` | 2.1.0 | package metadata: MIT; upstream LICENSE: Apache-2.0 transition with retained MIT contributions and CC-BY-4.0 documentation | official MCP server lifecycle, schema validation and stdio transport |
 
-Its resolved runtime dependencies are `@modelcontextprotocol/core` 2.0.0, covered by the same upstream transition license file, and Zod 4.5.4 under MIT. The VSIX includes `THIRD_PARTY_NOTICES.md`, the upstream MCP license text, and the Zod MIT text next to the bundle.
+Its resolved runtime dependencies are `@modelcontextprotocol/core` 2.1.0, covered by the same upstream transition license file, and Zod 4.5.4 under MIT. The VSIX includes `THIRD_PARTY_NOTICES.md`, the upstream MCP license text, and the Zod MIT text next to the bundle.
 
 ## Direct development tools
 

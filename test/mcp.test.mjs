@@ -11,6 +11,7 @@ import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 
 import { createMcpHandler, createOfficialMcpServer } from '../packages/mcp/src/server.mjs';
 import productManifest from '../package.json' with { type: 'json' };
+import { runMcpSession } from '../scripts/mcp-session.mjs';
 
 test('MCP handler initializes and lists the product tools', async () => {
   const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-'));
@@ -537,7 +538,34 @@ test('MCP exposes live project skills and isolated Hermes session configuration'
   assert.equal(session.hermes.mcp.name, 'protheus-engineering-agent');
 });
 
-test('MCP stdio process accepts newline-delimited initialize and tools/list requests', async () => {
+test('MCP standard stdio client waits for initialize and reads every response before closing stdin', { timeout: 10_000 }, async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-standard-'));
+  const serverPath = fileURLToPath(new URL('../packages/mcp/src/stdio.mjs', import.meta.url));
+  await writeFile(join(workspace, 'ENTRY.prw'), 'User Function Entry()\nReturn\n');
+  const { responseById, messages, stderr } = await runMcpSession(serverPath, {
+    workspace, initializeId: 20, timeoutMs: 8_000,
+    requests: [
+      { jsonrpc: '2.0', id: 21, method: 'tools/list', params: {} },
+      { jsonrpc: '2.0', id: 22, method: 'resources/read', params: { uri: 'pea://project-context' } },
+      { jsonrpc: '2.0', id: 23, method: 'tools/call', params: { name: 'pea_session_context', arguments: {} } },
+      { jsonrpc: '2.0', id: 24, method: 'tools/call', params: { name: 'pea_unknown', arguments: {} } },
+      { jsonrpc: '2.0', id: 25, method: 'tools/call', params: {
+        name: 'pea_review_file', arguments: { path: 'ENTRY.prw' }, _meta: { progressToken: 'standard-progress' },
+      } },
+    ],
+  });
+  assert.equal(stderr, '');
+  assert.equal(responseById.size, 6);
+  assert.equal(responseById.get(20).result.serverInfo.version, productManifest.version);
+  assert.ok(responseById.get(21).result.tools.some((tool) => tool.name === 'pea_session_context'));
+  assert.equal(JSON.parse(responseById.get(22).result.contents[0].text).workspace, workspace);
+  assert.equal(JSON.parse(responseById.get(23).result.content[0].text).hermes.mcp.args[0], serverPath);
+  assert.equal(responseById.get(24).error.code, -32602);
+  assert.equal(responseById.get(25).result.isError, false);
+  assert.deepEqual(messages.filter((message) => message.method === 'notifications/progress').map((message) => message.params.progress), [0, 1]);
+});
+
+test('MCP finite-input compatibility drains accepted requests after stdin EOF', { timeout: 10_000 }, async () => {
   const workspace = await mkdtemp(join(tmpdir(), 'pea-mcp-stdio-'));
   const serverPath = fileURLToPath(new URL('../packages/mcp/src/stdio.mjs', import.meta.url));
   const child = spawn(process.execPath, [serverPath], {
@@ -570,6 +598,7 @@ test('MCP stdio process accepts newline-delimited initialize and tools/list requ
   assert.equal(code, 0, stderr);
   const responses = stdout.trim().split(/\r?\n/).map((line) => JSON.parse(line));
   const responseById = new Map(responses.map((response) => [response.id, response]));
+  assert.deepEqual([...responseById.keys()].sort(), [20, 21, 22, 23, 24, 25, 26], 'every finite-input response ID must arrive before exit');
   assert.equal(responseById.get(20).result.serverInfo.version, productManifest.version);
   assert.ok(responseById.get(21).result.tools.some((tool) => tool.name === 'pea_session_context'));
   assert.equal(responseById.get(21).result.tools.some((tool) => tool.name === 'pea_build_run'), false);

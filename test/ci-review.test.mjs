@@ -97,7 +97,12 @@ test('CI review gate writes auditable policy evidence and only accepts a current
     INPUT_FAIL_ON: 'major',
     INPUT_POLICY_PATH: '.pea/review-policy.json',
   };
-  await assert.rejects(execFileAsync(process.execPath, [script], { env: environment }));
+  // Mock only Date inside this test's child; production still reads real time.
+  const runAt = (now) => execFileAsync(process.execPath, [
+    '--import', `data:text/javascript,${encodeURIComponent(`import { mock } from 'node:test'; mock.timers.enable({ apis: ['Date'], now: ${Date.parse(now)} });`)}`,
+    script,
+  ], { env: environment });
+  await assert.rejects(runAt('2026-09-28T12:00:00.000Z'));
   const rawReview = JSON.parse(await readFile(join(workspace, '.pea-results', 'review.json'), 'utf8'));
   const fingerprint = rawReview.reviews[0].findings[0].fingerprint;
   await mkdir(join(workspace, '.pea'), { recursive: true });
@@ -111,7 +116,7 @@ test('CI review gate writes auditable policy evidence and only accepts a current
     }],
   }), 'utf8');
 
-  const run = await execFileAsync(process.execPath, [script], { env: environment });
+  const run = await runAt('2026-09-28T12:00:00.000Z');
   const gate = JSON.parse(await readFile(join(workspace, '.pea-results', 'review-gate.json'), 'utf8'));
   const actionOutputs = await readFile(outputs, 'utf8');
   assert.match(run.stdout, /"status": "PASS"/);
@@ -120,6 +125,11 @@ test('CI review gate writes auditable policy evidence and only accepts a current
   assert.equal(gate.waived[0].fingerprint, fingerprint);
   assert.match(actionOutputs, /gate=.*review-gate\.json/);
   assert.match(actionOutputs, /waived=1/);
+  await assert.rejects(runAt('2026-10-01T00:00:00.000Z'));
+  const expired = JSON.parse(await readFile(join(workspace, '.pea-results', 'review-gate.json'), 'utf8'));
+  assert.equal(expired.status, 'FAIL');
+  assert.equal(expired.waived.length, 0);
+  assert.equal(expired.expiredWaivers.length, 1);
 });
 
 test('GitHub Action contract is composite, offline and permission neutral', async () => {

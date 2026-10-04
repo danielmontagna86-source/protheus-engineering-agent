@@ -3,6 +3,7 @@ import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runMcpSession } from './mcp-session.mjs';
 
 const productRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const cli = join(productRoot, 'packages', 'runtime', 'src', 'cli.mjs');
@@ -53,11 +54,6 @@ try {
   checks.push('review');
 
   const requests = [
-    {
-      jsonrpc: '2.0', id: 1, method: 'initialize',
-      params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'pea-smoke', version: '1' } },
-    },
-    { jsonrpc: '2.0', method: 'notifications/initialized', params: {} },
     { jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} },
     { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'pea_session_context', arguments: {} } },
   ];
@@ -67,30 +63,22 @@ try {
     ['mcp-bundled', join(built.extensionDist, 'mcp-stdio.mjs')],
   ];
   for (const [label, entrypoint] of mcpEntries) {
-    const mcpResult = spawnSync(process.execPath, [entrypoint], {
-      cwd: workspace,
-      encoding: 'utf8',
-      env: { ...process.env, PEA_WORKSPACE: workspace, PEA_ENVIRONMENT: 'production' },
-      input: `${requests.map((request) => JSON.stringify(request)).join('\n')}\n`,
-      timeout: 30_000,
-      windowsHide: true,
-    });
-    if (mcpResult.error) throw mcpResult.error;
-    if (mcpResult.status !== 0) throw new Error(`${label} failed (${mcpResult.status}): ${mcpResult.stderr.trim()}`);
-    const responses = mcpResult.stdout.trim().split(/\r?\n/).map((line) => JSON.parse(line));
-    const responseById = new Map(responses.map((response) => [response.id, response]));
-    if (responseById.get(1)?.result?.serverInfo?.name !== 'protheus-engineering-agent') {
-      throw new Error(`${label} initialize returned an unexpected server identity`);
+    for (const finiteInput of [false, true]) {
+      const modeLabel = finiteInput ? `${label}-eof` : label;
+      const { responseById } = await runMcpSession(entrypoint, { workspace, requests, finiteInput });
+      if (responseById.get(1)?.result?.serverInfo?.name !== 'protheus-engineering-agent') {
+        throw new Error(`${modeLabel} initialize returned an unexpected server identity`);
+      }
+      if (!responseById.get(2)?.result?.tools?.some((tool) => tool.name === 'pea_review_file')) {
+        throw new Error(`${modeLabel} tools/list did not expose the review tool`);
+      }
+      const session = JSON.parse(responseById.get(3)?.result?.content?.[0]?.text ?? '{}');
+      if (resolve(session.hermes?.mcp?.args?.[0] ?? '') !== resolve(entrypoint)) {
+        throw new Error(`${modeLabel} advertised an invalid nested MCP entrypoint`);
+      }
+      if (!(await stat(entrypoint)).isFile()) throw new Error(`${modeLabel} entrypoint does not exist`);
+      checks.push(modeLabel);
     }
-    if (!responseById.get(2)?.result?.tools?.some((tool) => tool.name === 'pea_review_file')) {
-      throw new Error(`${label} tools/list did not expose the review tool`);
-    }
-    const session = JSON.parse(responseById.get(3)?.result?.content?.[0]?.text ?? '{}');
-    if (resolve(session.hermes?.mcp?.args?.[0] ?? '') !== resolve(entrypoint)) {
-      throw new Error(`${label} advertised an invalid nested MCP entrypoint`);
-    }
-    if (!(await stat(entrypoint)).isFile()) throw new Error(`${label} entrypoint does not exist`);
-    checks.push(label);
   }
 
   process.stdout.write(`${JSON.stringify({ status: 'PASS', durationMs: Date.now() - startedAt, checks })}\n`);
