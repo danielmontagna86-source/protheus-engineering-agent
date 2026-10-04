@@ -84,3 +84,21 @@ The asynchronous permission broker correlates every approval to its exact reques
 - MCP: erro de tool usa `isError: true`; método desconhecido usa JSON-RPC `-32601`.
 - Integrações: `INTEGRATION_UNAVAILABLE` sem side effect.
 - Build: primeira etapa bloqueada/falha encerra a execução e preserva o estado parcial.
+
+## MCP finite-input lifecycle
+
+MCP clients should finish initialize, send initialized, and keep stdin open until
+their expected response IDs arrive. The source and bundled smoke check that path.
+PEA additionally preserves its finite-input compatibility: normal stdin EOF stops
+input while accepted non-cancelled requests and output writes drain, for at most
+five seconds from EOF. This extends the official SDK 2.1 EOF behavior deliberately;
+it does not change MCP framing, schemas or serialization.
+
+The public transport composition uses a PassThrough input and tracks SDK-parsed
+IDs and completed writes. Progress notifications do not count as responses.
+Cancellation notifications retire their request IDs; a request incorrectly named
+`notifications/cancelled` does not. Broken input/output and explicit signal shutdown
+close immediately. The deadline reports `MCP_EOF_DRAIN_TIMEOUT`, aborts through the
+SDK close chain and discards blocked output rather than waiting indefinitely.
+Tools must honor cancellation for their own work; protocol abort does not promise
+rollback of an operation's effects. See `.specs/features/mcp-sdk-eof-drain/`.

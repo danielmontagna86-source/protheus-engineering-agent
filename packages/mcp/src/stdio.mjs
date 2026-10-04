@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
-import { StdioServerTransport, serveStdio } from '@modelcontextprotocol/server/stdio';
+import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { fileURLToPath } from 'node:url';
 
 import { createOfficialMcpServer } from './server.mjs';
+import { createEofDrainingTransport } from './draining-stdio.mjs';
 
 const MAX_REQUEST_BYTES = 1024 * 1024;
 
@@ -18,7 +19,7 @@ const options = {
   },
 };
 
-const transport = new StdioServerTransport(process.stdin, process.stdout, {
+const transport = createEofDrainingTransport({
   maxBufferSize: MAX_REQUEST_BYTES,
 });
 
