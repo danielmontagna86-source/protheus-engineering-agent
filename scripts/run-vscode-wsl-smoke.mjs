@@ -7,6 +7,7 @@ import { spawn, spawnSync } from 'node:child_process';
 
 import { packageExtension } from './package-extension.mjs';
 import { sha256 } from './release-artifacts.mjs';
+import { writeVsix } from './write-vsix.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
@@ -75,12 +76,12 @@ function uninstallRemoteProbe(distro, serverRoot) {
   ]);
 }
 
-function packageProbe(outputPath) {
-  const vsce = join(root, 'node_modules', '@vscode', 'vsce', 'vsce');
-  run(process.execPath, [
-    vsce, 'package', '--out', outputPath, '--no-dependencies',
-    '--allow-missing-repository', '--skip-license', '--allow-star-activation',
-  ], { cwd: join(root, 'integration', 'vscode-wsl-probe') });
+export function packageProbe(outputPath) {
+  return writeVsix({
+    root: join(root, 'integration', 'vscode-wsl-probe'),
+    outputPath,
+    inventory: [['package.json', 'extension/package.json'], ['extension.cjs', 'extension/extension.cjs']],
+  });
 }
 
 export async function runVsCodeWslSmoke() {
@@ -102,7 +103,7 @@ export async function runVsCodeWslSmoke() {
   const receipt = join(workspace, '.pea-wsl-smoke-receipt.json');
   const probeVsix = join(sandbox, 'pea-wsl-smoke-probe-0.0.0.vsix');
   await mkdir(workspace, { recursive: true });
-  packageProbe(probeVsix);
+  await packageProbe(probeVsix);
   installRemoteVsix(distro, serverRoot, packaged.path);
   const installed = installRemoteVsix(distro, serverRoot, probeVsix);
   const installedLines = installed.split(/\r?\n/).map((line) => line.trim().toLowerCase());

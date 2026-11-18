@@ -1,0 +1,22 @@
+diff --git a/packages/core/tsconfig.json b/packages/core/tsconfig.json
+index e6d8dab..8899d27 100644
+--- a/packages/core/tsconfig.json
++++ b/packages/core/tsconfig.json
+@@ -1,5 +1,5 @@
+ {
+-    "extends": "@modelcontextprotocol/tsconfig",
++    "extends": "../../common/tsconfig/tsconfig.json",
+     "include": ["./"],
+     "exclude": ["node_modules", "dist"],
+     "compilerOptions": {
+diff --git a/packages/server/tsconfig.json b/packages/server/tsconfig.json
+index 54f3389..378f380 100644
+--- a/packages/server/tsconfig.json
++++ b/packages/server/tsconfig.json
+@@ -1,5 +1,5 @@
+ {
+-    "extends": "@modelcontextprotocol/tsconfig",
++    "extends": "../../common/tsconfig/tsconfig.json",
+     "include": ["./"],
+     "exclude": ["node_modules", "dist"],
+     "compilerOptions": {

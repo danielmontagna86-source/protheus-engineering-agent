@@ -1,0 +1,84 @@
+diff --git a/.changeset/bundled-fast-uri-3-1-9.md b/.changeset/bundled-fast-uri-3-1-9.md
+new file mode 100644
+index 0000000..0b1ea3d
+--- /dev/null
++++ b/.changeset/bundled-fast-uri-3-1-9.md
+@@ -0,0 +1,6 @@
++---
++'@modelcontextprotocol/client': patch
++'@modelcontextprotocol/server': patch
++---
++
++The bundled Ajv validator is now built with fast-uri 3.1.9 (was 3.1.8). A schema no longer compiles when a `$id` or `$ref` has a percent-encoded character before its first colon (`%61:b`), or `{` or `}` in the host of an `http`, `https`, `ws` or `wss` URL (`http://{host}/a`). Relative values keep their leading `..` segments: a `$ref` to a `$id` such as `../a` now resolves, and a `$ref` of only dot segments (`.`, `../`) no longer resolves to the root schema. Plain names, `#/$defs/...` references, other URLs and URNs are not affected.
+diff --git a/packages/core-internal/src/validators/fastUriShim.d.ts b/packages/core-internal/src/validators/fastUriShim.d.ts
+index 85298af..0c593e9 100644
+--- a/packages/core-internal/src/validators/fastUriShim.d.ts
++++ b/packages/core-internal/src/validators/fastUriShim.d.ts
+@@ -11,7 +11,7 @@
+  * `dts.compilerOptions.paths` so the type is inlined as a plain named export.
+  * Runtime code is unaffected (this is a `.d.ts`; the path mapping is dts-only).
+  */
+-// Field-for-field copy of fast-uri@3.1.8's URIComponent (types/index.d.ts).
++// Field-for-field copy of fast-uri@3.1.9's URIComponent (types/index.d.ts).
+ // Keep in sync when bumping fast-uri/ajv.
+ export interface URIComponent {
+     scheme?: string;
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index 060f3c4..ea66e0c 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -5086,8 +5086,8 @@ packages:
+   fast-safe-stringify@2.1.1:
+     resolution: {integrity: sha512-W+KJc2dmILlPplD/H4K9l9LcAHAfPtP6BY84uVLXQ6Evcz9Lcg33Y2z1IVblT6xdY54PXYVHEv+0Wpq8Io6zkA==}
+ 
+-  fast-uri@3.1.8:
+-    resolution: {integrity: sha512-GZMtZUTNRpOVIECoXwLNZS5xUGE+mVNbTB8h/7Rwh2TFWcBQiPzTgyZi05BF9UMZKkLJv8XBRJTlU7zg8+ZfMg==}
++  fast-uri@3.1.9:
++    resolution: {integrity: sha512-hS/0Wt3Ya043oKXs0sIxrMpKQITXhMLIrVAKKXi4gozGC9v7YRWVnXIZzjNPTO02M9BdxLCWqK1yRXgNziVyJQ==}
+ 
+   fastify@5.8.4:
+     resolution: {integrity: sha512-sa42J1xylbBAYUWALSBoyXKPDUvM3OoNOibIefA+Oha57FryXKKCZarA1iDntOCWp3O35voZLuDg2mdODXtPzQ==}
+@@ -7694,7 +7694,7 @@ snapshots:
+     dependencies:
+       ajv: 8.18.0
+       ajv-formats: 3.0.1(ajv@8.18.0)
+-      fast-uri: 3.1.8
++      fast-uri: 3.1.9
+ 
+   '@fastify/error@4.2.0': {}
+ 
+@@ -8818,14 +8818,14 @@ snapshots:
+   ajv@8.18.0:
+     dependencies:
+       fast-deep-equal: 3.1.3
+-      fast-uri: 3.1.8
++      fast-uri: 3.1.9
+       json-schema-traverse: 1.0.0
+       require-from-string: 2.0.2
+ 
+   ajv@8.20.0:
+     dependencies:
+       fast-deep-equal: 3.1.3
+-      fast-uri: 3.1.8
++      fast-uri: 3.1.9
+       json-schema-traverse: 1.0.0
+       require-from-string: 2.0.2
+ 
+@@ -9767,7 +9767,7 @@ snapshots:
+       '@fastify/merge-json-schemas': 0.2.1
+       ajv: 8.18.0
+       ajv-formats: 3.0.1(ajv@8.18.0)
+-      fast-uri: 3.1.8
++      fast-uri: 3.1.9
+       json-schema-ref-resolver: 3.0.0
+       rfdc: 1.4.1
+ 
+@@ -9779,7 +9779,7 @@ snapshots:
+ 
+   fast-safe-stringify@2.1.1: {}
+ 
+-  fast-uri@3.1.8: {}
++  fast-uri@3.1.9: {}
+ 
+   fastify@5.8.4:
+     dependencies:

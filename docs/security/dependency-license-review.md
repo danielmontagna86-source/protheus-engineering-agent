@@ -22,7 +22,6 @@ Its resolved runtime dependencies are `@modelcontextprotocol/core` 2.1.0, covere
 |---|---:|---|---|
 | `@stryker-mutator/core` | 10.0.0 | Apache-2.0 | mutation testing |
 | `@vscode/test-electron` | 3.1.0 | MIT | isolated Extension Host testing |
-| `@vscode/vsce` | 3.9.2 | MIT | VSIX packaging |
 | `buffer-crc32` | 1.0.0 | MIT | ZIP entry integrity verification |
 | `esbuild` | 0.28.2 | MIT | self-contained runtime bundles |
 | `yaml` | 2.9.0 | ISC | parse and validate workflow YAML in repository checks |
@@ -34,7 +33,7 @@ Its resolved runtime dependencies are `@modelcontextprotocol/core` 2.1.0, covere
 The lockfile contains development, runtime and optional platform packages with declared license metadata. Items requiring explicit interpretation were reviewed as follows:
 
 - `jszip` declares `MIT OR GPL-3.0-or-later`; this project uses it under MIT.
-- `@vscode/vsce-sign` and its platform packages use Microsoft VSCE-SIGN terms. They are development-only, signing scripts are disabled, and they are not included in the VSIX or redistributed as binaries.
+- The local VSIX packager uses the existing MIT-licensed ZIP libraries and an explicit inventory. It does not install or run a signing tool.
 - `caniuse-lite`, `spdx-exceptions`, Artistic-2.0 and WTFPL packages are transitive tooling/data only and are not shipped in the VSIX.
 
 No mandatory GPL/AGPL runtime dependency was found in the reviewed direct/runtime packages. The generated CycloneDX SBOM captures the exact resolved release tree. The former direct `adm-zip` dependency was removed because no published version simultaneously cleared the two active advisory ranges; the replacement reader verifies CRC32, enforces entry-count, per-entry and aggregate uncompressed-size bounds, and never extracts paths to the filesystem.

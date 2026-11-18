@@ -695,7 +695,8 @@ export async function assessPublication({ root, release = false, evidencePath: r
     if (file.name !== '.env.example' && secretFilePatterns.some((pattern) => pattern.test(file.name))) {
       errors.push(finding('SECRET_FILE', file.repositoryPath, 'Secret-bearing filename must not be published.'));
     }
-    const isText = textExtensions.has(extname(file.name).toLowerCase())
+    const bootstrapPython = file.repositoryPath === 'scripts/bootstrap-mcp-sdk.py';
+    const isText = bootstrapPython || textExtensions.has(extname(file.name).toLowerCase())
       || extensionlessTextNames.has(file.name);
     if (!isText) {
       if (!allowedBinaryFiles.has(file.repositoryPath)) {
@@ -703,7 +704,18 @@ export async function assessPublication({ root, release = false, evidencePath: r
       }
       continue;
     }
-    const contents = await readFile(file.path, 'utf8');
+    let contents;
+    if (bootstrapPython) {
+      try {
+        contents = new TextDecoder('utf-8', { fatal: true }).decode(await readFile(file.path));
+        if (contents.includes('\0')) throw new Error('unexpected NUL byte');
+      } catch {
+        errors.push(finding('BINARY_FILE_NOT_ALLOWED', file.repositoryPath, 'The MCP bootstrap must be UTF-8 source text.'));
+        continue;
+      }
+    } else {
+      contents = await readFile(file.path, 'utf8');
+    }
     if (secretContentPatterns.some((pattern) => pattern.test(contents))) {
       errors.push(finding('SECRET_CONTENT', file.repositoryPath, 'High-confidence credential or private-key material found.'));
     }
