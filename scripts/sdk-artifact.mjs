@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
-import { lstat, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assertNoLinkPath } from './path-safety.mjs';
+import { assertNoLinkPath, readBoundedRegularFile } from './path-safety.mjs';
 
 const relativeSdk = 'release-artifacts/mcp-sdk/modelcontextprotocol-server-2.4.0-verified.tgz';
 const sdkSha256 = '478c607f4252af5eb6c1a84801f06239b1954fd2633932fa58c27833800b86de';
@@ -17,16 +17,13 @@ export async function stageVerifiedSdk({ sourceRoot, checkout }) {
 
 export async function installVerifiedSdk({ sourceRoot, input, checkout }) {
   if (basename(input) !== basename(relativeSdk)) throw new Error('Unexpected MCP SDK artifact name');
-  await assertNoLinkPath(sourceRoot, input);
-  let state;
+  let bytes;
   try {
-    state = await lstat(input);
+    bytes = await readBoundedRegularFile(sourceRoot, input, 3_000_000, 'Unsafe local MCP SDK file');
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
     throw new Error('Missing verified MCP SDK. Run scripts/bootstrap-mcp-sdk.py before rebuilding the source archive.');
   }
-  if (!state.isFile() || state.nlink !== 1 || state.size > 3_000_000) throw new Error('Unsafe local MCP SDK file');
-  const bytes = await readFile(input);
   if (createHash('sha256').update(bytes).digest('hex') !== sdkSha256) {
     throw new Error('MCP SDK archive failed SHA-256 verification');
   }

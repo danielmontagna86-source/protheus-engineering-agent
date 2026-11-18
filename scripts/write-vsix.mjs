@@ -1,9 +1,8 @@
-import { lstat, readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import { lintSource } from '@secretlint/core';
 import { creator as noDotenv } from '@secretlint/secretlint-rule-no-dotenv';
 import { creator as recommended } from '@secretlint/secretlint-rule-preset-recommend';
-import { assertNoLinkPath } from './path-safety.mjs';
+import { readBoundedRegularFile } from './path-safety.mjs';
 import { writeZipArchive } from './zip.mjs';
 
 const types = {
@@ -132,13 +131,10 @@ export async function writeVsix({ root, outputPath, inventory }) {
       throw new Error(`Invalid VSIX inventory entry: ${name}`);
     }
     const path = join(root, source);
-    await assertNoLinkPath(root, path);
-    const info = await lstat(path);
-    bytes += info.size;
-    if (!info.isFile() || info.nlink !== 1 || bytes > 20 * 1024 * 1024) {
-      throw new Error(`Unsafe or oversized VSIX input: ${source}`);
-    }
-    entries.push({ name, data: await readFile(path) });
+    const data = await readBoundedRegularFile(root, path, 20 * 1024 * 1024 - bytes,
+      `Unsafe or oversized VSIX input: ${source}`);
+    bytes += data.length;
+    entries.push({ name, data });
   }
   const names = new Set(entries.map(({ name }) => name));
   if (new Set(entries.map(({ name }) => name.toLowerCase())).size !== entries.length) {

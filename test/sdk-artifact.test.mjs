@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { link, mkdir, mkdtemp, readdir, rm, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -18,5 +18,11 @@ test('source rebuild fails closed when the local SDK is missing or has different
   await mkdir(join(sourceRoot, 'release-artifacts/mcp-sdk'), { recursive: true });
   await writeFile(join(sourceRoot, localSdk), 'different synthetic bytes');
   await assert.rejects(stageVerifiedSdk({ sourceRoot, checkout }), /failed SHA-256 verification/);
+  const alias = join(sourceRoot, 'linked-sdk');
+  await link(join(sourceRoot, localSdk), alias);
+  await assert.rejects(stageVerifiedSdk({ sourceRoot, checkout }), /Unsafe local MCP SDK file/);
+  await unlink(alias);
+  await writeFile(join(sourceRoot, localSdk), Buffer.alloc(3_000_001));
+  await assert.rejects(stageVerifiedSdk({ sourceRoot, checkout }), /Unsafe local MCP SDK file/);
   assert.deepEqual(await readdir(checkout), ['package.json']);
 });
