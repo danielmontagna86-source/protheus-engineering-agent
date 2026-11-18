@@ -30,6 +30,8 @@ External adapters are implemented but inactive until a host supplies trusted con
 
 Requires Node.js 22 or newer. Tests and packaging use development dependencies locked in `package-lock.json`.
 
+On a clean checkout, [prepare the verified MCP SDK](docs/security/mcp-sdk-rebuild.md) before running `npm ci`.
+
 ```sh
 npm ci
 npm run validate
@@ -57,7 +59,7 @@ The process defaults to the `production` policy. Project Memory writes require a
 
 ## VS Code extension
 
-Run `npm ci`, open this repository in VS Code, and start `Run Protheus Engineering Agent Extension`. Its pre-launch task builds the self-contained runtime before opening the Extension Development Host. To produce the audited GitHub Release package, run `npm run package:extension`; the VSIX is written under `release-artifacts/`.
+[Prepare the MCP SDK](docs/security/mcp-sdk-rebuild.md), run `npm ci`, open this repository in VS Code, and start `Run Protheus Engineering Agent Extension`. Its pre-launch task builds the self-contained runtime before opening the Extension Development Host. To build the candidate VSIX locally, run `npm run package:extension`. The VSIX is written under `release-artifacts/`.
 
 Open an ADVPL/TLPP workspace and use Engineering Center or the `Protheus Agent` commands. Active-file review keeps machine-readable JSON in Output and publishes findings to native Problems. Memory/Journal, authorized snapshot onboarding, Git-change review, and supervised-build state use native VS Code flows. `npm run test:vscode:host` installs the VSIX in an isolated current VS Code instance; `npm run test:vscode:minimum` repeats the supported 1.95.3 baseline.
 

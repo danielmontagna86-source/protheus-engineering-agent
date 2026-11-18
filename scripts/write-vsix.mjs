@@ -85,6 +85,10 @@ function validateManifest(manifest, names) {
   if (manifest.preview !== undefined && typeof manifest.preview !== 'boolean') {
     throw new Error('Invalid VS Code extension metadata: preview');
   }
+  const [major, minor] = engines.vscode.replace(/^\^/, '').split('.').map(Number);
+  if (manifest.preview && (major < 1 || (major === 1 && minor < 63))) {
+    throw new Error('Marketplace pre-release requires VS Code 1.63.0 or later');
+  }
 }
 
 function manifestXml(manifest, localized, names) {
@@ -107,6 +111,7 @@ function manifestXml(manifest, localized, names) {
   }
   const properties = {
     'Microsoft.VisualStudio.Code.Engine': engines.vscode,
+    'Microsoft.VisualStudio.Code.PreRelease': manifest.preview ? 'true' : undefined,
     'Microsoft.VisualStudio.Code.ExtensionDependencies': (manifest.extensionDependencies ?? []).join(','),
     'Microsoft.VisualStudio.Code.ExtensionPack': (manifest.extensionPack ?? []).join(','),
     'Microsoft.VisualStudio.Code.ExtensionKind': (manifest.extensionKind ?? []).join(','),
