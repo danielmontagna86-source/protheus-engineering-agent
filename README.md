@@ -44,6 +44,8 @@ As integrações são contratos prontos, mas continuam inativas até o host forn
 
 Pré-requisito: Node.js 22 ou superior. Os testes e o empacotamento usam dependências de desenvolvimento bloqueadas no `package-lock.json`.
 
+Em um checkout limpo, [prepare o SDK MCP verificado](docs/security/mcp-sdk-rebuild.md) antes de rodar `npm ci`.
+
 ```sh
 npm ci
 npm run validate
@@ -96,7 +98,7 @@ Para conceder escrita de Project Memory ao processo, defina `PEA_GRANTS=context:
 
 ## Extensão VS Code
 
-Para desenvolvimento, instale as dependências bloqueadas no lockfile, abra a raiz deste produto no VS Code e execute `Run Protheus Engineering Agent Extension` com `F5`. A tarefa de inicialização gera o runtime autocontido antes de abrir o Extension Development Host.
+Para desenvolvimento, [prepare o SDK MCP](docs/security/mcp-sdk-rebuild.md), instale as dependências bloqueadas no lockfile, abra a raiz deste produto no VS Code e execute `Run Protheus Engineering Agent Extension` com `F5`. A tarefa de inicialização gera o runtime autocontido antes de abrir o Extension Development Host.
 
 ```sh
 npm ci
@@ -106,7 +108,7 @@ Para gerar o mesmo VSIX auditado que será anexado ao GitHub Release:
 
 ```sh
 npm run package:extension
-code --install-extension release-artifacts/protheus-engineering-agent-v0.3.9.vsix
+code --install-extension release-artifacts/protheus-engineering-agent-v0.3.10.vsix
 ```
 
 Para validar instalação, upgrade, remoção, reinstalação e rollback com um VSIX anterior, passe o caminho e a versão do VS Code como argumentos posicionais. Esse formato também funciona no npm 12, que rejeita opções desconhecidas após um único separador:

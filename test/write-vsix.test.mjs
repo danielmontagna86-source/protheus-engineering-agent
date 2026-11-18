@@ -41,6 +41,7 @@ test('VSIX archives use the explicit inventory and preserve installable localize
     '<Tags>advpl,tools,language-model-tools</Tags>',
     '<Categories>Linters,Testing</Categories>',
     '<Property Id="Microsoft.VisualStudio.Code.Engine" Value="^1.95.0" />',
+    '<Property Id="Microsoft.VisualStudio.Code.PreRelease" Value="true" />',
     '<Property Id="Microsoft.VisualStudio.Code.ExtensionKind" Value="workspace" />',
     '<Property Id="Microsoft.VisualStudio.Services.Links.Source" Value="https://example.invalid/fixture" />',
     '<Property Id="Microsoft.VisualStudio.Services.Branding.Theme" Value="dark" />',
@@ -53,6 +54,7 @@ test('VSIX archives use the explicit inventory and preserve installable localize
     [{ publisher: 'invalid/name' }, /identity/],
     [{ version: '01.2.3' }, /version/],
     [{ engines: { vscode: 'latest' } }, /engine range/],
+    [{ engines: { vscode: '^1.62.9' } }, /pre-release requires VS Code/],
     [{ main: './unlisted.cjs' }, /entry point/],
     [{ icon: 'media/icon.svg' }, /packaged PNG/],
     [{ categories: 'Linters' }, /metadata: categories/],
@@ -62,6 +64,12 @@ test('VSIX archives use the explicit inventory and preserve installable localize
     await assert.rejects(writeVsix({ root, outputPath, inventory }), expected);
   }
   assert.deepEqual(await readFile(outputPath), first);
+  await writeFile(join(root, 'package.json'), JSON.stringify({ ...manifest, preview: false }));
+  await writeVsix({ root, outputPath, inventory });
+  const stableXml = (await readZipArchive(await readFile(outputPath)))
+    .find(({ name }) => name === 'extension.vsixmanifest').data.toString();
+  assert.ok(stableXml.includes('<GalleryFlags>Public</GalleryFlags>'));
+  assert.ok(!stableXml.includes('Microsoft.VisualStudio.Code.PreRelease'));
 });
 
 test('VSIX packaging blocks synthetic multiline keys, tokens, dotenv and SVG secrets without logging values', async (t) => {

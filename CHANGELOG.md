@@ -2,6 +2,18 @@
 
 All notable changes are recorded here. The project follows Semantic Versioning after the first public alpha.
 
+## 0.3.10 (preview, pending publication)
+
+### Security
+
+- Rebuilds MCP SDK 2.4.0 from pinned upstream source with the upstream fix for the embedded `fast-uri` provider dependency. The bundled version is 3.1.9. Runtime schema validation uses Zod 4.6.7.
+- Removes the VSCE development dependency and its `picomatch` chain. The local VSIX packager uses a fixed inventory, checks artifact paths, preserves dependency notices, and scans packaged text without printing secret values.
+- Adds an OSV check for the MCP bundle's identified composition alongside the lockfile scan. CI verifies the SDK artifact from the same workflow run before installing dependencies.
+
+### Fixed
+
+- Preview VSIX files include the Marketplace pre-release property in addition to the gallery preview flag. The extension continues to target VS Code `^1.95.0`.
+
 ## Unreleased
 
 ### Fixed
