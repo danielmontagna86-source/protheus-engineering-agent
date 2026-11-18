@@ -11,7 +11,7 @@ Describe the user-visible outcome and link the applicable specification or issue
 ## Validation
 
 - [ ] Tests were added or updated first.
-- [ ] `npm ci` and `npm run validate` pass.
+- [ ] The [pinned SDK preparation](../docs/security/mcp-sdk-rebuild.md), `npm ci`, and `npm run validate` pass.
 - [ ] Relevant smoke, mutation, security or VS Code host tests pass.
 - [ ] Documentation and release evidence are truthful.
 - [ ] No credentials, customer code, personal paths or local `.pea` state are included.

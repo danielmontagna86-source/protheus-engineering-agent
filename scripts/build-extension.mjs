@@ -11,7 +11,7 @@ function assertBuildPath(path, expected) {
   if (resolve(path) !== resolve(expected)) throw new Error(`refusing unexpected build path: ${path}`);
 }
 
-export async function buildExtension({ releaseCommit, productRoot = root } = {}) {
+export async function buildExtension({ releaseCommit, productRoot = root, collectMcpInputs = false } = {}) {
   const buildRoot = resolve(productRoot);
   const extensionRoot = join(buildRoot, 'apps', 'vscode-extension');
   const extensionDist = join(extensionRoot, 'dist');
@@ -49,10 +49,11 @@ export async function buildExtension({ releaseCommit, productRoot = root } = {})
     },
     define: { 'import.meta.url': '__pea_import_meta_url' },
   });
-  await build({
+  const mcpBuild = await build({
     ...common,
     entryPoints: [join(buildRoot, 'packages', 'mcp', 'src', 'stdio.mjs')],
     outfile: join(extensionDist, 'mcp-stdio.mjs'),
+    metafile: collectMcpInputs,
   });
   for (const [name, entryPoint] of [
     ['codex-app-server.cjs', join(buildRoot, 'packages', 'codex-app-server', 'src', 'index.mjs')],
@@ -97,7 +98,12 @@ export async function buildExtension({ releaseCommit, productRoot = root } = {})
     manifest.peaRelease = { commit: releaseCommit };
   }
   await writeFile(join(stageRoot, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
-  return { extensionRoot, extensionDist, stageRoot, version: manifest.version };
+  const result = { extensionRoot, extensionDist, stageRoot, version: manifest.version };
+  if (collectMcpInputs) {
+    const output = Object.values(mcpBuild.metafile.outputs)[0];
+    result.mcpInputs = Object.keys(output.inputs);
+  }
+  return result;
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

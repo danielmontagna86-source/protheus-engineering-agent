@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { readZipArchive } from './zip.mjs';
 
-const requiredEntries = new Set([
+export const requiredExtensionEntries = Object.freeze([
   'extension/package.json',
   'extension/extension.cjs',
   'extension/dist/runtime-cli.cjs',
@@ -32,6 +32,7 @@ const requiredEntries = new Set([
   'extension/sample-workspace/sample-review.prw',
   'extension/skills/protheus-evidence-review/skill.md',
 ]);
+const requiredEntries = new Set(requiredExtensionEntries);
 
 const allowedEntries = new Set([
   '[content_types].xml',

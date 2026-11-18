@@ -1,0 +1,48 @@
+name: Prepare pinned MCP SDK
+
+on:
+  workflow_call:
+    outputs:
+      artifact-id:
+        description: ID of the verified SDK bundle in this workflow run
+        value: ${{ jobs.rebuild.outputs.artifact-id }}
+
+permissions:
+  contents: read
+
+jobs:
+  rebuild:
+    name: Rebuild pinned SDK from official source
+    runs-on: windows-2025
+    timeout-minutes: 10
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22.23.5'
+          architecture: x64
+          package-manager-cache: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.12.10'
+          architecture: x64
+      - name: Reconstruct and verify the SDK
+        shell: pwsh
+        run: |
+          $node = (Get-Command node.exe -CommandType Application -TotalCount 1 -ErrorAction Stop).Source
+          python scripts/bootstrap-mcp-sdk.py --node $node
+      - name: Preserve the verified SDK for this run
+        id: upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mcp-sdk-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            release-artifacts/mcp-sdk/modelcontextprotocol-server-2.4.0-verified.tgz
+            release-artifacts/mcp-sdk/provenance.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7

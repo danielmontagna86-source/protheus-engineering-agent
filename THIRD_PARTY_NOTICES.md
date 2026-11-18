@@ -33,11 +33,11 @@ This repository is an independent compatibility project. Product and company nam
 
 ## Runtime and build dependencies
 
-The MCP executable uses the official `@modelcontextprotocol/server` 2.1.0 package and its `@modelcontextprotocol/core` 2.1.0 dependency. Their package metadata declares MIT, while the distributed upstream license file records the MCP project's Apache-2.0 transition, retained MIT contributions, and CC-BY-4.0 documentation boundary. Zod 4.5.4 is MIT, copyright Colin McDonnell. Their code is included only in the generated MCP bundle. The VSIX carries this notice plus the upstream MCP and Zod license texts; it does not redistribute LionCodeLabs, Hermes Agent, React, SQLite bindings or ACP SDK packages.
+The MCP executable uses `@modelcontextprotocol/server` 2.4.0 rebuilt locally from upstream tag `v2.4.0` at `951fe5603a7ec0b2dcb6a0b95d92cd86f93ad9e5`, with upstream fix `39ae8e6192cf43273aaaf2de4169dfa9f7216e28`. The resolved core is 2.4.0, and Zod 4.6.7 is MIT, copyright Colin McDonnell. The upstream MCP license records its Apache-2.0 transition, retained MIT contributions, and CC-BY-4.0 documentation boundary. The packaged license file also includes the notices for bundled Ajv 8.18.0 (MIT) and fast-uri 3.1.9 (BSD-3-Clause).
 
-Development and release tooling is locked in `package-lock.json`: `@vscode/test-electron` and `@vscode/vsce` (Microsoft, MIT), `buffer-crc32`, `esbuild`, `yauzl` and `yazl` (MIT), Stryker Mutator (Apache-2.0), and YAML (ISC). Development-only tools and their transitive dependencies are not included in the VSIX. Their installed license metadata is part of the release dependency review.
+Development and release tooling is locked in `package-lock.json`: `@vscode/test-electron` (Microsoft, MIT), `buffer-crc32`, `esbuild`, `yauzl` and `yazl` (MIT), Stryker Mutator (Apache-2.0), and YAML (ISC). The local VSIX packager uses the project's ZIP writer and an explicit file inventory. It scans the packaged text with the same Secretlint preset and dotenv rule used by VSCE. Development-only tools and their transitive dependencies are excluded from the VSIX.
 
-The resolved review, including dual-license and VSCE signing-tool treatment, is recorded in [`docs/security/dependency-license-review.md`](docs/security/dependency-license-review.md).
+The dependency license review is recorded in [`docs/security/dependency-license-review.md`](docs/security/dependency-license-review.md).
 
 ## GitHub Actions
 

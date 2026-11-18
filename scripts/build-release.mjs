@@ -18,6 +18,7 @@ import {
 } from './release-artifacts.mjs';
 import { assertNoLinkPath } from './path-safety.mjs';
 import { readZipArchive } from './zip.mjs';
+import { stageVerifiedSdk } from './sdk-artifact.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
@@ -149,6 +150,7 @@ export function completeProductionSbom(document, lock) {
 }
 
 async function installCleanDependencies(checkout) {
+  await stageVerifiedSdk({ sourceRoot: root, checkout });
   const invocation = npmCiInvocation();
   const result = spawnSync(invocation.command, invocation.args, {
     cwd: checkout,

@@ -13,14 +13,53 @@ permissions:
   contents: read
 
 jobs:
+  prepare-mcp-sdk:
+    uses: ./.github/workflows/prepare-mcp-sdk.yml
+
   osv-scan:
     name: OSV dependency scan
     runs-on: ubuntu-latest
     steps:
       - name: Check out candidate
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Scan package lock with OSV
         uses: google/osv-scanner-action/osv-scanner-action@8ac9e5ce44cc7178e0e04229a91bdcc003166e57 # v2.6.0
         with:
           scan-args: |-
             --lockfile=package-lock.json
+
+  osv-mcp-composition:
+    name: OSV packaged MCP composition scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    needs: prepare-mcp-sdk
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Verify the same-run SDK
+        uses: ./.github/actions/seed-mcp-sdk
+        with:
+          artifact-id: ${{ needs.prepare-mcp-sdk.outputs.artifact-id }}
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Inventory the MCP bundle inside the verified VSIX
+        run: node scripts/mcp-composition.mjs
+      - name: Scan embedded MCP dependencies
+        uses: google/osv-scanner-action/osv-scanner-action@8ac9e5ce44cc7178e0e04229a91bdcc003166e57 # v2.6.0
+        with:
+          scan-args: |
+            --sbom=release-artifacts/mcp-composition.cdx.json
+      - name: Preserve scan scope and artifact hashes
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mcp-composition-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release-artifacts/mcp-composition.cdx.json
+          if-no-files-found: ignore
