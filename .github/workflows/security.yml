@@ -25,7 +25,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Scan package lock with OSV
-        uses: google/osv-scanner-action/osv-scanner-action@8ac9e5ce44cc7178e0e04229a91bdcc003166e57 # v2.6.0
+        uses: google/osv-scanner-action/osv-scanner-action@d3c1414ded37de590f207572e37a7d180f1d0ef7 # v2.6.0
         with:
           scan-args: |-
             --lockfile=package-lock.json
@@ -52,7 +52,7 @@ jobs:
       - name: Inventory the MCP bundle inside the verified VSIX
         run: node scripts/mcp-composition.mjs
       - name: Scan embedded MCP dependencies
-        uses: google/osv-scanner-action/osv-scanner-action@8ac9e5ce44cc7178e0e04229a91bdcc003166e57 # v2.6.0
+        uses: google/osv-scanner-action/osv-scanner-action@d3c1414ded37de590f207572e37a7d180f1d0ef7 # v2.6.0
         with:
           scan-args: |
             --sbom=release-artifacts/mcp-composition.cdx.json
