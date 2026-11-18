@@ -8,6 +8,7 @@ import { writeZipArchive } from './zip.mjs';
 const types = {
   '.cjs': 'application/octet-stream',
   '.json': 'application/json',
+  '.js': 'application/javascript',
   '.md': 'text/markdown',
   '.mjs': 'application/javascript',
   '.png': 'image/png',
@@ -17,6 +18,9 @@ const types = {
   '.vsixmanifest': 'text/xml',
 };
 const declaration = '<?xml version="1.0" encoding="utf-8"?>';
+const stableVersion = '(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)';
+const extensionVersion = new RegExp(`^${stableVersion}$`);
+const editorEngine = new RegExp(`^\\^?${stableVersion}$`);
 const assetTypes = [
   ['Microsoft.VisualStudio.Code.Manifest', 'extension/package.json'],
   ['Microsoft.VisualStudio.Services.Content.Details', 'extension/readme.md'],
@@ -35,7 +39,7 @@ const secretConfig = { rules: [
 ] };
 
 async function scanPackagedText({ name, data }) {
-  if (/\.(jpe?g|png|gif|svg)$/i.test(name)) return;
+  if (/\.(jpe?g|png|gif)$/i.test(name)) return;
   const { messages } = await lintSource({
     source: { content: data.toString('utf8'), filePath: name, ext: extname(name), contentType: 'text' },
     options: { config: secretConfig, maskSecrets: true },
@@ -50,14 +54,42 @@ function xml(value = '') {
   })[char]);
 }
 
+function validateManifest(manifest, names) {
+  const { publisher, name, version, engines, main, icon } = manifest;
+  if (![publisher, name].every((value) => typeof value === 'string' && /^[a-z0-9][a-z0-9-]*$/i.test(value))
+    || typeof version !== 'string' || !extensionVersion.test(version)) {
+    throw new Error('Invalid VS Code extension identity or version');
+  }
+  if (typeof engines?.vscode !== 'string' || !editorEngine.test(engines.vscode)) {
+    throw new Error('Unsupported VS Code engine range: expected an exact or caret stable version');
+  }
+  if (typeof main !== 'string' || !/\.(?:cjs|js|mjs)$/.test(main)
+    || !names.has(`extension/${main.replace(/^\.\//, '')}`)) {
+    throw new Error('Invalid or missing VS Code extension entry point');
+  }
+  if (icon !== undefined && (typeof icon !== 'string' || !/\.png$/i.test(icon)
+    || !names.has(`extension/${icon}`))) {
+    throw new Error('Extension icon must be a packaged PNG');
+  }
+  for (const key of ['categories', 'keywords', 'extensionKind', 'extensionDependencies', 'extensionPack', 'enabledApiProposals']) {
+    const value = manifest[key];
+    if (value !== undefined && (!Array.isArray(value) || value.some((item) => typeof item !== 'string' || !item.trim()))) {
+      throw new Error(`Invalid VS Code extension metadata: ${key}`);
+    }
+  }
+  for (const key of ['displayName', 'description']) {
+    if (manifest[key] !== undefined && typeof manifest[key] !== 'string') {
+      throw new Error(`Invalid VS Code extension metadata: ${key}`);
+    }
+  }
+  if (manifest.preview !== undefined && typeof manifest.preview !== 'boolean') {
+    throw new Error('Invalid VS Code extension metadata: preview');
+  }
+}
+
 function manifestXml(manifest, localized, names) {
   const { publisher, name, version, engines, displayName, description, icon } = manifest;
-  if (![publisher, name].every((value) => typeof value === 'string' && /^[a-z0-9][a-z0-9-]*$/i.test(value))
-    || typeof version !== 'string' || !/^\d+\.\d+\.\d+$/.test(version)
-    || typeof engines?.vscode !== 'string' || !engines.vscode
-    || typeof manifest.main !== 'string' || !names.has(`extension/${manifest.main.replace(/^\.\//, '')}`)) {
-    throw new Error('Invalid VS Code extension identity, engine, or entry point');
-  }
+  validateManifest(manifest, names);
   const localizedText = (value) => {
     const key = /^%(.+)%$/.exec(value ?? '')?.[1];
     if (!key) return xml(value);
@@ -71,7 +103,6 @@ function manifestXml(manifest, localized, names) {
     tags.add('language-model-tools');
   }
   if (icon) {
-    if (!names.has(`extension/${icon}`)) throw new Error('Extension icon is missing from the VSIX inventory');
     assets.push(['Microsoft.VisualStudio.Services.Icons.Default', `extension/${icon}`]);
   }
   const properties = {
@@ -142,7 +173,11 @@ export async function writeVsix({ root, outputPath, inventory }) {
   }
   const readJson = (name, fallback) => {
     const entry = entries.find((item) => item.name === name);
-    if (entry) return JSON.parse(entry.data.toString('utf8'));
+    if (entry) {
+      const value = JSON.parse(entry.data.toString('utf8'));
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`Invalid JSON object: ${name}`);
+      return value;
+    }
     if (fallback) return fallback;
     throw new Error(`Missing manifest: ${name}`);
   };
