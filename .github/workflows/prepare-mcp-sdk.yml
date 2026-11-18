@@ -32,7 +32,9 @@ jobs:
           architecture: x64
       - name: Reconstruct and verify the SDK
         shell: pwsh
-        run: python scripts/bootstrap-mcp-sdk.py --node (Get-Command node -CommandType Application).Source
+        run: |
+          $node = (Get-Command node.exe -CommandType Application -TotalCount 1 -ErrorAction Stop).Source
+          python scripts/bootstrap-mcp-sdk.py --node $node
       - name: Preserve the verified SDK for this run
         id: upload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
