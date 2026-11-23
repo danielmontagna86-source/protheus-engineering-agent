@@ -53,7 +53,7 @@
     "mcp": "node packages/mcp/src/stdio.mjs"
   },
   "devDependencies": {
-    "@secretlint/core": "10.2.2",
+    "@secretlint/core": "14.0.1",
     "@secretlint/secretlint-rule-no-dotenv": "10.2.2",
     "@secretlint/secretlint-rule-preset-recommend": "10.2.2",
     "@stryker-mutator/core": "10.0.0",
